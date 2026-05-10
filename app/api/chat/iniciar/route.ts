@@ -1,0 +1,116 @@
+// app/api/chat/iniciar/route.ts
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+export async function POST(request: Request) {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+    const { creator_id, type = 'text' } = await request.json()
+    if (!creator_id) return NextResponse.json({ error: 'creator_id obrigatório' }, { status: 400 })
+
+    const admin = createAdminClient()
+
+    // 1. Busca criadora e verifica se está ativa e online
+    const { data: creator } = await admin
+      .from('creators')
+      .select('id, user_id, price_text_petals, price_video_petals, active')
+      .eq('id', creator_id)
+      .eq('active', true)
+      .single()
+
+    if (!creator) return NextResponse.json({ error: 'Criadora não encontrada' }, { status: 404 })
+
+    // Não permite chat consigo mesmo
+    if (creator.user_id === user.id) {
+      return NextResponse.json({ error: 'Você não pode iniciar chat com você mesmo' }, { status: 400 })
+    }
+
+    // 2. Verifica presença online
+    const { data: presence } = await admin
+      .from('creator_presence')
+      .select('online, in_session')
+      .eq('creator_id', creator_id)
+      .single()
+
+    if (!presence?.online) {
+      return NextResponse.json({ error: 'Criadora está offline no momento' }, { status: 409 })
+    }
+
+    // 3. Verifica saldo mínimo (pelo menos 5 minutos)
+    const pricePerMin = type === 'video'
+      ? creator.price_video_petals
+      : creator.price_text_petals
+    const minBalance = pricePerMin * 5
+
+    const { data: userData } = await admin
+      .from('users')
+      .select('balance_petals')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData || userData.balance_petals < minBalance) {
+      return NextResponse.json({
+        error: 'Saldo insuficiente',
+        required: minBalance,
+        current: userData?.balance_petals ?? 0,
+        code: 'INSUFFICIENT_BALANCE',
+      }, { status: 402 })
+    }
+
+    // 4. Verifica sessão ativa existente (só uma por vez)
+    const { data: activeSession } = await admin
+      .from('chat_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .is('ended_at', null)
+      .single()
+
+    if (activeSession) {
+      return NextResponse.json({ error: 'Você já tem uma sessão ativa', session_id: activeSession.id }, { status: 409 })
+    }
+
+    // 5. Cria a sessão
+    const { data: session, error: sessionError } = await admin
+      .from('chat_sessions')
+      .insert({
+        user_id:    user.id,
+        creator_id: creator_id,
+        type:       type,
+      })
+      .select()
+      .single()
+
+    if (sessionError || !session) {
+      throw new Error('Falha ao criar sessão: ' + sessionError?.message)
+    }
+
+    // 6. Marca criadora como in_session
+    await admin
+      .from('creator_presence')
+      .update({ in_session: true })
+      .eq('creator_id', creator_id)
+
+    // 7. Insere mensagem de sistema para iniciar o chat
+    await admin.from('chat_messages').insert({
+      session_id:  session.id,
+      sender_id:   user.id,
+      sender_role: 'system',
+      content:     `Chat iniciado · ${pricePerMin} 🌸/min`,
+      type:        'system',
+    })
+
+    return NextResponse.json({
+      session_id:    session.id,
+      type:          session.type,
+      price_per_min: pricePerMin,
+      started_at:    session.started_at,
+    })
+
+  } catch (err) {
+    console.error('[/api/chat/iniciar]', err)
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+  }
+}
