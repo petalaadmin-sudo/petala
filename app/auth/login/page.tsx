@@ -14,7 +14,6 @@ function LoginContent() {
   const [refInfo, setRefInfo] = useState<{ name: string } | null>(null)
 
   useEffect(() => {
-    // Detecta token no hash (fluxo implicit)
     if (window.location.hash.includes('access_token')) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) router.push('/auth/idade')
@@ -36,7 +35,7 @@ function LoginContent() {
     setLoading(provider)
     await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${location.origin}/auth/login` },
+      options: { redirectTo: `${location.origin}/api/auth/callback` },
     })
   }
 
