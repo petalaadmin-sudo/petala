@@ -7,6 +7,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
 
+  console.log('CALLBACK - code:', code ? 'presente' : 'ausente')
+  console.log('CALLBACK - error:', error)
+  console.log('CALLBACK - cookies:', request.cookies.getAll().map(c => c.name))
+
   if (error) {
     return NextResponse.redirect(`${origin}/auth/login?error=${error}`)
   }
@@ -31,7 +35,9 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
+    console.log('CALLBACK - session user:', data?.session?.user?.email)
+    console.log('CALLBACK - sessionError:', JSON.stringify(sessionError))
 
     if (!sessionError) {
       return response
