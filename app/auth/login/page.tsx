@@ -16,7 +16,7 @@ function LoginContent() {
   useEffect(() => {
     if (window.location.hash.includes('access_token')) {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) router.push('/auth/idade')
+        if (session) router.push('/feed')
       })
       return
     }
@@ -33,10 +33,17 @@ function LoginContent() {
 
   const loginWith = async (provider: 'google' | 'apple') => {
     setLoading(provider)
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${location.origin}/api/auth/callback` },
+      options: {
+        redirectTo: `${location.origin}/api/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
     })
+    if (error) setLoading(null)
   }
 
   const loginWithEmail = async () => {
@@ -86,7 +93,7 @@ function LoginContent() {
           <button key={p} onClick={() => loginWith(p)} disabled={!!loading}
             className="w-full bg-[#161616] border border-white/8 rounded-xl px-4 py-3 flex items-center gap-3 text-white text-sm active:scale-95 transition-all disabled:opacity-50">
             <span>{p === 'google' ? '🌐' : '🍎'}</span>
-            Continuar com {p === 'google' ? 'Google' : 'Apple'}
+            {loading === p ? 'Carregando...' : `Continuar com ${p === 'google' ? 'Google' : 'Apple'}`}
           </button>
         ))}
       </div>
