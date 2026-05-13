@@ -1,8 +1,7 @@
-// middleware.ts
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/cadastro', '/auth/callback', '/auth/idade', '/auth/bloqueado', '/feed', '/perfil', '/ranking', '/mensagens', '/indicacao', '/criadora', '/live', '/api']
+const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/cadastro', '/auth/callback', '/auth/confirmar', '/auth/idade', '/auth/bloqueado', '/feed', '/perfil', '/ranking', '/mensagens', '/indicacao', '/criadora', '/live', '/api']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -32,9 +31,11 @@ export async function middleware(request: NextRequest) {
   if (!user && !PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
+
   if (user && pathname === '/') {
     return NextResponse.redirect(new URL('/feed', request.url))
   }
+
   if (user && (pathname === '/auth/login' || pathname === '/auth/cadastro')) {
     return NextResponse.redirect(new URL('/feed', request.url))
   }
