@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 
 const PACOTES: Record<string, { name: string; petals: number; price: number }> = {
   'Semente':        { name: 'Semente',        petals: 360,   price: 1510  },
@@ -15,11 +16,11 @@ const PACOTES: Record<string, { name: string; petals: number; price: number }> =
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const body = await request.json()
+    const { packageName, userId } = body
 
-    const { packageName } = await request.json()
+    if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
     const pacote = PACOTES[packageName]
     if (!pacote) return NextResponse.json({ error: 'Pacote inválido' }, { status: 400 })
 
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/pix/sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/perfil`,
       metadata: {
-        user_id: user.id,
+        user_id: userId,
         package_name: pacote.name,
         petals: String(pacote.petals),
       },

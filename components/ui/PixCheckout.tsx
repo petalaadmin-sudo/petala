@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 interface Package {
   id: string
@@ -19,15 +20,19 @@ interface Props {
 export function PixCheckout({ packages, currentBalance, onClose }: Props) {
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
   const [loading, setLoading] = useState(false)
+  const supabase = createClient()
 
   const comprar = async () => {
     if (!selectedPkg) return
     setLoading(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
     const res = await fetch('/api/stripe/criar-sessao', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packageName: selectedPkg.name }),
+      body: JSON.stringify({ packageName: selectedPkg.name, userId: user.id }),
     })
 
     const { url, error } = await res.json()
