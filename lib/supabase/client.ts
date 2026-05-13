@@ -10,6 +10,13 @@ export function createClient() {
         flowType: 'implicit',
         detectSessionInUrl: true,
         persistSession: true,
+        storageKey: 'sb-petala-auth',
+      },
+      cookieOptions: {
+        domain: '.petala.app',
+        path: '/',
+        sameSite: 'lax',
+        secure: true,
       }
     }
   )
