@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq('id', user.id)
     .single()
 
-  if (userData?.role !== 'admin') redirect('/feed')
+  if (userData?.role !== 'administrador') redirect('/feed')
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0a]">

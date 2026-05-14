@@ -12,7 +12,7 @@ export default async function AdminPage() {
     .eq('id', user.id)
     .single()
 
-  if (userData?.role !== 'admin') redirect('/feed')
+  if (userData?.role !== 'administrador') redirect('/feed')
 
   const [creatorsCount, usersCount, txTotal, newUsersToday] = await Promise.all([
     supabase.from('creators').select('id', { count: 'exact', head: true }).eq('active', true),
