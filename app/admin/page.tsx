@@ -31,7 +31,7 @@ export default function AdminPage() {
 
       const [
         creatorsRes, usersRes, txRes, newUsersRes,
-        pendingVerif, livesAtivas, giftsRes, newUsersOntem
+        pendingVerif, livesAtivas, newUsersOntem
       ] = await Promise.all([
         supabase.from('criadores').select('id', { count: 'exact', head: true }).eq('active', true),
         supabase.from('users').select('id', { count: 'exact', head: true }),
@@ -39,10 +39,7 @@ export default function AdminPage() {
         supabase.from('users').select('id', { count: 'exact', head: true }).gte('created_at', hoje.toISOString()),
         supabase.from('verificações_do_criador').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('vidas').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('gifts').select('id', { count: 'exact', head: true }),
-        supabase.from('users').select('id', { count: 'exact', head: true })
-          .gte('created_at', ontem.toISOString())
-          .lt('created_at', hoje.toISOString()),
+        supabase.from('users').select('id', { count: 'exact', head: true }).gte('created_at', ontem.toISOString()).lt('created_at', hoje.toISOString()),
       ])
 
       const totalRevenue = txRes.data?.reduce((sum, tx) => sum + Number(tx.amount_brl || 0), 0) ?? 0
@@ -50,10 +47,9 @@ export default function AdminPage() {
         .reduce((sum, tx) => sum + Number(tx.amount_brl || 0), 0) ?? 0
       const txCount = txRes.data?.length ?? 0
       const ticketMedio = txCount > 0 ? totalRevenue / txCount : 0
-
       const novosHoje = newUsersRes.count ?? 0
-      const novosOntem = newUsersOntem.count ?? 1
-      const retencaoD1 = novosOntem > 0 ? Math.round((novosHoje / novosOntem) * 100) : 0
+      const novosOntem = Math.max(newUsersOntem.count ?? 1, 1)
+      const retencaoD1 = Math.round((novosHoje / novosOntem) * 100)
 
       setStats({
         creators: creatorsRes.count ?? 0,
@@ -64,21 +60,16 @@ export default function AdminPage() {
         ticketMedio,
         retencaoD1,
         livesAtivas: livesAtivas.count ?? 0,
-        gifts: giftsRes.count ?? 0,
         pendingVerif: pendingVerif.count ?? 0,
       })
 
-      // Alertas
       const novosAlertas = []
-      if ((pendingVerif.count ?? 0) > 0) {
-        novosAlertas.push({ tipo: 'warning', msg: `${pendingVerif.count} verificação(ões) de criadora pendente(s)`, href: '/admin/moderacao' })
-      }
-      if ((livesAtivas.count ?? 0) > 0) {
-        novosAlertas.push({ tipo: 'info', msg: `${livesAtivas.count} live(s) acontecendo agora`, href: '/admin/lives' })
-      }
-      if (revenueHoje > 0) {
+      if ((pendingVerif.count ?? 0) > 0)
+        novosAlertas.push({ tipo: 'warning', msg: `${pendingVerif.count} verificação(ões) pendente(s)`, href: '/admin/moderacao' })
+      if ((livesAtivas.count ?? 0) > 0)
+        novosAlertas.push({ tipo: 'info', msg: `${livesAtivas.count} live(s) ao vivo agora`, href: '/admin/lives' })
+      if (revenueHoje > 0)
         novosAlertas.push({ tipo: 'success', msg: `R$ ${revenueHoje.toFixed(2)} de receita hoje`, href: '/admin/financeiro' })
-      }
       setAlertas(novosAlertas)
       setLoading(false)
     }
@@ -87,17 +78,20 @@ export default function AdminPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="text-white/30 text-sm">Carregando...</div>
+      <div className="text-white/30 text-sm animate-pulse">Carregando dashboard...</div>
     </div>
   )
 
   return (
     <div>
-      <h1 className="text-white text-xl font-medium mb-6">Dashboard</h1>
+      <div className="mb-8">
+        <h1 className="text-white text-2xl font-semibold">Dashboard</h1>
+        <p className="text-white/30 text-sm mt-1">Central operacional do Pétala</p>
+      </div>
 
       {/* Alertas */}
       {alertas.length > 0 && (
-        <div className="flex flex-col gap-2 mb-6">
+        <div className="flex flex-col gap-2 mb-8">
           {alertas.map((a, i) => (
             <a key={i} href={a.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-all ${
               a.tipo === 'warning' ? 'bg-yellow-400/10 border-yellow-400/20 text-yellow-400 hover:bg-yellow-400/15' :
@@ -112,20 +106,28 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* KPIs principais */}
+      {/* KPIs principais com gradiente */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        {[
-          { label: 'Criadoras ativas', value: stats.creators, icon: '🌸', color: 'text-[#ff4d7d]' },
-          { label: 'Usuários totais', value: stats.users, icon: '👥', color: 'text-white' },
-          { label: 'Receita total', value: `R$ ${stats.revenue.toFixed(2)}`, icon: '💰', color: 'text-yellow-400' },
-          { label: 'Novos hoje', value: stats.newUsersToday, icon: '🆕', color: 'text-green-400' },
-        ].map(s => (
-          <div key={s.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
-            <div className="text-2xl mb-2">{s.icon}</div>
-            <div className={`text-2xl font-medium ${s.color}`}>{s.value}</div>
-            <div className="text-white/30 text-xs mt-1">{s.label}</div>
-          </div>
-        ))}
+        <div className="bg-gradient-to-br from-[#ff4d7d]/20 to-[#ff4d7d]/5 rounded-2xl p-5 border border-[#ff4d7d]/20">
+          <div className="text-3xl mb-3">🌸</div>
+          <div className="text-3xl font-bold text-[#ff4d7d]">{stats.creators}</div>
+          <div className="text-white/40 text-xs mt-1">Criadoras ativas</div>
+        </div>
+        <div className="bg-gradient-to-br from-white/10 to-white/3 rounded-2xl p-5 border border-white/10">
+          <div className="text-3xl mb-3">👥</div>
+          <div className="text-3xl font-bold text-white">{stats.users}</div>
+          <div className="text-white/40 text-xs mt-1">Usuários totais</div>
+        </div>
+        <div className="bg-gradient-to-br from-yellow-400/20 to-yellow-400/5 rounded-2xl p-5 border border-yellow-400/20">
+          <div className="text-3xl mb-3">💰</div>
+          <div className="text-3xl font-bold text-yellow-400">R$ {stats.revenue.toFixed(0)}</div>
+          <div className="text-white/40 text-xs mt-1">Receita total</div>
+        </div>
+        <div className="bg-gradient-to-br from-green-400/20 to-green-400/5 rounded-2xl p-5 border border-green-400/20">
+          <div className="text-3xl mb-3">🆕</div>
+          <div className="text-3xl font-bold text-green-400">{stats.newUsersToday}</div>
+          <div className="text-white/40 text-xs mt-1">Novos hoje</div>
+        </div>
       </div>
 
       {/* KPIs secundários */}
@@ -137,29 +139,32 @@ export default function AdminPage() {
           { label: 'Retenção D1', value: `${stats.retencaoD1}%`, icon: '📊', color: 'text-blue-400' },
         ].map(s => (
           <div key={s.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
-            <div className="text-2xl mb-2">{s.icon}</div>
-            <div className={`text-2xl font-medium ${s.color}`}>{s.value}</div>
+            <div className="text-xl mb-2">{s.icon}</div>
+            <div className={`text-xl font-semibold ${s.color}`}>{s.value}</div>
             <div className="text-white/30 text-xs mt-1">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Acesso rápido */}
-      <h2 className="text-white/50 text-sm mb-4">Acesso rápido</h2>
+      <h2 className="text-white/40 text-xs uppercase tracking-wider mb-4">Acesso rápido</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { href: '/admin/usuarios', icon: '👥', label: 'Gerenciar usuários' },
-          { href: '/admin/criadoras', icon: '🌸', label: 'Gerenciar criadoras' },
-          { href: '/admin/financeiro', icon: '💰', label: 'Financeiro' },
-          { href: '/admin/moderacao', icon: '🛡️', label: 'Moderação' },
-          { href: '/admin/lives', icon: '🎥', label: 'Lives' },
-          { href: '/admin/petalas', icon: '✨', label: 'Pétalas' },
-          { href: '/admin/marketing', icon: '📈', label: 'Marketing' },
-          { href: '/admin/suporte', icon: '🎧', label: 'Suporte' },
+          { href: '/admin/usuarios', icon: '👥', label: 'Usuários', desc: 'Gerenciar contas' },
+          { href: '/admin/criadoras', icon: '🌸', label: 'Criadoras', desc: 'Score e níveis' },
+          { href: '/admin/financeiro', icon: '💰', label: 'Financeiro', desc: 'Receita e ARPU' },
+          { href: '/admin/moderacao', icon: '🛡️', label: 'Moderação', desc: 'Verificações' },
+          { href: '/admin/trust', icon: '🔒', label: 'Trust & Safety', desc: 'Antifraude' },
+          { href: '/admin/analytics', icon: '📉', label: 'Analytics', desc: 'Gráficos e dados' },
+          { href: '/admin/petalas', icon: '✨', label: 'Pétalas', desc: 'Bônus e pacotes' },
+          { href: '/admin/marketing', icon: '📈', label: 'Marketing', desc: 'Indicações' },
+          { href: '/admin/suporte', icon: '🎧', label: 'Suporte', desc: 'Buscar usuários' },
+          { href: '/admin/lives', icon: '🎥', label: 'Lives', desc: 'Histórico' },
         ].map(item => (
-          <a key={item.href} href={item.href} className="bg-[#111] rounded-xl p-4 border border-white/5 hover:border-[#ff4d7d]/30 transition-all group">
+          <a key={item.href} href={item.href} className="bg-[#111] rounded-xl p-4 border border-white/5 hover:border-[#ff4d7d]/30 hover:bg-[#ff4d7d]/5 transition-all group">
             <div className="text-2xl mb-2">{item.icon}</div>
-            <div className="text-white/60 text-sm group-hover:text-white transition-all">{item.label}</div>
+            <div className="text-white/80 text-sm font-medium group-hover:text-white transition-all">{item.label}</div>
+            <div className="text-white/20 text-xs mt-0.5">{item.desc}</div>
           </a>
         ))}
       </div>
