@@ -26,7 +26,7 @@ export default function AdminPage() {
         .eq('id', user.id)
         .single()
 
-      if (userData?.role !== 'administrador') { router.push('/feed'); return }
+      if (userData?.role !== 'admin') router.push('/feed')
 
       const [creatorsRes, usersRes, txRes, newUsersRes] = await Promise.all([
         supabase.from('creators').select('id', { count: 'exact', head: true }).eq('active', true),
