@@ -21,7 +21,7 @@ export default function AdminPetalasPage() {
       if (userData?.role !== 'admin') { router.push('/feed'); return }
 
       const [pacotesRes, topUsersRes, txRes] = await Promise.all([
-        supabase.from('petal_packages').select('*').order('price', { ascending: true }),
+        supabase.from('petal_packages').select('*').order('price_brl', { ascending: true }),
         supabase.from('users').select('id, email, username, balance_petals').order('balance_petals', { ascending: false }).limit(10),
         supabase.from('transactions').select('petals_delta, type, status').eq('status', 'completed'),
       ])
@@ -75,7 +75,6 @@ export default function AdminPetalasPage() {
     <div>
       <h1 className="text-white text-xl font-medium mb-6">Sistema de Pétalas</h1>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         {[
           { label: 'Total pétalas vendidas', value: dados.totalPetalasVendidas.toLocaleString('pt-BR'), icon: '🌸', color: 'text-[#ff4d7d]' },
@@ -89,7 +88,6 @@ export default function AdminPetalasPage() {
         ))}
       </div>
 
-      {/* Dar bônus */}
       <div className="bg-[#111] rounded-xl p-5 border border-white/5 mb-8">
         <h2 className="text-white text-sm font-medium mb-4">🎁 Dar bônus de pétalas</h2>
         <div className="flex gap-3">
@@ -118,7 +116,6 @@ export default function AdminPetalasPage() {
         {mensagem && <div className="mt-3 text-sm text-white/60">{mensagem}</div>}
       </div>
 
-      {/* Pacotes */}
       <h2 className="text-white/50 text-sm mb-4">Pacotes de pétalas</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {dados.pacotes?.map((p: any) => (
@@ -126,13 +123,12 @@ export default function AdminPetalasPage() {
             <div className="text-[#ff4d7d] text-lg font-medium">{p.petals?.toLocaleString('pt-BR')} 🌸</div>
             <div className="text-white/50 text-sm mt-1">{p.name}</div>
             <div className="text-yellow-400 text-sm font-medium mt-2">
-              R$ {(p.price / 100).toFixed(2)}
+              R$ {Number(p.price_brl).toFixed(2)}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Top usuários */}
       <h2 className="text-white/50 text-sm mb-4">Top usuários por saldo</h2>
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
         <table className="w-full">
