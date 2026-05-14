@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 const MENU = [
   { href: '/admin', icon: '📊', label: 'Dashboard' },
+  { href: '/admin/analytics', icon: '📉', label: 'Analytics' },
   { href: '/admin/usuarios', icon: '👥', label: 'Usuários' },
   { href: '/admin/criadoras', icon: '🌸', label: 'Criadoras' },
   { href: '/admin/financeiro', icon: '💰', label: 'Financeiro' },
