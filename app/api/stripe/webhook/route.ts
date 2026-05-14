@@ -12,7 +12,6 @@ export async function POST(request: Request) {
   const signature = request.headers.get('stripe-signature')!
 
   let event
-
   try {
     event = stripe.webhooks.constructEvent(
       body,
@@ -30,18 +29,42 @@ export async function POST(request: Request) {
     const petals = Number(session.metadata?.petals)
     const packageName = session.metadata?.package_name
 
-    if (userId && petals) {
-      await supabaseAdmin.rpc('credit_petals', {
-        p_user_id: userId,
-        p_amount: petals,
-        p_type: 'purchase',
-      })
+    console.log('[webhook] userId:', userId, 'petals:', petals)
 
+    if (userId && petals) {
+      // Busca saldo atual
+      const { data: userData, error: fetchError } = await supabaseAdmin
+        .from('users')
+        .select('balance_petals')
+        .eq('id', userId)
+        .single()
+
+      if (fetchError) {
+        console.error('[webhook] Erro ao buscar usuário:', fetchError)
+        return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 500 })
+      }
+
+      const novoSaldo = (userData.balance_petals || 0) + petals
+
+      // Atualiza saldo
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({ balance_petals: novoSaldo, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+
+      if (updateError) {
+        console.error('[webhook] Erro ao atualizar saldo:', updateError)
+        return NextResponse.json({ error: 'Erro ao creditar' }, { status: 500 })
+      }
+
+      console.log('[webhook] ✅ Saldo atualizado:', novoSaldo)
+
+      // Registra transação
       await supabaseAdmin.from('transactions').insert({
         user_id: userId,
         type: 'purchase',
         petals_delta: petals,
-        balance_after: 0,
+        balance_after: novoSaldo,
         amount_brl: (session.amount_total ?? 0) / 100,
         gateway_id: session.id,
         status: 'completed',
