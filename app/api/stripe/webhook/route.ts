@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
+import { enviarEmailCompraPetals } from '@/lib/email'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,10 +33,9 @@ export async function POST(request: Request) {
     console.log('[webhook] userId:', userId, 'petals:', petals)
 
     if (userId && petals) {
-      // Busca saldo atual
       const { data: userData, error: fetchError } = await supabaseAdmin
         .from('users')
-        .select('balance_petals')
+        .select('balance_petals, email, username')
         .eq('id', userId)
         .single()
 
@@ -46,7 +46,6 @@ export async function POST(request: Request) {
 
       const novoSaldo = (userData.balance_petals || 0) + petals
 
-      // Atualiza saldo
       const { error: updateError } = await supabaseAdmin
         .from('users')
         .update({ balance_petals: novoSaldo, updated_at: new Date().toISOString() })
@@ -59,7 +58,6 @@ export async function POST(request: Request) {
 
       console.log('[webhook] ✅ Saldo atualizado:', novoSaldo)
 
-      // Registra transação
       await supabaseAdmin.from('transactions').insert({
         user_id: userId,
         type: 'purchase',
@@ -70,6 +68,23 @@ export async function POST(request: Request) {
         status: 'completed',
         metadata: { package_name: packageName },
       })
+
+      // Envia email de confirmação
+      try {
+        const emailDestino = userData.email || session.customer_details?.email
+        if (emailDestino) {
+          await enviarEmailCompraPetals(
+            emailDestino,
+            userData.username || '',
+            petals,
+            packageName || '',
+            (session.amount_total ?? 0) / 100
+          )
+          console.log('[webhook] ✅ Email enviado para:', emailDestino)
+        }
+      } catch (emailErr) {
+        console.error('[webhook] Erro ao enviar email:', emailErr)
+      }
     }
   }
 
