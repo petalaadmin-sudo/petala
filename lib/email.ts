@@ -1,8 +1,7 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function enviarEmailBoasVindas(email: string, nome: string) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
   await resend.emails.send({
     from: 'Pétala <onboarding@resend.dev>',
     to: email,
@@ -28,6 +27,7 @@ export async function enviarEmailCompraPetals(
   pacote: string,
   valor: number
 ) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
   await resend.emails.send({
     from: 'Pétala <onboarding@resend.dev>',
     to: email,
