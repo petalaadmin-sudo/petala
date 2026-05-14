@@ -29,7 +29,7 @@ export async function enviarEmailCompraPetals(
 ) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   await resend.emails.send({
-    from: 'Pétala <onboarding@resend.dev>',
+    from: 'Pétala <noreply@petala.app>',
     to: email,
     subject: '🌸 Compra confirmada — Pétalas adicionadas!',
     html: `
