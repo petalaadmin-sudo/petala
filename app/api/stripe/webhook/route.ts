@@ -69,21 +69,24 @@ export async function POST(request: Request) {
         metadata: { package_name: packageName },
       })
 
-      // Envia email de confirmação
-      try {
-        const emailDestino = userData.email || session.customer_details?.email
-        if (emailDestino) {
-          await enviarEmailCompraPetals(
+      const emailDestino = userData.email || session.customer_details?.email
+      console.log('[webhook] Email destino:', emailDestino)
+
+      if (emailDestino) {
+        try {
+          const resultado = await enviarEmailCompraPetals(
             emailDestino,
             userData.username || '',
             petals,
             packageName || '',
             (session.amount_total ?? 0) / 100
           )
-          console.log('[webhook] ✅ Email enviado para:', emailDestino)
+          console.log('[webhook] ✅ Email enviado:', resultado)
+        } catch (emailErr) {
+          console.error('[webhook] ❌ Erro ao enviar email:', emailErr)
         }
-      } catch (emailErr) {
-        console.error('[webhook] Erro ao enviar email:', emailErr)
+      } else {
+        console.error('[webhook] ❌ Email não encontrado')
       }
     }
   }
