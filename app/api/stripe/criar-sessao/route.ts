@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     if (!pacote) return NextResponse.json({ error: 'Pacote inválido' }, { status: 400 })
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'pix'],
+      payment_method_types: ['card'],
       line_items: [{
         price_data: {
           currency: 'brl',
