@@ -1,34 +1,58 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
 
-export default async function AdminPage() {
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+
+export default function AdminPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  const router = useRouter()
+  const [stats, setStats] = useState({
+    creators: 0,
+    users: 0,
+    revenue: 0,
+    newUsersToday: 0,
+  })
+  const [loading, setLoading] = useState(true)
 
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth/login'); return }
 
-  if (userData?.role !== 'administrador') redirect('/feed')
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
-  const [creatorsCount, usersCount, txTotal, newUsersToday] = await Promise.all([
-    supabase.from('creators').select('id', { count: 'exact', head: true }).eq('active', true),
-    supabase.from('users').select('id', { count: 'exact', head: true }),
-    supabase.from('transactions').select('amount_brl').eq('status', 'completed').eq('type', 'purchase'),
-    supabase.from('users').select('id', { count: 'exact', head: true }).gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
-  ])
+      if (userData?.role !== 'administrador') { router.push('/feed'); return }
 
-  const totalRevenue = txTotal.data?.reduce((sum, tx) => sum + Number(tx.amount_brl || 0), 0) ?? 0
+      const [creatorsRes, usersRes, txRes, newUsersRes] = await Promise.all([
+        supabase.from('creators').select('id', { count: 'exact', head: true }).eq('active', true),
+        supabase.from('users').select('id', { count: 'exact', head: true }),
+        supabase.from('transactions').select('amount_brl').eq('status', 'completed').eq('type', 'purchase'),
+        supabase.from('users').select('id', { count: 'exact', head: true }).gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+      ])
 
-  const stats = {
-    creators: creatorsCount.count ?? 0,
-    users: usersCount.count ?? 0,
-    revenue: totalRevenue,
-    newUsersToday: newUsersToday.count ?? 0,
-  }
+      const totalRevenue = txRes.data?.reduce((sum, tx) => sum + Number(tx.amount_brl || 0), 0) ?? 0
+
+      setStats({
+        creators: creatorsRes.count ?? 0,
+        users: usersRes.count ?? 0,
+        revenue: totalRevenue,
+        newUsersToday: newUsersRes.count ?? 0,
+      })
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-white/30 text-sm">Carregando...</div>
+    </div>
+  )
 
   return (
     <div>
