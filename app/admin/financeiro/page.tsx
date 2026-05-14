@@ -11,7 +11,7 @@ export default async function AdminFinanceiroPage() {
 
   const { data: allUsers } = await supabase
     .from('users')
-    .select('id', { count: 'exact', head: false })
+    .select('id')
 
   const totalReceita = transactions
     ?.filter(t => t.status === 'completed' && t.type === 'purchase')
@@ -27,7 +27,7 @@ export default async function AdminFinanceiroPage() {
 
   const totalTransacoes = transactions?.filter(t => t.status === 'completed' && t.type === 'purchase').length ?? 0
   const ticketMedio = totalTransacoes > 0 ? totalReceita / totalTransacoes : 0
-  const totalUsers = allUsers?.length ?? 1
+  const totalUsers = Math.max(allUsers?.length ?? 1, 1)
   const arpu = totalReceita / totalUsers
   const lucroLiquido = totalReceita * 0.7
   const lucroPlatforma = totalReceita * 0.3
@@ -36,7 +36,6 @@ export default async function AdminFinanceiroPage() {
     <div>
       <h1 className="text-white text-xl font-medium mb-6">Financeiro</h1>
 
-      {/* Stats principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {[
           { label: 'Receita total', value: `R$ ${totalReceita.toFixed(2)}`, icon: '💰', color: 'text-yellow-400' },
@@ -52,7 +51,6 @@ export default async function AdminFinanceiroPage() {
         ))}
       </div>
 
-      {/* Stats secundários */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
           { label: 'ARPU', value: `R$ ${arpu.toFixed(2)}`, icon: '👤', color: 'text-blue-400', desc: 'Receita por usuário' },
@@ -68,7 +66,6 @@ export default async function AdminFinanceiroPage() {
         ))}
       </div>
 
-      {/* Tabela */}
       <h2 className="text-white/50 text-sm mb-4">Transações recentes</h2>
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
         <div className="overflow-x-auto">
