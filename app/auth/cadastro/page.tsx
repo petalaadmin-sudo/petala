@@ -20,10 +20,18 @@ function CadastroContent() {
   // Extrai código da URL (?ref=XXX-XXXXX)
   const refFromUrl = searchParams.get('ref')
 
+  // Salva imediatamente no localStorage sem esperar validação
+  useEffect(() => {
+    if (refFromUrl) {
+      localStorage.setItem('pending_referral_code', refFromUrl.toUpperCase())
+    }
+  }, [refFromUrl])
+
   const loginWith = async (provider: 'google' | 'apple') => {
     setLoading(provider)
-    // Salva o código no localStorage para usar após o redirect OAuth
+    // Também salva aqui como garantia extra
     if (referralCode) localStorage.setItem('pending_referral_code', referralCode)
+    else if (refFromUrl) localStorage.setItem('pending_referral_code', refFromUrl.toUpperCase())
 
     await supabase.auth.signInWithOAuth({
       provider,
@@ -37,6 +45,7 @@ function CadastroContent() {
     if (!email) return
     setLoading('email')
     if (referralCode) localStorage.setItem('pending_referral_code', referralCode)
+    else if (refFromUrl) localStorage.setItem('pending_referral_code', refFromUrl.toUpperCase())
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
