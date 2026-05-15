@@ -19,23 +19,22 @@ export default function ConfirmarPage() {
       document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax; Secure`
       document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=86400; SameSite=Lax; Secure`
 
-      // Processa indicação pendente do localStorage
+      // Processa indicação pendente
       const pendingCode = localStorage.getItem('pending_referral_code')
-      if (pendingCode) {
+      if (pendingCode && session.user?.id) {
         try {
           const res = await fetch('/api/indicacao/registrar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ referral_code: pendingCode }),
+            body: JSON.stringify({
+              referral_code: pendingCode,
+              user_id: session.user.id,
+            }),
           })
           const data = await res.json()
-          if (data.success) {
-            console.log('[indicacao] Registrada com sucesso:', data.message)
-          } else {
-            console.warn('[indicacao] Falha:', data.error)
-          }
+          console.log('[indicacao]', data)
         } catch (err) {
-          console.error('[indicacao] Erro ao registrar:', err)
+          console.error('[indicacao] Erro:', err)
         } finally {
           localStorage.removeItem('pending_referral_code')
         }
