@@ -1,4 +1,3 @@
-// app/feed/page.tsx
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -7,7 +6,6 @@ import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
 import { ChatWindow } from '@/components/chat/ChatWindow'
 import Link from 'next/link'
 
-// ── Tipos ──────────────────────────────────────────────────
 interface Creator {
   id: string
   name: string
@@ -20,17 +18,20 @@ interface Creator {
   rank_weekly: number | null
 }
 
-// ── Card individual do feed ─────────────────────────────────
 function FeedCard({
   creator,
   isActive,
   userBalance,
   onChatOpen,
+  isFavorited,
+  onToggleFavorite,
 }: {
   creator: Creator
   isActive: boolean
   userBalance: number
   onChatOpen: (creator: Creator) => void
+  isFavorited: boolean
+  onToggleFavorite: (creatorId: string) => void
 }) {
   const presence = useCreatorPresence(creator.id)
   const [liked, setLiked] = useState(false)
@@ -38,7 +39,6 @@ function FeedCard({
   return (
     <div className="relative w-full h-full flex-shrink-0 snap-start overflow-hidden bg-[#0a0a0a]">
 
-      {/* Background — foto da criadora ou gradiente */}
       <div className="absolute inset-0">
         {creator.photo_url ? (
           <img
@@ -52,11 +52,9 @@ function FeedCard({
             🌸
           </div>
         )}
-        {/* Gradientes */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/85" />
       </div>
 
-      {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 px-4 pt-4 flex items-center justify-between z-10">
         <div className="text-white text-lg font-medium tracking-tight">
           pé<span className="text-[#ff4d7d]">tala</span>
@@ -71,9 +69,7 @@ function FeedCard({
         </div>
       </div>
 
-      {/* Ações laterais */}
       <div className="absolute right-3 bottom-36 flex flex-col items-center gap-4 z-10">
-        {/* Avatar */}
         <Link href={`/criadora/${creator.id}`}>
           <div className="w-12 h-12 rounded-full border-2 border-[#ff4d7d] overflow-hidden bg-[#2a1220]">
             {creator.photo_url
@@ -94,6 +90,17 @@ function FeedCard({
           <span className="text-white/60 text-[10px]">curtir</span>
         </button>
 
+        {/* Favoritar */}
+        <button
+          onClick={() => onToggleFavorite(creator.id)}
+          className="flex flex-col items-center gap-1"
+        >
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all ${isFavorited ? 'bg-yellow-400/20' : 'bg-black/40'}`}>
+            {isFavorited ? '⭐' : '☆'}
+          </div>
+          <span className="text-white/60 text-[10px]">favorito</span>
+        </button>
+
         {/* Presente */}
         <button className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-xl">🎁</div>
@@ -107,7 +114,6 @@ function FeedCard({
         </button>
       </div>
 
-      {/* Info bottom */}
       <div className="absolute bottom-0 left-0 right-16 px-4 pb-6 z-10">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-white text-lg font-medium">{creator.name}</span>
@@ -121,7 +127,6 @@ function FeedCard({
           {creator.bio ?? 'Conteúdo exclusivo para você 🌸'}
         </p>
 
-        {/* CTAs */}
         <div className="flex gap-2">
           <button
             onClick={() => onChatOpen(creator)}
@@ -142,7 +147,6 @@ function FeedCard({
   )
 }
 
-// ── Página principal do feed ────────────────────────────────
 export default function FeedPage() {
   const supabase = createClient()
   const [creators, setCreators] = useState<Creator[]>([])
@@ -150,16 +154,16 @@ export default function FeedPage() {
   const [userBalance, setUserBalance] = useState(0)
   const [chatCreator, setChatCreator] = useState<Creator | null>(null)
   const [loading, setLoading] = useState(true)
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
-  // Carrega criadoras e saldo
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [creatorsRes, balanceRes] = await Promise.all([
+      const [creatorsRes, balanceRes, favoritesRes] = await Promise.all([
         supabase
           .from('creators')
           .select('id, name, photo_url, bio, price_text_petals, price_video_petals, rating, total_gifts, rank_weekly')
@@ -171,16 +175,33 @@ export default function FeedPage() {
           .select('balance_petals')
           .eq('id', user.id)
           .single(),
+        supabase
+          .from('favorites')
+          .select('creator_id')
+          .eq('user_id', user.id),
       ])
 
       if (creatorsRes.data) setCreators(creatorsRes.data)
       if (balanceRes.data) setUserBalance(balanceRes.data.balance_petals)
+      if (favoritesRes.data) setFavorites(new Set(favoritesRes.data.map(f => f.creator_id)))
       setLoading(false)
     }
     load()
   }, [])
 
-  // Detecta card ativo via IntersectionObserver (mais performático que scroll event)
+  const toggleFavorite = useCallback(async (creatorId: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    if (favorites.has(creatorId)) {
+      await supabase.from('favorites').delete().eq('user_id', user.id).eq('creator_id', creatorId)
+      setFavorites(prev => { const next = new Set(prev); next.delete(creatorId); return next })
+    } else {
+      await supabase.from('favorites').insert({ user_id: user.id, creator_id: creatorId })
+      setFavorites(prev => new Set([...prev, creatorId]))
+    }
+  }, [favorites])
+
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -212,7 +233,6 @@ export default function FeedPage() {
 
   return (
     <>
-      {/* Feed com scroll snapping vertical */}
       <div
         ref={containerRef}
         className="h-[calc(100vh-64px)] overflow-y-scroll snap-y snap-mandatory"
@@ -229,6 +249,8 @@ export default function FeedPage() {
               isActive={idx === currentIdx}
               userBalance={userBalance}
               onChatOpen={setChatCreator}
+              isFavorited={favorites.has(creator.id)}
+              onToggleFavorite={toggleFavorite}
             />
           </div>
         ))}
@@ -241,7 +263,6 @@ export default function FeedPage() {
         )}
       </div>
 
-      {/* Indicadores de progresso (topo) */}
       <div className="absolute top-12 left-0 right-0 flex gap-1 px-4 z-20 pointer-events-none">
         {creators.map((_, i) => (
           <div
@@ -251,13 +272,11 @@ export default function FeedPage() {
         ))}
       </div>
 
-      {/* Saldo flutuante */}
       <div className="absolute top-4 right-4 z-30 bg-black/50 rounded-full px-3 py-1.5 flex items-center gap-1.5 pointer-events-none">
         <span className="text-xs">🌸</span>
         <span className="text-yellow-400 text-xs font-medium">{userBalance}</span>
       </div>
 
-      {/* Chat overlay */}
       {chatCreator && (
         <ChatWindow
           creator={chatCreator}
