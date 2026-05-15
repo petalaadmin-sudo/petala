@@ -19,6 +19,9 @@ export default function ConfirmarPage() {
       document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax; Secure`
       document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=86400; SameSite=Lax; Secure`
 
+      // Aguarda o trigger criar o registro em public.users
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
       // Processa indicação pendente
       const pendingCode = localStorage.getItem('pending_referral_code')
       if (pendingCode && session.user?.id) {
