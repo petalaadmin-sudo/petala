@@ -1,5 +1,5 @@
 // app/api/bonus/daily/route.ts
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/ratelimit'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -12,12 +12,21 @@ function getIP(request: NextRequest): string {
   )
 }
 
+async function getUserFromRequest(request: NextRequest) {
+  const authHeader = request.headers.get('authorization')
+  if (!authHeader?.startsWith('Bearer ')) return null
+
+  const token = authHeader.replace('Bearer ', '')
+  const admin = createAdminClient()
+  const { data: { user }, error } = await admin.auth.getUser(token)
+  if (error || !user) return null
+  return user
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const user = await getUserFromRequest(request)
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Não autenticado' },
         { status: 401 }
@@ -54,10 +63,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const user = await getUserFromRequest(request)
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Não autenticado' },
         { status: 401 }

@@ -1,5 +1,6 @@
 // hooks/useDailyBonus.ts
 import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 interface BonusStatus {
   can_claim: boolean
@@ -21,6 +22,16 @@ interface ClaimResult {
   error?: string
 }
 
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { 'Content-Type': 'application/json' }
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`,
+  }
+}
+
 export function useDailyBonus() {
   const [status, setStatus]       = useState<BonusStatus | null>(null)
   const [loading, setLoading]     = useState(true)
@@ -30,8 +41,9 @@ export function useDailyBonus() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res  = await fetch('/api/bonus/daily')
-      const data = await res.json()
+      const headers = await getAuthHeaders()
+      const res     = await fetch('/api/bonus/daily', { headers })
+      const data    = await res.json()
       setStatus(data)
 
       const shownThisSession = sessionStorage.getItem('bonus_modal_shown')
@@ -49,8 +61,9 @@ export function useDailyBonus() {
     if (claiming) return
     setClaiming(true)
     try {
-      const res  = await fetch('/api/bonus/daily', { method: 'POST' })
-      const data = await res.json()
+      const headers = await getAuthHeaders()
+      const res     = await fetch('/api/bonus/daily', { method: 'POST', headers })
+      const data    = await res.json()
       setResult(data)
       if (data.success) {
         sessionStorage.setItem('bonus_modal_shown', '1')
