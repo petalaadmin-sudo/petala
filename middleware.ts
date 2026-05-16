@@ -18,6 +18,7 @@ const PUBLIC_ROUTES = [
   '/live',
   '/api',
   '/pix',
+  '/admin',
   '/favoritos',
 ]
 
@@ -47,67 +48,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
   const isPublicRoute = PUBLIC_ROUTES.some(
     r => pathname === r || pathname.startsWith(r + '/')
   )
 
-  // Proteção específica do admin
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
-    }
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (userData?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/feed', request.url))
-    }
-
-    return supabaseResponse
-  }
-
-  // Proteção geral
   if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
-  // Redirecionamento pós-login na home
   if (user && pathname === '/') {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (userData?.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
-
     return NextResponse.redirect(new URL('/feed', request.url))
   }
 
-  // Usuário logado tentando acessar login/cadastro
   if (user && (pathname === '/auth/login' || pathname === '/auth/cadastro')) {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (userData?.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
-
     return NextResponse.redirect(new URL('/feed', request.url))
   }
 
