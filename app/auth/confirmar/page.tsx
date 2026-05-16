@@ -1,21 +1,24 @@
 // app/auth/confirmar/page.tsx
 'use client'
+
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function ConfirmarPage() {
   const supabase = createClient()
-  const router   = useRouter()
+  const router = useRouter()
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session) {
         router.push('/auth/login?error=session_error')
         return
       }
 
-      // Salva cookies para o middleware
+      // Salva cookies para compatibilidade com middleware/rotas antigas
       document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax; Secure`
       document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=86400; SameSite=Lax; Secure`
 
@@ -24,16 +27,21 @@ export default function ConfirmarPage() {
 
       // Processa indicação pendente
       const pendingCode = localStorage.getItem('pending_referral_code')
+
       if (pendingCode && session.user?.id) {
         try {
           const res = await fetch('/api/indicacao/registrar', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
             body: JSON.stringify({
               referral_code: pendingCode,
               user_id: session.user.id,
             }),
           })
+
           const data = await res.json()
           console.log('[indicacao]', data)
         } catch (err) {
@@ -43,9 +51,35 @@ export default function ConfirmarPage() {
         }
       }
 
-      router.push('/feed')
+      // Verifica se é admin
+      try {
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+        if (error) {
+          console.error('[auth/confirmar] erro ao buscar role:', error)
+          router.push('/feed')
+          return
+        }
+
+        if (userData?.role === 'admin') {
+          router.push('/admin')
+        } else {
+          router.push('/feed')
+        }
+      } catch (err) {
+        console.error('[auth/confirmar] erro inesperado:', err)
+        router.push('/feed')
+      }
     })
-  }, [])
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router, supabase])
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
