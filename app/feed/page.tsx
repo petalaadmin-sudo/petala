@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
 import { ChatWindow } from '@/components/chat/ChatWindow'
+import { DailyBonusModal } from '@/components/ui/DailyBonusModal'
+import { useDailyBonus } from '@/hooks/useDailyBonus'
 import Link from 'next/link'
 
 interface Creator {
@@ -79,7 +81,6 @@ function FeedCard({
           </div>
         </Link>
 
-        {/* Like */}
         <button
           onClick={() => setLiked(v => !v)}
           className="flex flex-col items-center gap-1"
@@ -90,7 +91,6 @@ function FeedCard({
           <span className="text-white/60 text-[10px]">curtir</span>
         </button>
 
-        {/* Favoritar */}
         <button
           onClick={() => onToggleFavorite(creator.id)}
           className="flex flex-col items-center gap-1"
@@ -101,13 +101,11 @@ function FeedCard({
           <span className="text-white/60 text-[10px]">favorito</span>
         </button>
 
-        {/* Presente */}
         <button className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-xl">🎁</div>
           <span className="text-white/60 text-[10px]">{creator.total_gifts}</span>
         </button>
 
-        {/* Compartilhar */}
         <button className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-xl">📤</div>
           <span className="text-white/60 text-[10px]">compartilhar</span>
@@ -149,19 +147,32 @@ function FeedCard({
 
 export default function FeedPage() {
   const supabase = createClient()
-  const [creators, setCreators] = useState<Creator[]>([])
-  const [currentIdx, setCurrentIdx] = useState(0)
+  const [creators, setCreators]       = useState<Creator[]>([])
+  const [currentIdx, setCurrentIdx]   = useState(0)
   const [userBalance, setUserBalance] = useState(0)
   const [chatCreator, setChatCreator] = useState<Creator | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [loading, setLoading]         = useState(true)
+  const [favorites, setFavorites]     = useState<Set<string>>(new Set())
+  const [userId, setUserId]           = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const observerRef = useRef<IntersectionObserver | null>(null)
+  const observerRef  = useRef<IntersectionObserver | null>(null)
+
+  // Bônus diário
+  const { status, claiming, result, showModal, claim, closeModal } = useDailyBonus()
+
+  // Atualiza saldo após coletar bônus
+  useEffect(() => {
+    if (result?.success && result.petals_earned) {
+      setUserBalance(prev => prev + result.petals_earned!)
+    }
+  }, [result])
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
+      setUserId(user.id)
 
       const [creatorsRes, balanceRes, favoritesRes] = await Promise.all([
         supabase
@@ -263,6 +274,7 @@ export default function FeedPage() {
         )}
       </div>
 
+      {/* Indicadores de progresso */}
       <div className="absolute top-12 left-0 right-0 flex gap-1 px-4 z-20 pointer-events-none">
         {creators.map((_, i) => (
           <div
@@ -272,11 +284,13 @@ export default function FeedPage() {
         ))}
       </div>
 
+      {/* Saldo */}
       <div className="absolute top-4 right-4 z-30 bg-black/50 rounded-full px-3 py-1.5 flex items-center gap-1.5 pointer-events-none">
         <span className="text-xs">🌸</span>
         <span className="text-yellow-400 text-xs font-medium">{userBalance}</span>
       </div>
 
+      {/* Chat */}
       {chatCreator && (
         <ChatWindow
           creator={chatCreator}
@@ -284,6 +298,16 @@ export default function FeedPage() {
           onClose={() => setChatCreator(null)}
         />
       )}
+
+      {/* Modal de bônus diário */}
+      <DailyBonusModal
+        open={showModal}
+        onClose={closeModal}
+        onClaim={claim}
+        claiming={claiming}
+        result={result}
+        status={status}
+      />
     </>
   )
 }
