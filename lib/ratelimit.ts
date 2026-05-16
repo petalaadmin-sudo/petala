@@ -8,16 +8,18 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
 
+// TEMPORÁRIO para testes — voltar para 5 req/min após produção
 export const rateLimitByIP = new Ratelimit({
   redis,
-  limiter:   Ratelimit.slidingWindow(5, '1 m'),
+  limiter:   Ratelimit.slidingWindow(30, '1 m'),
   prefix:    'rl:ip:bonus',
   analytics: true,
 })
 
+// TEMPORÁRIO para testes — voltar para 3 req/h após produção
 export const rateLimitByUser = new Ratelimit({
   redis,
-  limiter:   Ratelimit.slidingWindow(3, '1 h'),
+  limiter:   Ratelimit.slidingWindow(20, '1 h'),
   prefix:    'rl:user:bonus',
   analytics: true,
 })
