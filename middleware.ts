@@ -9,6 +9,7 @@ const PUBLIC_ROUTES = [
   '/auth/confirmar',
   '/auth/idade',
   '/auth/bloqueado',
+  '/manifest.json',
   '/feed',
   '/perfil',
   '/ranking',
@@ -72,6 +73,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icons|screenshots|sw.js|workbox-.*\\.js|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|screenshots|sw.js|workbox-.*\\.js|api).*)',
   ],
 }
