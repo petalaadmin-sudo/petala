@@ -26,13 +26,20 @@ export function PixCheckout({ packages, currentBalance, onClose }: Props) {
     if (!selectedPkg) return
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      console.error('Sessao nao encontrada')
+      setLoading(false)
+      return
+    }
 
     const res = await fetch('/api/stripe/criar-sessao', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packageName: selectedPkg.name, userId: user.id }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ packageName: selectedPkg.name }),
     })
 
     const { url, error } = await res.json()

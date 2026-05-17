@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { requireAuth } from '@/lib/auth/api-auth'
 
 const PACOTES: Record<string, { name: string; petals: number; price: number }> = {
   'Semente':        { name: 'Semente',        petals: 360,   price: 1510  },
@@ -14,12 +13,16 @@ const PACOTES: Record<string, { name: string; petals: number; price: number }> =
   'Jardim Eterno':  { name: 'Jardim Eterno',   petals: 35000, price: 103600},
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { packageName, userId } = body
+    const auth = await requireAuth(request)
 
-    if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const body = await request.json()
+    const { packageName } = body
 
     const pacote = PACOTES[packageName]
     if (!pacote) return NextResponse.json({ error: 'Pacote inválido' }, { status: 400 })
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/pix/sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/perfil`,
       metadata: {
-        user_id: userId,
+        user_id: auth.user.id,
         package_name: pacote.name,
         petals: String(pacote.petals),
       },
