@@ -84,6 +84,11 @@ export function useChat({
   const elapsedRef    = useRef<NodeJS.Timeout | null>(null)
   const sessionIdRef  = useRef<string | null>(null)
 
+  const getAccessToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ?? null
+  }
+
   // Busca saldo inicial do usuário
   useEffect(() => {
     const fetchBalance = async () => {
@@ -197,9 +202,19 @@ export function useChat({
     setError(null)
 
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setError('Não autenticado')
+        setStatus('error')
+        return
+      }
+
       const res = await fetch('/api/chat/iniciar', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body:    JSON.stringify({ creator_id: creatorId, type: chatType }),
       })
 
@@ -237,9 +252,19 @@ export function useChat({
     stopBilling()
 
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setError('Não autenticado')
+        setStatus('error')
+        return
+      }
+
       await fetch('/api/chat/encerrar', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body:    JSON.stringify({
           session_id:      session.session_id,
           rating,
@@ -274,9 +299,19 @@ export function useChat({
     setMessages(prev => [...prev, optimistic])
 
     try {
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setMessages(prev => prev.filter(m => m.id !== optimistic.id))
+        setError('Não autenticado')
+        return
+      }
+
       await fetch('/api/chat/mensagem', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body:    JSON.stringify({
           session_id: session.session_id,
           content,
@@ -295,9 +330,18 @@ export function useChat({
 
     try {
       const clientRequestId = crypto.randomUUID()
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        setError('Não autenticado')
+        return null
+      }
+
       const res = await fetch('/api/chat/mensagem', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body:    JSON.stringify({
           session_id:        session.session_id,
           type:              'gift',

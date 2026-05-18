@@ -1,6 +1,7 @@
 // app/api/chat/mensagem/route.ts
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/api-auth'
+import { NextRequest, NextResponse } from 'next/server'
 
 // Tipos de presente disponíveis
 const GIFT_CATALOG: Record<string, { emoji: string; petals: number }> = {
@@ -15,11 +16,15 @@ const GIFT_CATALOG: Record<string, { emoji: string; petals: number }> = {
   crown:    { emoji: '👑',  petals: 500 },
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const auth = await requireAuth(request)
+
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const user = auth.user
 
     const { session_id, content, type = 'text', gift_type, client_request_id } = await request.json()
 
