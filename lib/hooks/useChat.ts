@@ -294,14 +294,16 @@ export function useChat({
     if (!session || status !== 'active') return null
 
     try {
+      const clientRequestId = crypto.randomUUID()
       const res = await fetch('/api/chat/mensagem', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          session_id: session.session_id,
-          type:       'gift',
-          gift_type:  giftType,
-          content:    '',
+          session_id:        session.session_id,
+          type:              'gift',
+          gift_type:         giftType,
+          content:           '',
+          client_request_id: clientRequestId,
         }),
       })
 

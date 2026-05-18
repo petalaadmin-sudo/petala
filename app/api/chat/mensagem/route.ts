@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-    const { session_id, content, type = 'text', gift_type } = await request.json()
+    const { session_id, content, type = 'text', gift_type, client_request_id } = await request.json()
 
     if (!session_id) return NextResponse.json({ error: 'session_id obrigatório' }, { status: 400 })
     if (!content && type === 'text') return NextResponse.json({ error: 'content obrigatório' }, { status: 400 })
@@ -77,6 +77,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Tipo de presente inválido: ${gift_type}` }, { status: 400 })
       }
 
+      const giftRequestId = client_request_id || crypto.randomUUID()
+      const idempotencyKey = `gift:${session_id}:${user.id}:${giftRequestId}`
+
       // Envia presente via RPC atômica (débita usuário + credita criadora)
       const { data: giftResult } = await admin.rpc('send_gift', {
         p_from_user:   user.id,
@@ -85,6 +88,7 @@ export async function POST(request: Request) {
         p_gift_emoji:  gift.emoji,
         p_petals:      gift.petals,
         p_session_id:  session_id,
+        p_idempotency_key: idempotencyKey,
       })
 
       if (!giftResult?.success) {
