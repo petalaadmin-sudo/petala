@@ -123,13 +123,41 @@ export async function POST(request: NextRequest) {
       }
 
       const creatorEarn = Math.floor(textFirstMinutePrice * 0.7)
+      const debitKey = `chat_text_start:debit:${session.id}`
+      const creditKey = `chat_text_start:credit:${session.id}`
+
       await admin.rpc('credit_petals', {
         p_user_id: creator.user_id,
         p_amount: creatorEarn,
         p_type: 'gift_received',
         p_ref_id: session.id,
-        p_idempotency_key: `chat_text_start:credit:${session.id}`,
+        p_idempotency_key: creditKey,
       })
+
+      const { data: creatorEarningResult, error: creatorEarningError } = await admin.rpc('record_creator_earning', {
+        p_creator_id: creator.id,
+        p_petals_amount: creatorEarn,
+        p_source_type: 'chat_text_start',
+        p_source_ref_id: session.id,
+        p_metadata: {
+          session_id: session.id,
+          session_type: 'text',
+          minute_number: 1,
+          petals_charged: textFirstMinutePrice,
+          creator_petals_earned: creatorEarn,
+          debit_key: debitKey,
+          credit_key: creditKey,
+        },
+        p_idempotency_key: `creator_earning:chat_text_start:credit:${session.id}`,
+      })
+
+      if (creatorEarningError || !creatorEarningResult?.success) {
+        return NextResponse.json({
+          error: 'Falha ao registrar ganho da criadora',
+          debit_processed: true,
+          credit_processed: true,
+        }, { status: 500 })
+      }
 
       await admin
         .from('chat_sessions')
@@ -149,7 +177,7 @@ export async function POST(request: NextRequest) {
       sender_id:   user.id,
       sender_role: 'system',
       content:     type === 'text'
-        ? 'Chat iniciado · 10 🌸 no primeiro minuto · depois 50 🌸/min'
+        ? 'Chat iniciado · 10 \u{1F338} no primeiro minuto · depois 50 \u{1F338}/min'
         : `Chat iniciado · ${pricePerMin} 🌸/min`,
       type:        'system',
     })
