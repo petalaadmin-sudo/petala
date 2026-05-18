@@ -131,7 +131,7 @@ function FeedCard({
             disabled={!presence.online}
             className="flex-[2] bg-[#ff4d7d] text-white rounded-xl py-2.5 text-xs font-medium disabled:opacity-40 active:scale-95 transition-transform"
           >
-            {presence.online ? `📹 Chat — ${creator.price_text_petals}🌸/min` : '💤 Offline'}
+            {presence.online ? '📹 Chat — 10 🌸 + 50/min' : '💤 Offline'}
           </button>
           <Link
             href={`/criadora/${creator.id}`}
