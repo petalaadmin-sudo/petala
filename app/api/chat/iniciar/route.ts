@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     if (!creator_id) return NextResponse.json({ error: 'creator_id obrigatório' }, { status: 400 })
 
     const admin = createAdminClient()
+    const textFirstMinutePrice = 10
+    const textNextMinutePrice = 50
 
     // 1. Busca criadora e verifica se está ativa e online
     const { data: creator } = await admin
@@ -44,11 +46,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Criadora está offline no momento' }, { status: 409 })
     }
 
-    // 3. Verifica saldo mínimo (pelo menos 5 minutos)
+    // 3. Verifica saldo mínimo
     const pricePerMin = type === 'video'
       ? creator.price_video_petals
-      : creator.price_text_petals
-    const minBalance = pricePerMin * 5
+      : textNextMinutePrice
+    const minBalance = type === 'text' ? textFirstMinutePrice : pricePerMin * 5
 
     const { data: userData } = await admin
       .from('users')
@@ -92,6 +94,49 @@ export async function POST(request: NextRequest) {
       throw new Error('Falha ao criar sessão: ' + sessionError?.message)
     }
 
+    if (type === 'text') {
+      const { data: spendResult } = await admin.rpc('spend_petals', {
+        p_user_id: user.id,
+        p_amount: textFirstMinutePrice,
+        p_type: 'spend',
+        p_ref_id: session.id,
+        p_idempotency_key: `chat_text_start:debit:${session.id}`,
+      })
+
+      if (!spendResult?.success) {
+        await admin
+          .from('chat_sessions')
+          .update({ ended_at: new Date().toISOString() })
+          .eq('id', session.id)
+
+        await admin
+          .from('creator_presence')
+          .update({ in_session: false })
+          .eq('creator_id', creator_id)
+
+        return NextResponse.json({
+          error: 'Saldo insuficiente',
+          required: textFirstMinutePrice,
+          current: userData?.balance_petals ?? 0,
+          code: 'INSUFFICIENT_BALANCE',
+        }, { status: 402 })
+      }
+
+      const creatorEarn = Math.floor(textFirstMinutePrice * 0.7)
+      await admin.rpc('credit_petals', {
+        p_user_id: creator.user_id,
+        p_amount: creatorEarn,
+        p_type: 'gift_received',
+        p_ref_id: session.id,
+        p_idempotency_key: `chat_text_start:credit:${session.id}`,
+      })
+
+      await admin
+        .from('chat_sessions')
+        .update({ petals_charged: textFirstMinutePrice })
+        .eq('id', session.id)
+    }
+
     // 6. Marca criadora como in_session
     await admin
       .from('creator_presence')
@@ -103,16 +148,24 @@ export async function POST(request: NextRequest) {
       session_id:  session.id,
       sender_id:   user.id,
       sender_role: 'system',
-      content:     `Chat iniciado · ${pricePerMin} 🌸/min`,
+      content:     type === 'text'
+        ? 'Chat iniciado · 10 🌸 no primeiro minuto · depois 50 🌸/min'
+        : `Chat iniciado · ${pricePerMin} 🌸/min`,
       type:        'system',
     })
 
-    return NextResponse.json({
+    const response: Record<string, unknown> = {
       session_id:    session.id,
       type:          session.type,
       price_per_min: pricePerMin,
       started_at:    session.started_at,
-    })
+    }
+
+    if (type === 'text') {
+      response.first_minute_price = textFirstMinutePrice
+    }
+
+    return NextResponse.json(response)
 
   } catch (err) {
     console.error('[/api/chat/iniciar]', err)
