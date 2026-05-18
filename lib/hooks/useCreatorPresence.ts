@@ -22,6 +22,8 @@ export function useCreatorPresence(creatorId: string): PresenceState {
   useEffect(() => {
     if (!creatorId) return
 
+    let cancelled = false
+
     // Busca estado inicial
     supabase
       .from('creator_presence')
@@ -29,7 +31,7 @@ export function useCreatorPresence(creatorId: string): PresenceState {
       .eq('creator_id', creatorId)
       .single()
       .then(({ data }) => {
-        if (data) setPresence({
+        if (!cancelled && data) setPresence({
           online:     data.online,
           inSession:  data.in_session,
           lastSeen:   data.last_seen_at,
@@ -37,8 +39,9 @@ export function useCreatorPresence(creatorId: string): PresenceState {
       })
 
     // Escuta mudanças em tempo real
+    const channelName = `creator-presence:${creatorId}:${crypto.randomUUID()}`
     const channel = supabase
-      .channel(`presence:${creatorId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -48,6 +51,8 @@ export function useCreatorPresence(creatorId: string): PresenceState {
           filter: `creator_id=eq.${creatorId}`,
         },
         (payload) => {
+          if (cancelled) return
+
           const p = payload.new as any
           setPresence({
             online:    p.online,
@@ -58,7 +63,10 @@ export function useCreatorPresence(creatorId: string): PresenceState {
       )
       .subscribe()
 
-    return () => { channel.unsubscribe() }
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
+    }
   }, [creatorId])
 
   return presence
