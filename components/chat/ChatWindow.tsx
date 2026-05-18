@@ -152,7 +152,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
           <div className="bg-black/40 rounded-xl p-3 mb-4 border border-white/5">
             <div className="flex justify-between text-xs mb-2">
               <span className="text-white/40">Custo</span>
-              <span className="text-yellow-400 font-medium">{creator.price_text_petals} 🌸 / min</span>
+              <span className="text-yellow-400 font-medium">10 🌸 primeiro minuto · depois 50 🌸/min</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-white/40">Seu saldo</span>
@@ -228,7 +228,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-white text-sm font-medium">{creator.name}</div>
-          <div className="text-green-400 text-xs">● Online · {creator.price_text_petals} 🌸/min</div>
+          <div className="text-green-400 text-xs">● Online · 10 🌸 + 50 🌸/min</div>
         </div>
         <div className="text-right">
           <div className="text-yellow-400 text-xs font-medium">🌸 {balance}</div>
