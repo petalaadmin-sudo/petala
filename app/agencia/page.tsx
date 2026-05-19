@@ -1,17 +1,10 @@
-import { redirect } from 'next/navigation'
-import { createAdminClient, createClient } from '@/lib/supabase/server'
+'use client'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-type AgencyUser = {
-  agency_id: string
-  role: string | null
-  active: boolean | null
-}
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 type AgencyDashboard = {
-  agency_id: string | null
   agency_name: string | null
   week_start: string | null
   week_end: string | null
@@ -29,12 +22,9 @@ type AgencyDashboard = {
 
 type AgencyRanking = {
   score_rank: number | null
-  agency_id: string | null
   agency_name: string | null
   agency_score: number | null
   agency_score_label_pt: string | null
-  week_start: string | null
-  week_end: string | null
 }
 
 type CreatorPerformance = {
@@ -49,6 +39,14 @@ type CreatorPerformance = {
   performance_label: string | null
   paid_minutes_missing: number | null
   online_minutes_missing: number | null
+}
+
+type AgencyPayload = {
+  currentWeek: unknown
+  dashboard: AgencyDashboard | null
+  creators: CreatorPerformance[]
+  ranking: AgencyRanking | null
+  agencyUserRole: string | null
 }
 
 const usd = (value: number | null | undefined) =>
@@ -79,13 +77,10 @@ const weekLabel = (week: unknown, fallbackStart?: string | null, fallbackEnd?: s
   return 'Semana atual Bloom'
 }
 
-const firstNumber = (...values: Array<number | null | undefined>) =>
-  values.find(value => typeof value === 'number') ?? null
-
 const firstText = (...values: Array<string | null | undefined>) =>
   values.find(value => value && value.trim().length > 0) ?? null
 
-function EmptyAccess() {
+function AccessDenied() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
       <div className="w-full max-w-md bg-[#111] border border-white/5 rounded-xl p-6 text-center">
@@ -98,67 +93,68 @@ function EmptyAccess() {
   )
 }
 
-export default async function AgenciaPage() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function AgenciaPage() {
+  const router = useRouter()
+  const [payload, setPayload] = useState<AgencyPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [accessDenied, setAccessDenied] = useState(false)
 
-  if (!user) redirect('/auth/login')
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-  const admin = createAdminClient() as any
+      if (!session?.access_token) {
+        router.push('/auth/login')
+        return
+      }
 
-  const { data: agencyUser } = await admin
-    .from('agency_users')
-    .select('agency_id, role, active')
-    .eq('user_id', user.id)
-    .eq('active', true)
-    .limit(1)
-    .maybeSingle()
+      const response = await fetch('/api/agencia/dashboard', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
 
-  const agencyLink = agencyUser as AgencyUser | null
-  if (!agencyLink?.agency_id) return <EmptyAccess />
+      if (response.status === 401) {
+        router.push('/auth/login')
+        return
+      }
 
-  const [currentWeekResult, dashboardResult] = await Promise.all([
-    admin.rpc('get_current_bloom_week'),
-    admin
-      .from('agency_dashboard_full')
-      .select('*')
-      .eq('agency_id', agencyLink.agency_id)
-      .order('week_start', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ])
+      if (response.status === 403) {
+        setAccessDenied(true)
+        setLoading(false)
+        return
+      }
 
-  const dashboard = dashboardResult.data as AgencyDashboard | null
+      const result = await response.json()
 
-  const [{ data: creatorRows }, { data: rankingRows }] = dashboard
-    ? await Promise.all([
-        admin
-          .from('agency_creator_performance')
-          .select('*')
-          .eq('agency_id', agencyLink.agency_id)
-          .eq('week_start', dashboard.week_start)
-          .eq('week_end', dashboard.week_end)
-          .order('paid_minutes', { ascending: false }),
-        admin
-          .from('agency_ranking_weekly')
-          .select('*')
-          .eq('agency_id', agencyLink.agency_id)
-          .eq('week_start', dashboard.week_start)
-          .eq('week_end', dashboard.week_end)
-          .limit(1),
-      ])
-    : [{ data: [] }, { data: [] }]
+      if (!response.ok || !result?.success) {
+        setAccessDenied(true)
+        setLoading(false)
+        return
+      }
 
-  const creators = (creatorRows ?? []) as CreatorPerformance[]
-  const ranking = ((rankingRows ?? []) as AgencyRanking[])[0] ?? null
+      setPayload(result.data)
+      setLoading(false)
+    }
 
-  const performanceLevel = firstText(
-    dashboard?.agency_score_label_pt,
-    ranking?.agency_score_label_pt
-  )
+    load()
+  }, [router])
 
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#ff4d7d]/30 border-t-[#ff4d7d] rounded-full animate-spin" />
+      </main>
+    )
+  }
+
+  if (accessDenied || !payload) return <AccessDenied />
+
+  const { currentWeek, dashboard, creators, ranking, agencyUserRole } = payload
+  const performanceLevel = firstText(dashboard?.agency_score_label_pt, ranking?.agency_score_label_pt)
   const performanceDescription = dashboard?.agency_score_description ?? null
 
   const cards = [
@@ -182,13 +178,13 @@ export default async function AgenciaPage() {
             <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Bloom</p>
             <h1 className="text-white text-2xl font-medium mt-1">Painel da Agencia</h1>
             <p className="text-white/35 text-sm mt-2">
-              {dashboard?.agency_name ?? ranking?.agency_name ?? 'Agencia'} - {weekLabel(currentWeekResult.data, dashboard?.week_start, dashboard?.week_end)}
+              {dashboard?.agency_name ?? ranking?.agency_name ?? 'Agencia'} - {weekLabel(currentWeek, dashboard?.week_start, dashboard?.week_end)}
             </p>
           </div>
 
           <div className="rounded-xl border border-white/5 bg-[#111] px-4 py-3">
             <div className="text-white/30 text-[11px] uppercase tracking-wide">Vinculo</div>
-            <div className="text-white/70 text-sm mt-1">{agencyLink.role ?? 'agency'}</div>
+            <div className="text-white/70 text-sm mt-1">{agencyUserRole ?? 'agency'}</div>
           </div>
         </header>
 
@@ -240,28 +236,19 @@ export default async function AgenciaPage() {
                 </thead>
                 <tbody>
                   {creators.map((creator, index) => {
-                    const paidMinutes = creator.paid_minutes
-                    const onlineMinutes = creator.online_minutes
-                    const gifts = creator.gifts_count
-                    const creatorGain = creator.creator_total_usd
-                    const status = firstText(
-                      creator.performance_label,
-                      creator.performance_status
-                    )
-                    const missingPaid = creator.paid_minutes_missing
-                    const missingOnline = creator.online_minutes_missing
+                    const status = firstText(creator.performance_label, creator.performance_status)
 
                     return (
                       <tr key={creator.creator_id ?? `${creator.creator_name ?? 'creator'}-${index}`} className="border-b border-white/5 hover:bg-white/[0.02]">
                         <td className="px-4 py-3 text-white text-xs font-medium">{creator.creator_name ?? '-'}</td>
-                        <td className="px-4 py-3 text-white/50 text-xs">{int(paidMinutes)}</td>
-                        <td className="px-4 py-3 text-white/50 text-xs">{int(onlineMinutes)}</td>
-                        <td className="px-4 py-3 text-white/50 text-xs">{int(gifts)}</td>
-                        <td className="px-4 py-3 text-green-300 text-xs font-medium">{usd(creatorGain)}</td>
+                        <td className="px-4 py-3 text-white/50 text-xs">{int(creator.paid_minutes)}</td>
+                        <td className="px-4 py-3 text-white/50 text-xs">{int(creator.online_minutes)}</td>
+                        <td className="px-4 py-3 text-white/50 text-xs">{int(creator.gifts_count)}</td>
+                        <td className="px-4 py-3 text-green-300 text-xs font-medium">{usd(creator.creator_total_usd)}</td>
                         <td className="px-4 py-3 text-[#ff4d7d] text-xs font-medium">{usd(creator.agency_commission_usd)}</td>
                         <td className="px-4 py-3 text-white/55 text-xs">{status ?? '-'}</td>
-                        <td className="px-4 py-3 text-yellow-300 text-xs">{int(missingPaid)}</td>
-                        <td className="px-4 py-3 text-yellow-300 text-xs">{int(missingOnline)}</td>
+                        <td className="px-4 py-3 text-yellow-300 text-xs">{int(creator.paid_minutes_missing)}</td>
+                        <td className="px-4 py-3 text-yellow-300 text-xs">{int(creator.online_minutes_missing)}</td>
                       </tr>
                     )
                   })}

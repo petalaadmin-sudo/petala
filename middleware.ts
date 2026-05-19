@@ -20,6 +20,7 @@ const PUBLIC_ROUTES = [
   '/api',
   '/pix',
   '/admin',
+  '/agencia',
   '/favoritos',
 ]
 
