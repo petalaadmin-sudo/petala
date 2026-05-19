@@ -1,118 +1,292 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
+
+type AdminWeeklyClosure = {
+  week_start: string | null
+  week_end: string | null
+  payout_release_at_brt: string | null
+  closure_status: string | null
+  creator_base_usd: number | null
+  creator_bonus_usd: number | null
+  creator_total_usd: number | null
+  agency_commission_usd: number | null
+  total_paid_minutes: number | null
+  total_online_minutes: number | null
+  total_gifts_count: number | null
+  payout_requests_count: number | null
+  pending_payouts_count: number | null
+  approved_payouts_count: number | null
+  paid_payouts_count: number | null
+  review_or_blocked_payouts_count: number | null
+  payout_gross_usd: number | null
+  payout_fee_usd: number | null
+  payout_net_usd: number | null
+  payout_gross_brl: number | null
+  payout_fee_brl: number | null
+  payout_net_brl: number | null
+}
+
+type AdminPayout = {
+  payout_id: string
+  payout_type: string | null
+  user_email: string | null
+  creator_name: string | null
+  agency_name: string | null
+  amount_usd: number | null
+  amount_brl: number | null
+  fee_amount_usd: number | null
+  fee_amount_brl: number | null
+  net_amount_usd: number | null
+  net_amount_brl: number | null
+  payment_method: string | null
+  pix_key: string | null
+  status: string | null
+  fee_description: string | null
+  review_notes: string | null
+  rejection_reason: string | null
+  created_at: string | null
+}
+
+type AgencyRanking = {
+  score_rank: number | null
+  agency_name: string | null
+  agency_score: number | null
+  agency_score_label_pt: string | null
+  linked_creators_count: number | null
+  creators_with_activity_count: number | null
+  fully_active_creators_count: number | null
+  total_paid_minutes: number | null
+  total_online_minutes: number | null
+  agency_commission_usd: number | null
+}
+
+const usd = (value: number | null | undefined) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' }).format(Number(value ?? 0))
+
+const brl = (value: number | null | undefined) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value ?? 0))
+
+const int = (value: number | null | undefined) =>
+  new Intl.NumberFormat('pt-BR').format(Number(value ?? 0))
+
+const date = (value: string | null | undefined) => {
+  if (!value) return '—'
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString('pt-BR')
+}
+
+const weekLabel = (week: unknown) => {
+  if (!week) return '—'
+  if (typeof week === 'string' || typeof week === 'number') return String(week)
+  if (Array.isArray(week)) return weekLabel(week[0])
+
+  const row = week as Record<string, unknown>
+  return String(row.week_label ?? row.week_start ?? row.start_date ?? row.id ?? '—')
+}
+
+const statusClass = (status: string | null | undefined) => {
+  if (['paid', 'completed', 'released', 'approved'].includes(status ?? '')) return 'bg-green-400/15 text-green-300'
+  if (['pending', 'processing', 'review', 'in_review'].includes(status ?? '')) return 'bg-yellow-400/15 text-yellow-300'
+  if (['blocked', 'rejected', 'failed'].includes(status ?? '')) return 'bg-red-400/15 text-red-300'
+  return 'bg-white/10 text-white/45'
+}
+
+const dualAmount = (usdValue: number | null, brlValue: number | null) =>
+  `${usd(usdValue)}${brlValue ? ` · ${brl(brlValue)}` : ''}`
 
 export default async function AdminFinanceiroPage() {
-  const supabase = createClient()
+  const admin = createAdminClient() as any
 
-  const { data: transactions } = await supabase
-    .from('transactions')
-    .select('id, user_id, type, petals_delta, amount_brl, status, created_at, metadata, users(email)')
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const [currentWeekResult, previousWeekResult, closureResult, payoutResult] = await Promise.all([
+    admin.rpc('get_current_bloom_week'),
+    admin.rpc('get_previous_bloom_week'),
+    admin
+      .from('admin_weekly_closure_summary')
+      .select('*')
+      .order('week_start', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from('admin_payout_dashboard')
+      .select('*')
+      .order('created_at', { ascending: false }),
+  ])
 
-  const { data: allUsers } = await supabase
-    .from('users')
-    .select('id')
+  const closure = closureResult.data as AdminWeeklyClosure | null
+  const payouts = (payoutResult.data ?? []) as AdminPayout[]
 
-  const totalReceita = transactions
-    ?.filter(t => t.status === 'completed' && t.type === 'purchase')
-    .reduce((sum, t) => sum + Number(t.amount_brl || 0), 0) ?? 0
+  const { data: agencyRankingData } = closure
+    ? await admin
+        .from('agency_ranking_weekly')
+        .select('*')
+        .eq('week_start', closure.week_start)
+        .eq('week_end', closure.week_end)
+        .order('score_rank', { ascending: true })
+    : { data: [] }
 
-  const totalHoje = transactions
-    ?.filter(t => {
-      const hoje = new Date()
-      const data = new Date(t.created_at)
-      return t.status === 'completed' && t.type === 'purchase' && data.toDateString() === hoje.toDateString()
-    })
-    .reduce((sum, t) => sum + Number(t.amount_brl || 0), 0) ?? 0
+  const agencyRanking = (agencyRankingData ?? []) as AgencyRanking[]
 
-  const totalTransacoes = transactions?.filter(t => t.status === 'completed' && t.type === 'purchase').length ?? 0
-  const ticketMedio = totalTransacoes > 0 ? totalReceita / totalTransacoes : 0
-  const totalUsers = Math.max(allUsers?.length ?? 1, 1)
-  const arpu = totalReceita / totalUsers
-  const lucroLiquido = totalReceita * 0.7
-  const lucroPlatforma = totalReceita * 0.3
+  const cards = [
+    { label: 'Semana atual', value: weekLabel(currentWeekResult.data), desc: `Anterior: ${weekLabel(previousWeekResult.data)}` },
+    { label: 'Liberação de pagamento', value: date(closure?.payout_release_at_brt), desc: closure?.closure_status ?? 'processing' },
+    { label: 'Status', value: closure?.closure_status ?? 'processing', desc: `Solicitações: ${int(closure?.payout_requests_count)}` },
+    { label: 'Ganhos criadoras', value: usd(closure?.creator_total_usd ?? closure?.creator_base_usd), desc: `Base: ${usd(closure?.creator_base_usd)}` },
+    { label: 'Bônus', value: usd(closure?.creator_bonus_usd), desc: 'USD' },
+    { label: 'Comissão agências', value: usd(closure?.agency_commission_usd), desc: 'USD' },
+    { label: 'Minutos pagos', value: int(closure?.total_paid_minutes), desc: 'chat/vídeo' },
+    { label: 'Minutos online', value: int(closure?.total_online_minutes), desc: 'presença real' },
+    { label: 'Presentes', value: int(closure?.total_gifts_count), desc: 'quantidade' },
+    { label: 'Saques pendentes', value: int(closure?.pending_payouts_count), desc: `${int(closure?.approved_payouts_count)} aprovados · ${int(closure?.paid_payouts_count)} pagos` },
+    { label: 'Em análise/bloqueados', value: int(closure?.review_or_blocked_payouts_count), desc: 'requer ação' },
+    { label: 'Saques líquidos', value: usd(closure?.payout_net_usd), desc: brl(closure?.payout_net_brl) },
+  ]
 
   return (
-    <div>
-      <h1 className="text-white text-xl font-medium mb-6">Financeiro</h1>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        {[
-          { label: 'Receita total', value: `R$ ${totalReceita.toFixed(2)}`, icon: '💰', color: 'text-yellow-400' },
-          { label: 'Receita hoje', value: `R$ ${totalHoje.toFixed(2)}`, icon: '📅', color: 'text-green-400' },
-          { label: 'Ticket médio', value: `R$ ${ticketMedio.toFixed(2)}`, icon: '🎫', color: 'text-white' },
-          { label: 'Transações', value: totalTransacoes, icon: '🔄', color: 'text-white' },
-        ].map(s => (
-          <div key={s.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
-            <div className="text-2xl mb-2">{s.icon}</div>
-            <div className={`text-2xl font-medium ${s.color}`}>{s.value}</div>
-            <div className="text-white/30 text-xs mt-1">{s.label}</div>
-          </div>
-        ))}
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-white text-xl font-medium">Financeiro Bloom</h1>
+        <p className="text-white/35 text-xs mt-1">Fechamento semanal, saques e ranking de agências.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: 'ARPU', value: `R$ ${arpu.toFixed(2)}`, icon: '👤', color: 'text-blue-400', desc: 'Receita por usuário' },
-          { label: 'Lucro plataforma (30%)', value: `R$ ${lucroPlatforma.toFixed(2)}`, icon: '🏦', color: 'text-[#ff4d7d]', desc: 'Comissão Pétala' },
-          { label: 'Repasse criadoras (70%)', value: `R$ ${lucroLiquido.toFixed(2)}`, icon: '🌸', color: 'text-green-400', desc: 'Para as criadoras' },
-        ].map(s => (
-          <div key={s.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
-            <div className="text-2xl mb-2">{s.icon}</div>
-            <div className={`text-2xl font-medium ${s.color}`}>{s.value}</div>
-            <div className="text-white/30 text-xs mt-1">{s.label}</div>
-            <div className="text-white/15 text-[10px] mt-0.5">{s.desc}</div>
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {cards.map(card => (
+          <div key={card.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
+            <div className="text-white/30 text-[11px] uppercase tracking-wide">{card.label}</div>
+            <div className="text-white text-lg font-medium mt-2 break-words">{card.value}</div>
+            <div className="text-white/25 text-xs mt-1">{card.desc}</div>
           </div>
         ))}
-      </div>
+      </section>
 
-      <h2 className="text-white/50 text-sm mb-4">Transações recentes</h2>
-      <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left text-white/30 text-xs px-4 py-3">Usuário</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Tipo</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Pétalas</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Valor</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Plataforma</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Status</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions?.map(t => (
-                <tr key={t.id} className="border-b border-white/5 hover:bg-white/2 transition-all">
-                  <td className="px-4 py-3 text-white/50 text-xs">{(t.users as any)?.email || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs bg-white/5 text-white/40 px-2 py-0.5 rounded-full">{t.type}</span>
-                  </td>
-                  <td className="px-4 py-3 text-[#ff4d7d] text-sm">{t.petals_delta} 🌸</td>
-                  <td className="px-4 py-3 text-yellow-400 text-sm font-medium">
-                    {t.amount_brl ? `R$ ${Number(t.amount_brl).toFixed(2)}` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-[#ff4d7d] text-xs">
-                    {t.amount_brl ? `R$ ${(Number(t.amount_brl) * 0.3).toFixed(2)}` : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      t.status === 'completed' ? 'bg-green-400/20 text-green-400' :
-                      t.status === 'pending' ? 'bg-yellow-400/20 text-yellow-400' :
-                      'bg-red-400/20 text-red-400'
-                    }`}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-white/30 text-xs">
-                    {new Date(t.created_at).toLocaleString('pt-BR')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="bg-[#111] rounded-xl p-4 border border-white/5">
+          <div className="text-white/30 text-xs">Saques brutos</div>
+          <div className="text-white text-lg font-medium mt-2">{usd(closure?.payout_gross_usd)}</div>
+          <div className="text-white/25 text-xs mt-1">{brl(closure?.payout_gross_brl)}</div>
         </div>
-      </div>
+        <div className="bg-[#111] rounded-xl p-4 border border-white/5">
+          <div className="text-white/30 text-xs">Taxas de saque</div>
+          <div className="text-white text-lg font-medium mt-2">{usd(closure?.payout_fee_usd)}</div>
+          <div className="text-white/25 text-xs mt-1">{brl(closure?.payout_fee_brl)}</div>
+        </div>
+        <div className="bg-[#111] rounded-xl p-4 border border-white/5">
+          <div className="text-white/30 text-xs">Saques líquidos</div>
+          <div className="text-green-300 text-lg font-medium mt-2">{usd(closure?.payout_net_usd)}</div>
+          <div className="text-white/25 text-xs mt-1">{brl(closure?.payout_net_brl)}</div>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-white text-sm font-medium">Saques</h2>
+            <p className="text-white/30 text-xs mt-0.5">Botões preparados para a próxima etapa.</p>
+          </div>
+          <span className="text-white/30 text-xs">{int(payouts.length)} registros</span>
+        </div>
+
+        <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px]">
+              <thead>
+                <tr className="border-b border-white/5">
+                  {['Tipo', 'Criadora/agência', 'Bruto', 'Taxa', 'Líquido', 'Método', 'Status', 'Data', 'Observações', 'Ações'].map(header => (
+                    <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.map(payout => {
+                  const recipientName = payout.creator_name ?? payout.agency_name ?? payout.user_email ?? '—'
+                  const notes = payout.review_notes ?? payout.rejection_reason ?? payout.fee_description ?? '—'
+
+                  return (
+                    <tr key={payout.payout_id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <td className="px-4 py-3 text-white/55 text-xs">{payout.payout_type ?? '—'}</td>
+                      <td className="px-4 py-3 text-white text-xs">
+                        <div>{recipientName}</div>
+                        {payout.user_email && <div className="text-white/25 mt-0.5">{payout.user_email}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-white/60 text-xs">{dualAmount(payout.amount_usd, payout.amount_brl)}</td>
+                      <td className="px-4 py-3 text-white/45 text-xs">{dualAmount(payout.fee_amount_usd, payout.fee_amount_brl)}</td>
+                      <td className="px-4 py-3 text-green-300 text-xs font-medium">{dualAmount(payout.net_amount_usd, payout.net_amount_brl)}</td>
+                      <td className="px-4 py-3 text-white/45 text-xs">
+                        <div>{payout.payment_method ?? '—'}</div>
+                        {payout.pix_key && <div className="text-white/25 mt-0.5 truncate max-w-[140px]">{payout.pix_key}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[11px] px-2 py-1 rounded-full ${statusClass(payout.status)}`}>{payout.status ?? 'pending'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-white/35 text-xs">{date(payout.created_at)}</td>
+                      <td className="px-4 py-3 text-white/35 text-xs max-w-[240px] truncate">{notes}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          {['aprovar', 'pago', 'rejeitar', 'bloquear'].map(action => (
+                            <button key={action} disabled className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-white/25 cursor-not-allowed">
+                              {action}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+
+                {payouts.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-8 text-center text-white/30 text-xs">Nenhum saque encontrado.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-white text-sm font-medium">Ranking de agências</h2>
+            <p className="text-white/30 text-xs mt-0.5">Filtrado pela mesma semana do fechamento.</p>
+          </div>
+          <span className="text-white/30 text-xs">{int(agencyRanking.length)} agências</span>
+        </div>
+
+        <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              <thead>
+                <tr className="border-b border-white/5">
+                  {['Posição', 'Agência', 'Score', 'Nível', 'Vinculadas', 'Com atividade', 'Plenamente ativas', 'Min. pagos', 'Min. online', 'Comissão'].map(header => (
+                    <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {agencyRanking.map((agency, index) => (
+                  <tr key={`${agency.score_rank ?? index}-${agency.agency_name ?? 'agency'}`} className="border-b border-white/5 hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-yellow-300 text-xs font-medium">#{agency.score_rank ?? index + 1}</td>
+                    <td className="px-4 py-3 text-white text-xs">{agency.agency_name ?? '—'}</td>
+                    <td className="px-4 py-3 text-white/65 text-xs">{int(agency.agency_score)}</td>
+                    <td className="px-4 py-3 text-white/45 text-xs">{agency.agency_score_label_pt ?? '—'}</td>
+                    <td className="px-4 py-3 text-white/45 text-xs">{int(agency.linked_creators_count)}</td>
+                    <td className="px-4 py-3 text-white/45 text-xs">{int(agency.creators_with_activity_count)}</td>
+                    <td className="px-4 py-3 text-green-300 text-xs">{int(agency.fully_active_creators_count)}</td>
+                    <td className="px-4 py-3 text-white/45 text-xs">{int(agency.total_paid_minutes)}</td>
+                    <td className="px-4 py-3 text-white/45 text-xs">{int(agency.total_online_minutes)}</td>
+                    <td className="px-4 py-3 text-[#ff4d7d] text-xs font-medium">{usd(agency.agency_commission_usd)}</td>
+                  </tr>
+                ))}
+
+                {agencyRanking.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-8 text-center text-white/30 text-xs">Nenhuma agência encontrada no ranking semanal.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
