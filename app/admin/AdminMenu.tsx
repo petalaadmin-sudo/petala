@@ -9,6 +9,7 @@ const MENU = [
   { href: '/admin/usuarios', icon: '👥', label: 'Usuários' },
   { href: '/admin/criadoras', icon: '🌸', label: 'Criadoras' },
   { href: '/admin/financeiro', icon: '💰', label: 'Financeiro' },
+  { href: '/agencia', icon: '🏢', label: 'Agência' },
   { href: '/admin/moderacao', icon: '🛡️', label: 'Moderação' },
   { href: '/admin/trust', icon: '🔒', label: 'Trust & Safety' },
   { href: '/admin/lives', icon: '🎥', label: 'Lives' },
