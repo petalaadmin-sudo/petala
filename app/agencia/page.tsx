@@ -227,8 +227,8 @@ export default function AgenciaPage() {
                       'Ganho',
                       'Comissao',
                       'Status',
-                      'Faltam min. pagos',
-                      'Faltam min. online',
+                      'Min. faltantes meta paga',
+                      'Min. faltantes meta online',
                     ].map(header => (
                       <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
                     ))}
