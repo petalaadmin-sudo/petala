@@ -131,10 +131,10 @@ export default function PayoutsTable({ payouts }: PayoutsTableProps) {
 
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px]">
+          <table className="w-full min-w-[920px]">
             <thead>
               <tr className="border-b border-white/5">
-                {['Tipo', 'Criadora/agência', 'Bruto', 'Taxa', 'Líquido', 'Método', 'Status', 'Data', 'Observações', 'Ações'].map(header => (
+                {['Tipo', 'Criadora/agência', 'Valores', 'Método', 'Status', 'Data', 'Observações', 'Ações'].map(header => (
                   <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
                 ))}
               </tr>
@@ -147,29 +147,33 @@ export default function PayoutsTable({ payouts }: PayoutsTableProps) {
 
                 return (
                   <tr key={payout.payout_id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 text-white/55 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span>{payout.payout_type ?? '—'}</span>
+                    <td className="px-4 py-3 text-white/55 text-xs align-top">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-white/65">{payout.payout_type ?? '—'}</span>
                         {isTest && <span className="rounded-full bg-blue-400/15 px-2 py-0.5 text-[10px] text-blue-300">teste</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-white text-xs">
-                      <div>{recipientName}</div>
-                      {payout.user_email && <div className="text-white/25 mt-0.5">{payout.user_email}</div>}
+                    <td className="px-4 py-3 text-white text-xs align-top min-w-[190px]">
+                      <div className="font-medium leading-snug">{recipientName}</div>
+                      {payout.user_email && <div className="text-white/25 mt-1 leading-snug break-all">{payout.user_email}</div>}
                     </td>
-                    <td className="px-4 py-3 text-white/60 text-xs">{dualAmount(payout.amount_usd, payout.amount_brl)}</td>
-                    <td className="px-4 py-3 text-white/45 text-xs">{dualAmount(payout.fee_amount_usd, payout.fee_amount_brl)}</td>
-                    <td className="px-4 py-3 text-green-300 text-xs font-medium">{dualAmount(payout.net_amount_usd, payout.net_amount_brl)}</td>
-                    <td className="px-4 py-3 text-white/45 text-xs">
-                      <div>{payout.payment_method ?? '—'}</div>
+                    <td className="px-4 py-3 text-xs align-top min-w-[180px]">
+                      <div className="text-green-300 font-medium">Líquido: {dualAmount(payout.net_amount_usd, payout.net_amount_brl)}</div>
+                      <div className="text-white/35 mt-1">Bruto: {dualAmount(payout.amount_usd, payout.amount_brl)}</div>
+                      <div className="text-white/30 mt-0.5">Taxa: {dualAmount(payout.fee_amount_usd, payout.fee_amount_brl)}</div>
+                    </td>
+                    <td className="px-4 py-3 text-white/45 text-xs align-top max-w-[130px]">
+                      <div className="truncate">{payout.payment_method ?? '—'}</div>
                       {payout.pix_key && <div className="text-white/25 mt-0.5 truncate max-w-[140px]">{payout.pix_key}</div>}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top">
                       <span className={`text-[11px] px-2 py-1 rounded-full ${statusClass(payout.status)}`}>{payout.status ?? 'pending'}</span>
                     </td>
-                    <td className="px-4 py-3 text-white/35 text-xs">{date(payout.created_at)}</td>
-                    <td className="px-4 py-3 text-white/35 text-xs max-w-[240px] truncate">{notes}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-white/35 text-xs align-top whitespace-nowrap">{date(payout.created_at)}</td>
+                    <td className="px-4 py-3 text-white/35 text-xs align-top max-w-[220px]">
+                      <div className="line-clamp-2">{notes}</div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
                       <PayoutActions payoutId={payout.payout_id} status={payout.status} />
                     </td>
                   </tr>
@@ -178,7 +182,7 @@ export default function PayoutsTable({ payouts }: PayoutsTableProps) {
 
               {filteredPayouts.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-white/30 text-xs">Nenhum saque encontrado para este filtro.</td>
+                  <td colSpan={8} className="px-4 py-8 text-center text-white/30 text-xs">Nenhum saque encontrado para este filtro.</td>
                 </tr>
               )}
             </tbody>
