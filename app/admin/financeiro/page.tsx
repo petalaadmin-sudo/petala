@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import PayoutActions from './PayoutActions'
+import PayoutsTable from './PayoutsTable'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -47,6 +47,7 @@ type AdminPayout = {
   fee_description: string | null
   review_notes: string | null
   rejection_reason: string | null
+  metadata: Record<string, unknown> | null
   created_at: string | null
 }
 
@@ -86,16 +87,6 @@ const weekLabel = (week: unknown) => {
   const row = week as Record<string, unknown>
   return String(row.week_label ?? row.week_start ?? row.start_date ?? row.id ?? '—')
 }
-
-const statusClass = (status: string | null | undefined) => {
-  if (['paid', 'completed', 'released', 'approved'].includes(status ?? '')) return 'bg-green-400/15 text-green-300'
-  if (['pending', 'processing', 'review', 'in_review'].includes(status ?? '')) return 'bg-yellow-400/15 text-yellow-300'
-  if (['blocked', 'rejected', 'failed'].includes(status ?? '')) return 'bg-red-400/15 text-red-300'
-  return 'bg-white/10 text-white/45'
-}
-
-const dualAmount = (usdValue: number | null, brlValue: number | null) =>
-  `${usd(usdValue)}${brlValue ? ` · ${brl(brlValue)}` : ''}`
 
 export default async function AdminFinanceiroPage() {
   const admin = createAdminClient() as any
@@ -179,66 +170,7 @@ export default async function AdminFinanceiroPage() {
         </div>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div>
-            <h2 className="text-white text-sm font-medium">Saques</h2>
-            <p className="text-white/30 text-xs mt-0.5">Botões preparados para a próxima etapa.</p>
-          </div>
-          <span className="text-white/30 text-xs">{int(payouts.length)} registros</span>
-        </div>
-
-        <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px]">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {['Tipo', 'Criadora/agência', 'Bruto', 'Taxa', 'Líquido', 'Método', 'Status', 'Data', 'Observações', 'Ações'].map(header => (
-                    <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {payouts.map(payout => {
-                  const recipientName = payout.creator_name ?? payout.agency_name ?? payout.user_email ?? '—'
-                  const notes = payout.review_notes ?? payout.rejection_reason ?? payout.fee_description ?? '—'
-
-                  return (
-                    <tr key={payout.payout_id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 text-white/55 text-xs">{payout.payout_type ?? '—'}</td>
-                      <td className="px-4 py-3 text-white text-xs">
-                        <div>{recipientName}</div>
-                        {payout.user_email && <div className="text-white/25 mt-0.5">{payout.user_email}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-white/60 text-xs">{dualAmount(payout.amount_usd, payout.amount_brl)}</td>
-                      <td className="px-4 py-3 text-white/45 text-xs">{dualAmount(payout.fee_amount_usd, payout.fee_amount_brl)}</td>
-                      <td className="px-4 py-3 text-green-300 text-xs font-medium">{dualAmount(payout.net_amount_usd, payout.net_amount_brl)}</td>
-                      <td className="px-4 py-3 text-white/45 text-xs">
-                        <div>{payout.payment_method ?? '—'}</div>
-                        {payout.pix_key && <div className="text-white/25 mt-0.5 truncate max-w-[140px]">{payout.pix_key}</div>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[11px] px-2 py-1 rounded-full ${statusClass(payout.status)}`}>{payout.status ?? 'pending'}</span>
-                      </td>
-                      <td className="px-4 py-3 text-white/35 text-xs">{date(payout.created_at)}</td>
-                      <td className="px-4 py-3 text-white/35 text-xs max-w-[240px] truncate">{notes}</td>
-                      <td className="px-4 py-3">
-                        <PayoutActions payoutId={payout.payout_id} status={payout.status} />
-                      </td>
-                    </tr>
-                  )
-                })}
-
-                {payouts.length === 0 && (
-                  <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-white/30 text-xs">Nenhum saque encontrado.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <PayoutsTable payouts={payouts} />
 
       <section>
         <div className="flex items-center justify-between gap-3 mb-3">
