@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import PayoutActions from './PayoutActions'
 
 type AdminWeeklyClosure = {
   week_start: string | null
@@ -219,13 +220,7 @@ export default async function AdminFinanceiroPage() {
                       <td className="px-4 py-3 text-white/35 text-xs">{date(payout.created_at)}</td>
                       <td className="px-4 py-3 text-white/35 text-xs max-w-[240px] truncate">{notes}</td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          {['aprovar', 'pago', 'rejeitar', 'bloquear'].map(action => (
-                            <button key={action} disabled className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-white/25 cursor-not-allowed">
-                              {action}
-                            </button>
-                          ))}
-                        </div>
+                        <PayoutActions payoutId={payout.payout_id} status={payout.status} />
                       </td>
                     </tr>
                   )
