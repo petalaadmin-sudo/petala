@@ -65,11 +65,20 @@ export default function ConfirmarPage() {
           return
         }
 
-        if (userData?.role === 'admin') {
-          router.push('/admin')
-        } else {
-          router.push('/feed')
+        const redirectRes = await fetch('/api/auth/redirect-target', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        })
+        const redirectData = await redirectRes.json()
+
+        if (redirectRes.ok && redirectData?.success && redirectData.redirectTo) {
+          router.push(redirectData.redirectTo)
+          return
         }
+
+        if (userData?.role === 'admin') router.push('/admin')
+        else router.push('/feed')
       } catch (err) {
         console.error('[auth/confirmar] erro inesperado:', err)
         router.push('/feed')
