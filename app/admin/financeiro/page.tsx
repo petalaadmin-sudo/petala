@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import PayoutActions from './PayoutActions'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type AdminWeeklyClosure = {
   week_start: string | null
   week_end: string | null
