@@ -77,6 +77,7 @@ export function useCreatorPresence(creatorId: string): PresenceState {
 export function useCreatorSelfPresence(creatorId: string) {
   const supabase = createClient()
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
+  const presenceLogKeyRef = useRef<string | null>(null)
 
   const setOnline = async (online: boolean) => {
     await supabase
@@ -87,6 +88,33 @@ export function useCreatorSelfPresence(creatorId: string) {
         last_seen_at: new Date().toISOString(),
         in_session:   false,
       })
+
+    if (online) {
+      if (!presenceLogKeyRef.current) {
+        presenceLogKeyRef.current = `presence:${creatorId}:${crypto.randomUUID()}`
+      }
+
+      const { error } = await supabase.rpc('start_creator_presence_log', {
+        p_creator_id: creatorId,
+        p_source: 'app_presence',
+        p_idempotency_key: presenceLogKeyRef.current,
+      })
+
+      if (error) {
+        console.warn('[useCreatorSelfPresence] start_creator_presence_log', error)
+      }
+    } else {
+      const { error } = await supabase.rpc('end_creator_presence_log', {
+        p_creator_id: creatorId,
+        p_source: 'app_presence',
+      })
+
+      if (error) {
+        console.warn('[useCreatorSelfPresence] end_creator_presence_log', error)
+      }
+
+      presenceLogKeyRef.current = null
+    }
   }
 
   useEffect(() => {
