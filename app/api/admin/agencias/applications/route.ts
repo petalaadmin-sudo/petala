@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { requireAdmin } from '@/lib/auth/api-auth'
+import {
+  AgencyProvisioningError,
+  provisionAgencyApplication,
+  type AgencyApplicationForProvisioning,
+} from '@/lib/agency/provisioning'
 import { createAdminClient } from '@/lib/supabase/server'
 
 type AgencyApplicationAction = 'approve' | 'reject' | 'block'
@@ -18,6 +23,13 @@ const ACTION_STATUS: Record<AgencyApplicationAction, 'approved' | 'rejected' | '
 }
 
 const ALLOWED_ACTIONS = Object.keys(ACTION_STATUS) as AgencyApplicationAction[]
+
+const getPasswordSetupRedirectTo = (request: NextRequest) => {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  const baseUrl = (configuredUrl || request.nextUrl.origin).replace(/\/+$/, '')
+
+  return `${baseUrl}/auth/definir-senha`
+}
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin(request)
@@ -66,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   const { data: application, error: applicationError } = await admin
     .from('agency_applications')
-    .select('id, status')
+    .select('id, agency_name, responsible_name, email, whatsapp, country, notes, status')
     .eq('id', applicationId)
     .maybeSingle()
 
@@ -94,6 +106,26 @@ export async function POST(request: NextRequest) {
   }
 
   const now = new Date().toISOString()
+
+  if (action === 'approve') {
+    try {
+      await provisionAgencyApplication({
+        admin,
+        application: application as AgencyApplicationForProvisioning,
+        redirectTo: getPasswordSetupRedirectTo(request),
+      })
+    } catch (error) {
+      console.error('[admin/agencias/applications] approve provisioning', error)
+
+      const status = error instanceof AgencyProvisioningError ? error.status : 500
+      const message = error instanceof Error ? error.message : 'Falha ao provisionar agencia'
+
+      return NextResponse.json(
+        { success: false, error: message },
+        { status }
+      )
+    }
+  }
 
   const { data: updated, error: updateError } = await admin
     .from('agency_applications')
