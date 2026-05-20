@@ -7,6 +7,8 @@ const PUBLIC_ROUTES = [
   '/auth/cadastro',
   '/auth/callback',
   '/auth/confirmar',
+  '/auth/recuperar-senha',
+  '/auth/definir-senha',
   '/auth/idade',
   '/auth/bloqueado',
   '/manifest.json',
