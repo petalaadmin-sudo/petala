@@ -53,6 +53,25 @@ const benefits = [
   'Suporte para crescimento',
 ]
 
+const earnings = [
+  {
+    title: 'Comissão da agência',
+    description: '30% sobre ganhos elegíveis das criadoras vinculadas.',
+  },
+  {
+    title: 'Crescimento por performance',
+    description: 'Quanto mais criadoras ativas e consistentes sua agência acompanha, maior pode ser sua comissão.',
+  },
+  {
+    title: 'Painel transparente',
+    description: 'Acompanhe criadoras, metas, performance e comissão gerada no painel da agência.',
+  },
+  {
+    title: 'Regras de elegibilidade',
+    description: 'Bônus, testes, créditos promocionais, fraudes, chargebacks e valores não sacáveis não entram no cálculo da comissão.',
+  },
+]
+
 const requirements = [
   'Experiência com recrutamento, comunidade ou influenciadoras',
   'Comunicação profissional com equipe e criadoras',
@@ -211,34 +230,58 @@ export default function AgencyPartnersPage() {
           </div>
         </section>
 
-        <section className="py-16 grid grid-cols-1 lg:grid-cols-[1fr_0.9fr] gap-8 border-b border-white/10">
-          <div>
-            <SectionHeading
-              eyebrow="Benefícios"
-              title="Estrutura para operar com clareza"
-              description="O programa foi pensado para agências que querem acompanhar criadoras com visão de performance, metas e retorno."
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
-              {benefits.map(benefit => (
-                <div key={benefit} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[#ff4d7d] text-lg leading-none">•</div>
-                  <p className="text-white/70 text-sm mt-2">{benefit}</p>
-                </div>
-              ))}
+        <section className="py-16 border-b border-white/10">
+          <SectionHeading
+            eyebrow="Benefícios"
+            title="Estrutura para operar com clareza"
+            description="O programa foi pensado para agências que querem acompanhar criadoras com visão de performance, metas e retorno."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-8">
+            {benefits.map(benefit => (
+              <div key={benefit} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="text-[#ff4d7d] text-lg leading-none">•</div>
+                <p className="text-white/70 text-sm mt-2">{benefit}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="py-16 border-b border-white/10">
+          <div className="rounded-2xl border border-[#ff4d7d]/20 bg-[#130b0f] p-6 sm:p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start">
+              <div>
+                <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">Modelo de ganhos</div>
+                <h2 className="text-white text-2xl sm:text-3xl font-medium mt-3 leading-tight">Comissão clara sobre ganhos elegíveis</h2>
+                <p className="text-white/55 text-sm leading-relaxed mt-4">
+                  Agências parceiras recebem 30% sobre os ganhos sacáveis elegíveis das criadoras vinculadas, conforme as regras antifraude e de validação da plataforma.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {earnings.map(item => (
+                  <article key={item.title} className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
+                    <h3 className="text-white text-sm font-medium">{item.title}</h3>
+                    <p className="text-white/45 text-sm leading-relaxed mt-3">{item.description}</p>
+                  </article>
+                ))}
+              </div>
             </div>
           </div>
+        </section>
 
-          <div className="rounded-2xl border border-white/10 bg-[#111] p-6">
-            <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">Requisitos</div>
-            <h2 className="text-white text-2xl font-medium mt-3">O que buscamos em uma agência parceira</h2>
-            <div className="space-y-3 mt-6">
-              {requirements.map(requirement => (
-                <div key={requirement} className="flex gap-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-[#ff4d7d] flex-none" />
-                  <p className="text-white/55 text-sm leading-relaxed">{requirement}</p>
-                </div>
-              ))}
-            </div>
+        <section className="py-16 border-b border-white/10">
+          <SectionHeading
+            eyebrow="Requisitos"
+            title="O que buscamos em uma agência parceira"
+            description="A Bloom prioriza parceiros com operação responsável, comunicação clara e capacidade real de acompanhar criadoras."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-8">
+            {requirements.map(requirement => (
+              <div key={requirement} className="flex gap-3 rounded-2xl border border-white/10 bg-[#111] p-4">
+                <span className="mt-1 h-2 w-2 rounded-full bg-[#ff4d7d] flex-none" />
+                <p className="text-white/55 text-sm leading-relaxed">{requirement}</p>
+              </div>
+            ))}
           </div>
         </section>
 
