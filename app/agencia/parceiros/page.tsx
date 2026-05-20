@@ -26,6 +26,64 @@ const initialForm: FormState = {
   notes: '',
 }
 
+const steps = [
+  {
+    title: 'Envie sua candidatura',
+    description: 'Conte sobre sua agência, seu histórico de recrutamento e o perfil de criadoras que acompanha.',
+  },
+  {
+    title: 'Nossa equipe analisa',
+    description: 'A Bloom revisa os dados enviados para validar aderência, operação e boas práticas.',
+  },
+  {
+    title: 'Após aprovação, você recebe acesso',
+    description: 'Agências aprovadas recebem o primeiro acesso para criar senha e entrar no painel.',
+  },
+  {
+    title: 'Acompanhe suas criadoras no painel',
+    description: 'Monitore atividade, metas, performance, ganhos e comissões geradas pela sua base.',
+  },
+]
+
+const benefits = [
+  'Comissão sobre criadoras vinculadas',
+  'Painel de performance por agência',
+  'Ranking e metas Bloom',
+  'Acompanhamento de ganhos',
+  'Suporte para crescimento',
+]
+
+const requirements = [
+  'Experiência com recrutamento, comunidade ou influenciadoras',
+  'Comunicação profissional com equipe e criadoras',
+  'Capacidade de acompanhar evolução e consistência da base',
+  'Respeito às regras, políticas e padrões da plataforma',
+  'Informações verdadeiras durante toda a candidatura',
+]
+
+const faqs = [
+  {
+    question: 'O cadastro é automático?',
+    answer: 'Não. Toda candidatura passa por análise antes de receber acesso.',
+  },
+  {
+    question: 'Preciso pagar para ser agência?',
+    answer: 'Não nesta etapa. A candidatura ao programa de agências não tem custo.',
+  },
+  {
+    question: 'Quando recebo acesso?',
+    answer: 'Após aprovação da equipe Bloom, você recebe as instruções de primeiro acesso.',
+  },
+  {
+    question: 'Posso cadastrar criadoras de outros países?',
+    answer: 'Sim, sujeito às regras da plataforma e aos critérios de verificação aplicáveis.',
+  },
+  {
+    question: 'Como recebo comissão?',
+    answer: 'A comissão segue o modelo definido pela plataforma para criadoras vinculadas.',
+  },
+]
+
 export default function AgencyPartnersPage() {
   const [form, setForm] = useState<FormState>(initialForm)
   const [loading, setLoading] = useState(false)
@@ -70,17 +128,20 @@ export default function AgencyPartnersPage() {
 
   if (success) {
     return (
-      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-5 py-10">
-        <section className="w-full max-w-lg bg-[#111] border border-white/5 rounded-xl p-6 text-center">
-          <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Bloom Partners</div>
+      <main className="min-h-screen bg-[#070707] flex items-center justify-center px-5 py-10">
+        <section className="w-full max-w-lg bg-[#111] border border-white/10 rounded-2xl p-7 text-center shadow-2xl shadow-black/30">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#ff4d7d]/15 text-[#ff4d7d]">
+            ✓
+          </div>
+          <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.24em]">Bloom Partners</div>
           <h1 className="text-white text-2xl font-medium mt-3">Candidatura recebida</h1>
-          <p className="text-white/45 text-sm leading-relaxed mt-3">
-            Obrigado pelo interesse. Nossa equipe vai revisar os dados e entrar em contato se a agencia for aprovada para a proxima etapa.
+          <p className="text-white/50 text-sm leading-relaxed mt-3">
+            Obrigado pelo interesse. Nossa equipe vai revisar os dados e entrar em contato se a agência for aprovada para a próxima etapa.
           </p>
           <button
             type="button"
             onClick={() => setSuccess(false)}
-            className="mt-6 bg-[#ff4d7d] text-white rounded-xl px-5 py-3 text-sm font-medium"
+            className="mt-6 bg-[#ff4d7d] text-white rounded-xl px-5 py-3 text-sm font-medium hover:bg-[#ff6a92] transition-colors"
           >
             Enviar outra candidatura
           </button>
@@ -90,134 +151,264 @@ export default function AgencyPartnersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] px-5 py-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-8">
-          <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Bloom Partners</div>
-          <h1 className="text-white text-3xl font-medium mt-2">Candidatura para agencias</h1>
-          <p className="text-white/45 text-sm leading-relaxed mt-3 max-w-2xl">
-            Conte sobre sua operacao e sua experiencia com recrutamento de criadoras. A aprovacao e manual e, nesta etapa, nao cria conta nem acesso automatico.
-          </p>
+    <main className="min-h-screen bg-[#070707] text-white">
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:py-12">
+        <header className="min-h-[78vh] flex flex-col justify-center border-b border-white/10 pb-12">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center rounded-full border border-[#ff4d7d]/25 bg-[#ff4d7d]/10 px-3 py-1 text-[#ff9ab6] text-xs font-medium uppercase tracking-[0.22em]">
+              Bloom Partners
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-medium mt-6 leading-tight">
+              Seja uma agência parceira Bloom
+            </h1>
+            <p className="text-white/55 text-base sm:text-lg leading-relaxed mt-5 max-w-2xl">
+              Agências parceiras podem recrutar, vincular e acompanhar criadoras verificadas dentro de uma operação profissional, com painel de performance, metas e visão clara de resultados.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-8">
+              <a
+                href="#candidatura"
+                className="inline-flex justify-center rounded-xl bg-[#ff4d7d] px-5 py-3 text-sm font-medium text-white hover:bg-[#ff6a92] transition-colors"
+              >
+                Quero me candidatar
+              </a>
+              <p className="text-white/35 text-xs leading-relaxed">
+                Candidatura sujeita à análise da equipe Bloom.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-12">
+            {[
+              ['Painel', 'Performance semanal'],
+              ['Metas', 'Acompanhamento claro'],
+              ['Ranking', 'Visão competitiva'],
+              ['Comissão', 'Ganhos por criadoras'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">{label}</div>
+                <div className="text-white/70 text-sm mt-2">{value}</div>
+              </div>
+            ))}
+          </div>
         </header>
 
-        <form onSubmit={submit} className="bg-[#111] border border-white/5 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
-            <Field label="Nome da agencia" required>
-              <input
-                value={form.agency_name}
-                onChange={event => updateField('agency_name', event.target.value)}
-                required
-                maxLength={140}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
-              />
-            </Field>
-
-            <Field label="Responsavel" required>
-              <input
-                value={form.responsible_name}
-                onChange={event => updateField('responsible_name', event.target.value)}
-                required
-                maxLength={140}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
-              />
-            </Field>
-
-            <Field label="Email" required>
-              <input
-                type="email"
-                value={form.email}
-                onChange={event => updateField('email', event.target.value)}
-                required
-                maxLength={180}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
-              />
-            </Field>
-
-            <Field label="WhatsApp" required>
-              <input
-                value={form.whatsapp}
-                onChange={event => updateField('whatsapp', event.target.value)}
-                required
-                maxLength={40}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
-              />
-            </Field>
-
-            <Field label="Pais" required>
-              <input
-                value={form.country}
-                onChange={event => updateField('country', event.target.value)}
-                required
-                maxLength={80}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
-              />
-            </Field>
-
-            <Field label="Criadoras esperadas" required>
-              <input
-                type="number"
-                min={1}
-                value={form.expected_creators_count}
-                onChange={event => updateField('expected_creators_count', event.target.value)}
-                required
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
-              />
-            </Field>
-
-            <Field label="Experiencia com recrutamento" required wide>
-              <textarea
-                value={form.recruitment_experience}
-                onChange={event => updateField('recruitment_experience', event.target.value)}
-                required
-                maxLength={3000}
-                rows={5}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50 resize-none"
-              />
-            </Field>
-
-            <Field label="Links sociais" wide>
-              <textarea
-                value={form.social_links}
-                onChange={event => updateField('social_links', event.target.value)}
-                maxLength={2000}
-                rows={3}
-                placeholder="Instagram, site, portfolio ou perfis relevantes"
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#ff4d7d]/50 resize-none"
-              />
-            </Field>
-
-            <Field label="Observacoes" wide>
-              <textarea
-                value={form.notes}
-                onChange={event => updateField('notes', event.target.value)}
-                maxLength={3000}
-                rows={4}
-                className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50 resize-none"
-              />
-            </Field>
+        <section className="py-16 border-b border-white/10">
+          <SectionHeading
+            eyebrow="Como funciona"
+            title="Um processo simples, com análise humana"
+            description="A parceria começa com uma candidatura e avança apenas quando existe aderência operacional e confiança para liberar o painel."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+            {steps.map((step, index) => (
+              <article key={step.title} className="rounded-2xl border border-white/10 bg-[#111] p-5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ff4d7d] text-white text-sm font-medium">
+                  {index + 1}
+                </div>
+                <h3 className="text-white text-base font-medium mt-5">{step.title}</h3>
+                <p className="text-white/45 text-sm leading-relaxed mt-3">{step.description}</p>
+              </article>
+            ))}
           </div>
+        </section>
 
-          {error && (
-            <div className="mx-5 mb-5 bg-red-950/40 border border-red-500/20 rounded-xl px-4 py-3 text-red-300 text-sm">
-              {error}
+        <section className="py-16 grid grid-cols-1 lg:grid-cols-[1fr_0.9fr] gap-8 border-b border-white/10">
+          <div>
+            <SectionHeading
+              eyebrow="Benefícios"
+              title="Estrutura para operar com clareza"
+              description="O programa foi pensado para agências que querem acompanhar criadoras com visão de performance, metas e retorno."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
+              {benefits.map(benefit => (
+                <div key={benefit} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-[#ff4d7d] text-lg leading-none">•</div>
+                  <p className="text-white/70 text-sm mt-2">{benefit}</p>
+                </div>
+              ))}
             </div>
-          )}
-
-          <div className="border-t border-white/5 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <p className="text-white/30 text-xs leading-relaxed">
-              Enviar candidatura nao cria acesso automatico ao painel.
-            </p>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-[#ff4d7d] text-white rounded-xl px-5 py-3 text-sm font-medium disabled:opacity-50"
-            >
-              {loading ? 'Enviando...' : 'Enviar candidatura'}
-            </button>
           </div>
-        </form>
+
+          <div className="rounded-2xl border border-white/10 bg-[#111] p-6">
+            <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">Requisitos</div>
+            <h2 className="text-white text-2xl font-medium mt-3">O que buscamos em uma agência parceira</h2>
+            <div className="space-y-3 mt-6">
+              {requirements.map(requirement => (
+                <div key={requirement} className="flex gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-[#ff4d7d] flex-none" />
+                  <p className="text-white/55 text-sm leading-relaxed">{requirement}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-16 border-b border-white/10">
+          <SectionHeading
+            eyebrow="Perguntas frequentes"
+            title="Antes de enviar sua candidatura"
+            description="Algumas respostas rápidas sobre aprovação, acesso e modelo de parceria."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            {faqs.map(faq => (
+              <article key={faq.question} className="rounded-2xl border border-white/10 bg-[#111] p-5">
+                <h3 className="text-white text-sm font-medium">{faq.question}</h3>
+                <p className="text-white/45 text-sm leading-relaxed mt-3">{faq.answer}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="candidatura" className="py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 items-start">
+            <div className="lg:sticky lg:top-8">
+              <SectionHeading
+                eyebrow="Candidatura"
+                title="Conte sobre sua operação"
+                description="Preencha os dados com atenção. Informações verdadeiras ajudam nossa equipe a avaliar a parceria com mais rapidez."
+              />
+              <p className="text-white/30 text-xs leading-relaxed mt-5">
+                O envio não cria acesso automático ao painel. Todas as candidaturas são revisadas antes da aprovação.
+              </p>
+            </div>
+
+            <form onSubmit={submit} className="bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl shadow-black/20">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 sm:p-6">
+                <Field label="Nome da agência" required>
+                  <input
+                    value={form.agency_name}
+                    onChange={event => updateField('agency_name', event.target.value)}
+                    required
+                    maxLength={140}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
+                  />
+                </Field>
+
+                <Field label="Responsável" required>
+                  <input
+                    value={form.responsible_name}
+                    onChange={event => updateField('responsible_name', event.target.value)}
+                    required
+                    maxLength={140}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
+                  />
+                </Field>
+
+                <Field label="Email" required>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={event => updateField('email', event.target.value)}
+                    required
+                    maxLength={180}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
+                  />
+                </Field>
+
+                <Field label="WhatsApp" required>
+                  <input
+                    value={form.whatsapp}
+                    onChange={event => updateField('whatsapp', event.target.value)}
+                    required
+                    maxLength={40}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
+                  />
+                </Field>
+
+                <Field label="País" required>
+                  <input
+                    value={form.country}
+                    onChange={event => updateField('country', event.target.value)}
+                    required
+                    maxLength={80}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
+                  />
+                </Field>
+
+                <Field label="Criadoras esperadas" required>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.expected_creators_count}
+                    onChange={event => updateField('expected_creators_count', event.target.value)}
+                    required
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50"
+                  />
+                </Field>
+
+                <Field label="Experiência com recrutamento" required wide>
+                  <textarea
+                    value={form.recruitment_experience}
+                    onChange={event => updateField('recruitment_experience', event.target.value)}
+                    required
+                    maxLength={3000}
+                    rows={5}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50 resize-none"
+                  />
+                </Field>
+
+                <Field label="Links sociais" wide>
+                  <textarea
+                    value={form.social_links}
+                    onChange={event => updateField('social_links', event.target.value)}
+                    maxLength={2000}
+                    rows={3}
+                    placeholder="Instagram, site, portfólio ou perfis relevantes"
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#ff4d7d]/50 resize-none"
+                  />
+                </Field>
+
+                <Field label="Observações" wide>
+                  <textarea
+                    value={form.notes}
+                    onChange={event => updateField('notes', event.target.value)}
+                    maxLength={3000}
+                    rows={4}
+                    className="w-full bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#ff4d7d]/50 resize-none"
+                  />
+                </Field>
+              </div>
+
+              {error && (
+                <div className="mx-5 sm:mx-6 mb-5 bg-red-950/40 border border-red-500/20 rounded-xl px-4 py-3 text-red-300 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="border-t border-white/10 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <p className="text-white/30 text-xs leading-relaxed">
+                  Enviar candidatura não cria acesso automático ao painel.
+                </p>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#ff4d7d] text-white rounded-xl px-5 py-3 text-sm font-medium disabled:opacity-50 hover:bg-[#ff6a92] transition-colors"
+                >
+                  {loading ? 'Enviando...' : 'Enviar candidatura'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
       </div>
     </main>
+  )
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+}) {
+  return (
+    <div>
+      <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">{eyebrow}</div>
+      <h2 className="text-white text-2xl sm:text-3xl font-medium mt-3 leading-tight">{title}</h2>
+      <p className="text-white/45 text-sm leading-relaxed mt-3 max-w-2xl">{description}</p>
+    </div>
   )
 }
 
