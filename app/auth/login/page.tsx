@@ -9,8 +9,10 @@ function LoginContent() {
   const params = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+  const [authError, setAuthError] = useState('')
   const [refInfo, setRefInfo] = useState<{ name: string } | null>(null)
 
   useEffect(() => {
@@ -49,12 +51,69 @@ function LoginContent() {
   const loginWithEmail = async () => {
     if (!email) return
     setLoading('email')
+    setAuthError('')
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: email.trim().toLowerCase(),
       options: { emailRedirectTo: `${location.origin}/api/auth/callback` },
     })
     setLoading(null)
-    if (!error) setSent(true)
+    if (error) {
+      setAuthError('Nao foi possivel enviar o link. Tente novamente.')
+      return
+    }
+
+    setSent(true)
+  }
+
+  const redirectAfterPasswordLogin = async (accessToken: string, refreshToken?: string) => {
+    document.cookie = `sb-access-token=${accessToken}; path=/; max-age=3600; SameSite=Lax; Secure`
+
+    if (refreshToken) {
+      document.cookie = `sb-refresh-token=${refreshToken}; path=/; max-age=86400; SameSite=Lax; Secure`
+    }
+
+    const redirectRes = await fetch('/api/auth/redirect-target', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+    const redirectData = await redirectRes.json().catch(() => null)
+
+    if (redirectRes.ok && redirectData?.success && redirectData.redirectTo) {
+      router.push(redirectData.redirectTo)
+      return
+    }
+
+    router.push('/feed')
+  }
+
+  const loginWithPassword = async () => {
+    if (!email || !password) return
+
+    setLoading('password')
+    setAuthError('')
+
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      })
+
+      if (error || !session?.access_token) {
+        setAuthError('Email ou senha invalidos.')
+        setLoading(null)
+        return
+      }
+
+      await redirectAfterPasswordLogin(session.access_token, session.refresh_token)
+    } catch (error) {
+      console.error('[auth/login] password login', error)
+      setAuthError('Nao foi possivel entrar. Tente novamente.')
+      setLoading(null)
+    }
   }
 
   if (sent) return (
@@ -108,10 +167,23 @@ function LoginContent() {
         <input type="email" value={email} onChange={e => setEmail(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && loginWithEmail()} placeholder="seu@email.com"
           className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+        <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="senha"
+          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+        {authError && (
+          <p className="text-red-300/80 text-xs leading-relaxed">{authError}</p>
+        )}
+        <button onClick={loginWithPassword} disabled={!email || !password || !!loading}
+          className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50">
+          {loading === 'password' ? 'Entrando...' : 'Entrar com senha'}
+        </button>
         <button onClick={loginWithEmail} disabled={!email || !!loading}
           className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50">
           {loading === 'email' ? 'Enviando…' : 'Entrar com e-mail'}
         </button>
+        <a href="/auth/recuperar-senha" className="text-center text-white/35 hover:text-white/60 text-xs mt-1">
+          Esqueci minha senha
+        </a>
       </div>
 
       <p className="text-white/20 text-xs text-center mt-6 leading-relaxed max-w-xs relative z-10">
