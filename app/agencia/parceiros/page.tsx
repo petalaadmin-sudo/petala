@@ -53,18 +53,33 @@ const benefits = [
   'Suporte para crescimento',
 ]
 
+const profiles = [
+  {
+    title: 'Agência parceira',
+    description: 'Recrute, oriente e acompanhe creators vinculadas. Receba 30% sobre ganhos sacáveis elegíveis, conforme regras da plataforma.',
+    action: 'Quero ser agência',
+    href: '#candidatura',
+  },
+  {
+    title: 'Creator verificada',
+    description: 'Candidate-se para criar seu perfil, passar pela verificação e atender usuários em experiências privadas dentro da plataforma.',
+    action: 'Quero ser creator',
+    href: '/criadora/onboarding',
+  },
+]
+
 const earnings = [
   {
     title: 'Comissão da agência',
-    description: '30% sobre ganhos elegíveis das criadoras vinculadas.',
+    description: '30% sobre ganhos elegíveis das creators vinculadas.',
   },
   {
     title: 'Crescimento por performance',
-    description: 'Quanto mais criadoras ativas e consistentes sua agência acompanha, maior pode ser sua comissão.',
+    description: 'Quanto mais creators ativas e consistentes sua agência acompanha, maior pode ser sua comissão.',
   },
   {
     title: 'Painel transparente',
-    description: 'Acompanhe criadoras, metas, performance e comissão gerada no painel da agência.',
+    description: 'Acompanhe creators, metas, performance e comissão gerada no painel da agência.',
   },
   {
     title: 'Regras de elegibilidade',
@@ -178,7 +193,7 @@ export default function AgencyPartnersPage() {
               Bloom Partners
             </div>
             <h1 className="text-4xl sm:text-6xl font-medium mt-6 leading-tight">
-              Seja uma agência parceira Bloom
+              Seja uma agência parceira <span className="text-[#ff4d7d]">Bloom</span>
             </h1>
             <p className="text-white/55 text-base sm:text-lg leading-relaxed mt-5 max-w-2xl">
               Agências parceiras podem recrutar, vincular e acompanhar criadoras verificadas dentro de uma operação profissional, com painel de performance, metas e visão clara de resultados.
@@ -210,6 +225,28 @@ export default function AgencyPartnersPage() {
             ))}
           </div>
         </header>
+
+        <section className="py-16 border-b border-white/10">
+          <SectionHeading
+            eyebrow="Perfis"
+            title="Escolha como quer participar"
+            description="A Bloom conecta creators verificadas, agências parceiras e usuários em uma experiência privada, segura e profissional."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            {profiles.map(profile => (
+              <article key={profile.title} className="rounded-2xl border border-white/10 bg-[#111] p-6">
+                <h3 className="text-white text-xl font-medium">{profile.title}</h3>
+                <p className="text-white/50 text-sm leading-relaxed mt-4">{profile.description}</p>
+                <a
+                  href={profile.href}
+                  className="mt-6 inline-flex justify-center rounded-xl bg-[#ff4d7d] px-5 py-3 text-sm font-medium text-white hover:bg-[#ff6a92] transition-colors"
+                >
+                  {profile.action}
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="py-16 border-b border-white/10">
           <SectionHeading
@@ -253,7 +290,7 @@ export default function AgencyPartnersPage() {
                 <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">Modelo de ganhos</div>
                 <h2 className="text-white text-2xl sm:text-3xl font-medium mt-3 leading-tight">Comissão clara sobre ganhos elegíveis</h2>
                 <p className="text-white/55 text-sm leading-relaxed mt-4">
-                  Agências parceiras recebem 30% sobre os ganhos sacáveis elegíveis das criadoras vinculadas, conforme as regras antifraude e de validação da plataforma.
+                  Agências parceiras recebem 30% sobre os ganhos sacáveis elegíveis das creators vinculadas, conforme as regras antifraude e de validação da plataforma.
                 </p>
               </div>
 
