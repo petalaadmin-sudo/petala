@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import AgencyApplicationActions from './AgencyApplicationActions'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -123,6 +124,7 @@ function ApplicationSection({
             <thead>
               <tr className="border-b border-white/5">
                 {[
+                  'Acoes',
                   'Agencia',
                   'Responsavel',
                   'Email',
@@ -144,6 +146,9 @@ function ApplicationSection({
             <tbody>
               {applications.map(application => (
                 <tr key={application.id} className="border-b border-white/5 hover:bg-white/[0.02] align-top">
+                  <td className="px-4 py-3">
+                    <AgencyApplicationActions applicationId={application.id} status={application.status} />
+                  </td>
                   <td className="px-4 py-3 text-white text-xs font-medium">{text(application.agency_name)}</td>
                   <td className="px-4 py-3 text-white/55 text-xs">{text(application.responsible_name)}</td>
                   <td className="px-4 py-3 text-white/55 text-xs">{text(application.email)}</td>
@@ -166,7 +171,7 @@ function ApplicationSection({
 
               {applications.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="px-4 py-8 text-center text-white/30 text-xs">
+                  <td colSpan={14} className="px-4 py-8 text-center text-white/30 text-xs">
                     Nenhuma candidatura nesta categoria.
                   </td>
                 </tr>
