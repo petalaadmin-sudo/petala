@@ -124,7 +124,6 @@ function ApplicationSection({
             <thead>
               <tr className="border-b border-white/5">
                 {[
-                  'Acoes',
                   'Agencia',
                   'Responsavel',
                   'Email',
@@ -138,6 +137,7 @@ function ApplicationSection({
                   'Criada em',
                   'Revisada em',
                   'Notas da revisao',
+                  'Acoes',
                 ].map(header => (
                   <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
                 ))}
@@ -146,9 +146,6 @@ function ApplicationSection({
             <tbody>
               {applications.map(application => (
                 <tr key={application.id} className="border-b border-white/5 hover:bg-white/[0.02] align-top">
-                  <td className="px-4 py-3">
-                    <AgencyApplicationActions applicationId={application.id} status={application.status} />
-                  </td>
                   <td className="px-4 py-3 text-white text-xs font-medium">{text(application.agency_name)}</td>
                   <td className="px-4 py-3 text-white/55 text-xs">{text(application.responsible_name)}</td>
                   <td className="px-4 py-3 text-white/55 text-xs">{text(application.email)}</td>
@@ -166,6 +163,9 @@ function ApplicationSection({
                   <td className="px-4 py-3 text-white/35 text-xs">{date(application.created_at)}</td>
                   <td className="px-4 py-3 text-white/35 text-xs">{date(application.reviewed_at)}</td>
                   <td className="px-4 py-3 text-white/45 text-xs max-w-[240px] whitespace-pre-wrap">{text(application.review_notes)}</td>
+                  <td className="px-4 py-3">
+                    <AgencyApplicationActions applicationId={application.id} status={application.status} />
+                  </td>
                 </tr>
               ))}
 
