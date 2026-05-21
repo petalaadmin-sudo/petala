@@ -8,6 +8,9 @@ import { useRouter } from 'next/navigation'
 type Step = 'bio' | 'foto' | 'precos' | 'publicar'
 const STEPS: Step[] = ['bio', 'foto', 'precos', 'publicar']
 type AgencyInviteStatus = 'onboarding_started' | 'pending_verification'
+type AuthStatus = 'checking' | 'authenticated' | 'anonymous'
+type AuthMode = 'signup' | 'login'
+type AuthAction = 'signup' | 'login' | 'email'
 
 const PENDING_AGENCY_INVITE_CODE_KEY = 'pending_agency_invite_code'
 const AGENCY_INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/
@@ -71,6 +74,16 @@ export default function CreatorOnboardingPage() {
   const router   = useRouter()
   const onboardingStartedRegisteredRef = useRef(false)
 
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('checking')
+  const [authUserId, setAuthUserId] = useState<string | null>(null)
+  const [authMode, setAuthMode] = useState<AuthMode>('signup')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authAction, setAuthAction] = useState<AuthAction | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [authMessage, setAuthMessage] = useState<string | null>(null)
+  const [hasPendingAgencyInvite, setHasPendingAgencyInvite] = useState(false)
+
   const [step, setStep]     = useState<Step>('bio')
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState<string | null>(null)
@@ -86,6 +99,73 @@ export default function CreatorOnboardingPage() {
 
   const stepIndex = STEPS.indexOf(step)
   const progress  = ((stepIndex + 1) / STEPS.length) * 100
+
+  useEffect(() => {
+    let mounted = true
+
+    setHasPendingAgencyInvite(Boolean(getPendingAgencyInviteCode()))
+
+    const setAnonymous = () => {
+      if (!mounted) return
+      setAuthUserId(null)
+      setAuthStatus('anonymous')
+    }
+
+    const verifySession = async (session?: { access_token?: string } | null) => {
+      if (!mounted) return
+
+      if (!session?.access_token) {
+        setAnonymous()
+        return
+      }
+
+      setAuthStatus('checking')
+
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
+
+        if (!mounted) return
+
+        if (error || !user) {
+          setAnonymous()
+          return
+        }
+
+        setAuthUserId(user.id)
+        setAuthStatus('authenticated')
+      } catch (err) {
+        console.warn('[creator onboarding] auth user validation error', err)
+        setAnonymous()
+      }
+    }
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => verifySession(session))
+      .catch(err => {
+        console.warn('[creator onboarding] auth session error', err)
+        setAnonymous()
+      })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      void verifySession(session)
+
+      if (session?.user) {
+        setAuthError(null)
+        setAuthMessage(null)
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [supabase])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -156,13 +236,148 @@ export default function CreatorOnboardingPage() {
 
   useEffect(() => {
     if (onboardingStartedRegisteredRef.current) return
+    if (authStatus !== 'authenticated' || !authUserId) return
 
     const inviteCode = getPendingAgencyInviteCode()
     if (!inviteCode) return
 
     onboardingStartedRegisteredRef.current = true
     void registerAgencyInvite('onboarding_started')
-  }, [registerAgencyInvite])
+  }, [authStatus, authUserId, registerAgencyInvite])
+
+  const authRedirectTo = () => `${window.location.origin}/criadora/onboarding`
+
+  const handleAuthSubmit = async () => {
+    const email = authEmail.trim().toLowerCase()
+    const password = authPassword.trim()
+
+    if (!email) {
+      setAuthError('Informe seu e-mail.')
+      return
+    }
+
+    if (!password) {
+      setAuthError('Informe uma senha.')
+      return
+    }
+
+    if (password.length < 6) {
+      setAuthError('A senha precisa ter pelo menos 6 caracteres.')
+      return
+    }
+
+    setAuthAction(authMode)
+    setAuthError(null)
+    setAuthMessage(null)
+
+    try {
+      if (authMode === 'signup') {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: authRedirectTo(),
+          },
+        })
+
+        if (error) {
+          setAuthError('Nao foi possivel criar sua conta. Tente entrar ou use outro e-mail.')
+          return
+        }
+
+        if (session?.access_token) {
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser()
+
+          if (userError || !user) {
+            setAuthError('Nao foi possivel confirmar sua sessao. Tente entrar novamente.')
+            setAuthStatus('anonymous')
+            setAuthUserId(null)
+            return
+          }
+
+          setAuthUserId(user.id)
+          setAuthStatus('authenticated')
+          return
+        }
+
+        setAuthMessage('Enviamos um link de confirmacao para seu e-mail. Ao abrir, voce volta para continuar o onboarding.')
+        return
+      }
+
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error || !session?.access_token) {
+        setAuthError('E-mail ou senha invalidos.')
+        return
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        setAuthError('Nao foi possivel confirmar sua sessao. Tente entrar novamente.')
+        setAuthStatus('anonymous')
+        setAuthUserId(null)
+        return
+      }
+
+      setAuthUserId(user.id)
+      setAuthStatus('authenticated')
+    } catch (err) {
+      console.warn('[creator onboarding] auth submit error', err)
+      setAuthError('Nao foi possivel autenticar agora. Tente novamente.')
+    } finally {
+      setAuthAction(null)
+    }
+  }
+
+  const handleEmailLink = async () => {
+    const email = authEmail.trim().toLowerCase()
+
+    if (!email) {
+      setAuthError('Informe seu e-mail.')
+      return
+    }
+
+    setAuthAction('email')
+    setAuthError(null)
+    setAuthMessage(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: authRedirectTo(),
+        },
+      })
+
+      if (error) {
+        setAuthError('Nao foi possivel enviar o link. Tente novamente.')
+        return
+      }
+
+      setAuthMessage('Enviamos um link de acesso para seu e-mail. Ao abrir, voce volta para continuar o onboarding.')
+    } catch (err) {
+      console.warn('[creator onboarding] email link error', err)
+      setAuthError('Nao foi possivel enviar o link agora. Tente novamente.')
+    } finally {
+      setAuthAction(null)
+    }
+  }
 
   const handlePublish = async () => {
     setSaving(true)
@@ -227,6 +442,119 @@ export default function CreatorOnboardingPage() {
       setError(err.message)
       setSaving(false)
     }
+  }
+
+  if (authStatus === 'checking') {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#ff4d7d]/30 border-t-[#ff4d7d] rounded-full animate-spin" />
+      </main>
+    )
+  }
+
+  if (authStatus !== 'authenticated' || !authUserId) {
+    const isSignup = authMode === 'signup'
+
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-5 py-8">
+        <section className="w-full max-w-sm">
+          <div className="mb-7 text-center">
+            <div className="text-4xl mb-3">🌸</div>
+            <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Creator Bloom</p>
+            <h1 className="text-white text-2xl font-medium mt-2">Entre para criar seu perfil</h1>
+            <p className="text-white/35 text-sm mt-2 leading-relaxed">
+              Sua conta fica pronta antes do onboarding para salvar convite, perfil e verificacao.
+            </p>
+          </div>
+
+          {hasPendingAgencyInvite && (
+            <div className="mb-4 rounded-xl border border-[#ff4d7d]/20 bg-[#130b0f] px-4 py-3">
+              <div className="text-[#ff8aaa] text-xs font-medium">Convite de agencia detectado</div>
+              <div className="text-white/45 text-xs mt-1">Ele sera preservado durante o acesso.</div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 mb-4 rounded-xl bg-[#111] p-1 border border-white/5">
+            {([
+              { id: 'signup' as const, label: 'Criar conta' },
+              { id: 'login' as const, label: 'Entrar' },
+            ]).map(item => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setAuthMode(item.id)
+                  setAuthError(null)
+                  setAuthMessage(null)
+                }}
+                className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+                  authMode === item.id
+                    ? 'bg-[#ff4d7d] text-white'
+                    : 'text-white/35 hover:text-white/60'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <input
+              type="email"
+              value={authEmail}
+              onChange={e => setAuthEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAuthSubmit()}
+              placeholder="seu@email.com"
+              autoComplete="email"
+              className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
+            />
+            <input
+              type="password"
+              value={authPassword}
+              onChange={e => setAuthPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAuthSubmit()}
+              placeholder={isSignup ? 'crie uma senha' : 'sua senha'}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
+            />
+
+            {authError && (
+              <div className="rounded-xl border border-red-500/25 bg-red-900/20 px-4 py-3 text-red-300 text-xs leading-relaxed">
+                {authError}
+              </div>
+            )}
+
+            {authMessage && (
+              <div className="rounded-xl border border-green-500/25 bg-green-500/10 px-4 py-3 text-green-300 text-xs leading-relaxed">
+                {authMessage}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleAuthSubmit}
+              disabled={!!authAction}
+              className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50 active:scale-95 transition-transform"
+            >
+              {authAction === authMode ? 'Aguarde...' : isSignup ? 'Criar conta e continuar' : 'Entrar e continuar'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleEmailLink}
+              disabled={!authEmail.trim() || !!authAction}
+              className="w-full rounded-xl border border-white/10 py-3 text-sm font-medium text-white/55 disabled:opacity-40 active:scale-95 transition-transform"
+            >
+              {authAction === 'email' ? 'Enviando...' : 'Receber link por e-mail'}
+            </button>
+          </div>
+
+          <p className="text-white/20 text-xs text-center mt-5 leading-relaxed">
+            Ao continuar voce confirma ter 18 anos ou mais.
+          </p>
+        </section>
+      </main>
+    )
   }
 
   return (
