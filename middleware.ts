@@ -6,6 +6,7 @@ const PUBLIC_ROUTES = [
   '/auth/login',
   '/auth/cadastro',
   '/auth/callback',
+  '/auth/confirm',
   '/auth/confirmar',
   '/auth/recuperar-senha',
   '/auth/definir-senha',
@@ -32,6 +33,9 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        storageKey: 'sb-petala-auth',
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll()

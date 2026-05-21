@@ -1,5 +1,5 @@
 import { AuthConfirmClient } from '../AuthConfirmClient'
 
-export default function ConfirmarPage() {
+export default function ConfirmPage() {
   return <AuthConfirmClient />
 }
