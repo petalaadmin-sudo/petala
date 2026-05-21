@@ -1,16 +1,75 @@
 // app/criadora/onboarding/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 type Step = 'bio' | 'foto' | 'precos' | 'publicar'
 const STEPS: Step[] = ['bio', 'foto', 'precos', 'publicar']
+type AgencyInviteStatus = 'onboarding_started' | 'pending_verification'
+
+const PENDING_AGENCY_INVITE_CODE_KEY = 'pending_agency_invite_code'
+const AGENCY_INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/
+
+function getCookieValue(name: string) {
+  if (typeof document === 'undefined') return null
+
+  const cookie = document.cookie
+    .split(';')
+    .map(item => item.trim())
+    .find(item => item.startsWith(`${name}=`))
+
+  if (!cookie) return null
+
+  try {
+    return decodeURIComponent(cookie.slice(name.length + 1))
+  } catch {
+    return cookie.slice(name.length + 1)
+  }
+}
+
+function clearPendingAgencyInviteCode() {
+  if (typeof window === 'undefined') return
+
+  try {
+    localStorage.removeItem(PENDING_AGENCY_INVITE_CODE_KEY)
+  } catch {
+    // localStorage can be unavailable in restricted browser contexts.
+  }
+
+  document.cookie = `${PENDING_AGENCY_INVITE_CODE_KEY}=; path=/; max-age=0; SameSite=Lax`
+}
+
+function getPendingAgencyInviteCode() {
+  if (typeof window === 'undefined') return null
+
+  let rawCode: string | null = null
+
+  try {
+    rawCode = localStorage.getItem(PENDING_AGENCY_INVITE_CODE_KEY)
+  } catch {
+    rawCode = null
+  }
+
+  rawCode = rawCode || getCookieValue(PENDING_AGENCY_INVITE_CODE_KEY)
+
+  if (!rawCode) return null
+
+  const code = rawCode.trim().toUpperCase()
+
+  if (!AGENCY_INVITE_CODE_PATTERN.test(code)) {
+    clearPendingAgencyInviteCode()
+    return null
+  }
+
+  return code
+}
 
 export default function CreatorOnboardingPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const router   = useRouter()
+  const onboardingStartedRegisteredRef = useRef(false)
 
   const [step, setStep]     = useState<Step>('bio')
   const [saving, setSaving] = useState(false)
@@ -36,6 +95,74 @@ export default function CreatorOnboardingPage() {
     reader.onload = (ev) => setPhotoPreview(ev.target?.result as string)
     reader.readAsDataURL(file)
   }
+
+  const registerAgencyInvite = useCallback(async (
+    status: AgencyInviteStatus,
+    creatorId?: string
+  ) => {
+    const inviteCode = getPendingAgencyInviteCode()
+
+    if (!inviteCode) return false
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.access_token) return false
+
+      const body: Record<string, string> = {
+        invite_code: inviteCode,
+        status,
+      }
+
+      if (creatorId) {
+        body.creator_id = creatorId
+      }
+
+      const response = await fetch('/api/agencia/creator-invite/registrar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+      })
+
+      if (response.ok) return true
+
+      const result = await response.json().catch(() => null)
+      const apiError = result?.error ?? `HTTP ${response.status}`
+
+      if (response.status === 400 || response.status === 404) {
+        console.warn('[agency invite] clearing invalid invite', apiError)
+        clearPendingAgencyInviteCode()
+        return false
+      }
+
+      if (response.status === 409) {
+        console.warn('[agency invite] invite conflict', apiError)
+        clearPendingAgencyInviteCode()
+        return false
+      }
+
+      console.warn('[agency invite] failed to register invite', apiError)
+      return false
+    } catch (err) {
+      console.warn('[agency invite] network error while registering invite', err)
+      return false
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    if (onboardingStartedRegisteredRef.current) return
+
+    const inviteCode = getPendingAgencyInviteCode()
+    if (!inviteCode) return
+
+    onboardingStartedRegisteredRef.current = true
+    void registerAgencyInvite('onboarding_started')
+  }, [registerAgencyInvite])
 
   const handlePublish = async () => {
     setSaving(true)
@@ -67,6 +194,15 @@ export default function CreatorOnboardingPage() {
         .from('users')
         .update({ role: 'creator' })
         .eq('id', user.id)
+
+      const createdCreatorId = (creator as { id?: string } | null)?.id
+      const inviteRegistered = createdCreatorId
+        ? await registerAgencyInvite('pending_verification', createdCreatorId)
+        : false
+
+      if (inviteRegistered) {
+        clearPendingAgencyInviteCode()
+      }
 
       // 3. Upload da foto de perfil se selecionada
       if (photoFile && creator) {
