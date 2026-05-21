@@ -71,39 +71,38 @@ export async function GET(request: NextRequest) {
 
   const dashboard = dashboardResult.data
 
-  const [{ data: creators, error: creatorsError }, { data: rankingRows, error: rankingError }] = dashboard
-    ? await Promise.all([
-        admin
-          .from('agency_creator_performance')
-          .select('*')
-          .eq('agency_id', agencyLink.agency_id)
-          .eq('week_start', dashboard.week_start)
-          .eq('week_end', dashboard.week_end)
-          .order('paid_minutes', { ascending: false }),
-        admin
-          .from('agency_ranking_weekly')
-          .select('*')
-          .eq('agency_id', agencyLink.agency_id)
-          .eq('week_start', dashboard.week_start)
-          .eq('week_end', dashboard.week_end)
-          .limit(1),
-      ])
-    : [{ data: [], error: null }, { data: [], error: null }]
+  let creators = []
+  let rankingRows = []
 
-  if (creatorsError) {
-    console.error('[agencia/dashboard] agency_creator_performance', creatorsError)
-    return NextResponse.json(
-      { success: false, error: 'Erro ao buscar criadoras da agencia' },
-      { status: 500 }
-    )
-  }
+  if (dashboard?.week_start && dashboard?.week_end) {
+    const [creatorsResult, rankingResult] = await Promise.all([
+      admin
+        .from('agency_creator_performance')
+        .select('*')
+        .eq('agency_id', agencyLink.agency_id)
+        .eq('week_start', dashboard.week_start)
+        .eq('week_end', dashboard.week_end)
+        .order('paid_minutes', { ascending: false }),
+      admin
+        .from('agency_ranking_weekly')
+        .select('*')
+        .eq('agency_id', agencyLink.agency_id)
+        .eq('week_start', dashboard.week_start)
+        .eq('week_end', dashboard.week_end)
+        .limit(1),
+    ])
 
-  if (rankingError) {
-    console.error('[agencia/dashboard] agency_ranking_weekly', rankingError)
-    return NextResponse.json(
-      { success: false, error: 'Erro ao buscar ranking da agencia' },
-      { status: 500 }
-    )
+    if (creatorsResult.error) {
+      console.error('[agencia/dashboard] agency_creator_performance', creatorsResult.error)
+    } else {
+      creators = creatorsResult.data ?? []
+    }
+
+    if (rankingResult.error) {
+      console.error('[agencia/dashboard] agency_ranking_weekly', rankingResult.error)
+    } else {
+      rankingRows = rankingResult.data ?? []
+    }
   }
 
   return NextResponse.json({
