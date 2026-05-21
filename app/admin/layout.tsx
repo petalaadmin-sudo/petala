@@ -1,6 +1,27 @@
 import { AdminMenu } from './AdminMenu'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth/login')
+  }
+
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (userData?.role !== 'admin') {
+    redirect('/feed')
+  }
+
   return (
     <div className="flex min-h-screen bg-[#0a0a0a]">
       <AdminMenu />

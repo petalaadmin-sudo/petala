@@ -2,21 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function AdminTrustPage() {
   const supabase = createClient()
-  const router = useRouter()
   const [dados, setDados] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single()
-      if (userData?.role !== 'admin') { router.push('/feed'); return }
-
       const [usersRes, txRes, multiRes] = await Promise.all([
         supabase.from('users').select('id, email, created_at, balance_petals, first_purchase_done').order('created_at', { ascending: false }).limit(100),
         supabase.from('transactions').select('user_id, amount_brl, created_at, status').eq('status', 'completed').order('created_at', { ascending: false }).limit(200),

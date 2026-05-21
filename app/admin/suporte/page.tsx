@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function AdminSuportePage() {
   const supabase = createClient()
-  const router = useRouter()
   const [dados, setDados] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
@@ -17,11 +15,6 @@ export default function AdminSuportePage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single()
-      if (userData?.role !== 'admin') { router.push('/feed'); return }
-
       const [recentUsersRes, recentTxRes] = await Promise.all([
         supabase.from('users').select('id, email, username, balance_petals, created_at, role').order('created_at', { ascending: false }).limit(10),
         supabase.from('transactions').select('id, user_id, type, petals_delta, amount_brl, status, created_at, users(email)').eq('status', 'completed').order('created_at', { ascending: false }).limit(10),

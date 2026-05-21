@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function AdminPetalasPage() {
   const supabase = createClient()
-  const router = useRouter()
   const [dados, setDados] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [bonus, setBonus] = useState({ email: '', amount: '' })
@@ -15,11 +13,6 @@ export default function AdminPetalasPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single()
-      if (userData?.role !== 'admin') { router.push('/feed'); return }
-
       const [pacotesRes, topUsersRes, txRes] = await Promise.all([
         supabase.from('petal_packages').select('*').order('price_brl', { ascending: true }),
         supabase.from('users').select('id, email, username, balance_petals').order('balance_petals', { ascending: false }).limit(10),

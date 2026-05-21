@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function AdminMarketingPage() {
   const supabase = createClient()
-  const router = useRouter()
   const [dados, setDados] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [cupom, setCupom] = useState({ codigo: '', bonus: '' })
@@ -15,11 +13,6 @@ export default function AdminMarketingPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single()
-      if (userData?.role !== 'admin') { router.push('/feed'); return }
-
       const [referralsRes, commissionsRes, usersRes] = await Promise.all([
         supabase.from('users').select('id, email, username, referral_code, referred_by, first_purchase_done, created_at').not('referral_code', 'is', null).order('created_at', { ascending: false }).limit(50),
         supabase.from('referral_commissions').select('*').order('created_at', { ascending: false }).limit(50),

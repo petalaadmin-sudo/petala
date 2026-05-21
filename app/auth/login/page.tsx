@@ -18,7 +18,9 @@ function LoginContent() {
   useEffect(() => {
     if (window.location.hash.includes('access_token')) {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) router.push('/feed')
+        if (session?.access_token) {
+          void redirectAfterPasswordLogin(session.access_token, session.refresh_token)
+        }
       })
       return
     }

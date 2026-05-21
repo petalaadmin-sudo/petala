@@ -2,21 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function AdminAnalyticsPage() {
   const supabase = createClient()
-  const router = useRouter()
   const [dados, setDados] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
-      const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single()
-      if (userData?.role !== 'admin') { router.push('/feed'); return }
-
       const hoje = new Date()
       const dias = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(hoje)
