@@ -14,6 +14,22 @@ type AuthAction = 'signup' | 'login' | 'email'
 
 const PENDING_AGENCY_INVITE_CODE_KEY = 'pending_agency_invite_code'
 const AGENCY_INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/
+const FIXED_TEXT_FIRST_MINUTE_PETALS = 10
+const FIXED_TEXT_PRICE_PETALS = 50
+const FIXED_VIDEO_PRICE_PETALS = 120
+const CPF_DIGIT_LIMIT = 11
+
+const onlyDigits = (value: string) => value.replace(/\D/g, '')
+
+function formatCpf(value: string) {
+  const digits = onlyDigits(value).slice(0, CPF_DIGIT_LIMIT)
+
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+}
 
 function getCookieValue(name: string) {
   if (typeof document === 'undefined') return null
@@ -93,12 +109,13 @@ export default function CreatorOnboardingPage() {
   const [bio, setBio]           = useState('')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [priceText, setPriceText]   = useState(5)
-  const [priceVideo, setPriceVideo] = useState(20)
-  const [pixKey, setPixKey]         = useState('')
+  const [pixCpf, setPixCpf]         = useState('')
+  const [pixCpfTouched, setPixCpfTouched] = useState(false)
+  const [pixCpfError, setPixCpfError] = useState<string | null>(null)
 
   const stepIndex = STEPS.indexOf(step)
   const progress  = ((stepIndex + 1) / STEPS.length) * 100
+  const pixCpfIsValid = pixCpf.length === CPF_DIGIT_LIMIT && !pixCpfError
 
   useEffect(() => {
     let mounted = true
@@ -174,6 +191,21 @@ export default function CreatorOnboardingPage() {
     const reader = new FileReader()
     reader.onload = (ev) => setPhotoPreview(ev.target?.result as string)
     reader.readAsDataURL(file)
+  }
+
+  const handlePixCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = onlyDigits(e.target.value)
+
+    setPixCpfTouched(true)
+
+    if (digits.length > CPF_DIGIT_LIMIT) {
+      setPixCpf(digits.slice(0, CPF_DIGIT_LIMIT))
+      setPixCpfError('Use um CPF com 11 numeros. CNPJ nao e aceito nesta fase.')
+      return
+    }
+
+    setPixCpf(digits)
+    setPixCpfError(null)
   }
 
   const registerAgencyInvite = useCallback(async (
@@ -384,6 +416,10 @@ export default function CreatorOnboardingPage() {
     setError(null)
 
     try {
+      if (!pixCpfIsValid) {
+        throw new Error('Informe um CPF Pix com 11 numeros. E-mail, telefone, chave aleatoria e CNPJ nao sao aceitos.')
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Não autenticado')
 
@@ -394,9 +430,9 @@ export default function CreatorOnboardingPage() {
           user_id:            user.id,
           name:               name.trim(),
           bio:                bio.trim() || null,
-          price_text_petals:  priceText,
-          price_video_petals: priceVideo,
-          pix_key:            pixKey.trim() || null,
+          price_text_petals:  FIXED_TEXT_PRICE_PETALS,
+          price_video_petals: FIXED_VIDEO_PRICE_PETALS,
+          pix_key:            pixCpf,
           active:             false, // só ativa após verificação
         })
         .select()
@@ -654,14 +690,14 @@ export default function CreatorOnboardingPage() {
         {step === 'precos' && (
           <div className="flex flex-col gap-5">
             <div>
-              <h2 className="text-white text-xl font-medium mb-1">Defina seus preços</h2>
-              <p className="text-white/35 text-sm">Você pode ajustar a qualquer momento</p>
+              <h2 className="text-white text-xl font-medium mb-1">Preços fixos da plataforma</h2>
+              <p className="text-white/35 text-sm">Esses valores são aplicados ao seu perfil de creator.</p>
             </div>
 
-            {/* Seletor de preço */}
+            {/* Precos fixos */}
             {[
-              { label: 'Chat de texto', sub: 'por minuto', value: priceText, set: setPriceText, options: [3, 5, 8, 10, 15] },
-              { label: 'Chat de vídeo', sub: 'por minuto', value: priceVideo, set: setPriceVideo, options: [10, 15, 20, 30, 50] },
+              { label: 'Chat de texto', sub: '10 pétalas no 1º minuto; depois 50 pétalas/min', value: `${FIXED_TEXT_PRICE_PETALS} pétalas/min`, detail: `${FIXED_TEXT_FIRST_MINUTE_PETALS} pétalas no 1º minuto. Depois, ${FIXED_TEXT_PRICE_PETALS} pétalas por minuto.` },
+              { label: 'Vídeo privado', sub: 'preço fixo da plataforma', value: `${FIXED_VIDEO_PRICE_PETALS} pétalas/min`, detail: `${FIXED_VIDEO_PRICE_PETALS} pétalas por minuto.` },
             ].map(item => (
               <div key={item.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-3">
@@ -669,44 +705,51 @@ export default function CreatorOnboardingPage() {
                     <div className="text-white text-sm font-medium">{item.label}</div>
                     <div className="text-white/30 text-xs">{item.sub}</div>
                   </div>
-                  <div className="text-yellow-400 text-lg font-medium">{item.value} 🌸</div>
+                  <div className="text-yellow-400 text-lg font-medium">{item.value}</div>
                 </div>
-                <div className="flex gap-2">
-                  {item.options.map(opt => (
-                    <button
-                      key={opt}
-                      onClick={() => item.set(opt)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                        item.value === opt
-                          ? 'bg-[#ff4d7d] text-white'
-                          : 'bg-[#1a1a1a] text-white/40 border border-white/8'
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+                <div className="rounded-lg border border-white/8 bg-[#0d0d0d] p-3">
+                  <div className="text-white/60 text-sm">{item.detail}</div>
                 </div>
               </div>
             ))}
 
-            {/* Estimativa de ganho */}
+            {/* Modelo de ganhos */}
             <div className="bg-[#0e1e14] border border-green-500/20 rounded-xl p-4">
-              <div className="text-green-400 text-xs font-medium mb-2">Estimativa de ganho (2h/dia)</div>
-              <div className="text-white text-lg font-medium">
-                R$ {(priceVideo * 120 * 0.7 * 0.035).toFixed(0)}/mês
-              </div>
-              <div className="text-white/30 text-xs mt-1">baseado em chats de vídeo · você recebe 70%</div>
+              <div className="text-green-400 text-xs font-medium mb-3">Modelo de ganhos</div>
+              {[
+                'Ganhos calculados sobre pétalas elegíveis.',
+                'Referência: US$1 a cada 850 pétalas elegíveis.',
+                'Bônus, promoções e créditos não sacáveis não entram no cálculo.',
+                'Agências recebem 30% sobre ganhos elegíveis da creator vinculada.',
+              ].map(item => (
+                <div key={item} className="flex gap-2 mb-2 last:mb-0">
+                  <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                  <span className="text-white/50 text-xs leading-relaxed">{item}</span>
+                </div>
+              ))}
             </div>
 
             {/* Pix para saque */}
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">Chave Pix para recebimento</label>
+              <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">CPF para recebimento via Pix</label>
               <input
-                value={pixKey}
-                onChange={e => setPixKey(e.target.value)}
-                placeholder="seu@email.com, CPF ou telefone"
+                value={formatCpf(pixCpf)}
+                onChange={handlePixCpfChange}
+                onBlur={() => setPixCpfTouched(true)}
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={14}
                 className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#ff4d7d]/40"
               />
+              <p className="text-white/30 text-xs mt-2 leading-relaxed">
+                Por segurança, o CPF do Pix deverá ser o mesmo CPF usado na verificação/KYC.
+              </p>
+              {pixCpfTouched && (pixCpfError || pixCpf.length !== CPF_DIGIT_LIMIT) && (
+                <div className="mt-2 rounded-xl border border-red-500/25 bg-red-900/20 px-3 py-2 text-red-300 text-xs leading-relaxed">
+                  {pixCpfError ?? 'Informe um CPF com 11 numeros. E-mail, telefone, chave aleatoria e CNPJ nao sao aceitos.'}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -729,11 +772,11 @@ export default function CreatorOnboardingPage() {
                 <div className="text-white/40 text-sm mb-3">{bio || '—'}</div>
                 <div className="flex gap-3">
                   <div className="flex-1 bg-[#0d0d0d] rounded-lg p-2 text-center">
-                    <div className="text-yellow-400 text-sm font-medium">{priceText} 🌸</div>
-                    <div className="text-white/25 text-[10px]">texto/min</div>
+                    <div className="text-yellow-400 text-sm font-medium">{FIXED_TEXT_PRICE_PETALS} pétalas</div>
+                    <div className="text-white/25 text-[10px]">texto/min após 1º min</div>
                   </div>
                   <div className="flex-1 bg-[#0d0d0d] rounded-lg p-2 text-center">
-                    <div className="text-yellow-400 text-sm font-medium">{priceVideo} 🌸</div>
+                    <div className="text-yellow-400 text-sm font-medium">{FIXED_VIDEO_PRICE_PETALS} pétalas</div>
                     <div className="text-white/25 text-[10px]">vídeo/min</div>
                   </div>
                 </div>
@@ -774,7 +817,8 @@ export default function CreatorOnboardingPage() {
           disabled={
             saving ||
             (step === 'bio' && !name.trim()) ||
-            (step === 'publicar' && !name.trim())
+            (step === 'precos' && !pixCpfIsValid) ||
+            (step === 'publicar' && (!name.trim() || !pixCpfIsValid))
           }
           className="w-full bg-[#ff4d7d] text-white rounded-xl py-4 text-sm font-medium disabled:opacity-40 active:scale-95 transition-transform flex items-center justify-center gap-2"
         >
