@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+type AgencyInfo = {
+  id: string
+  name: string | null
+  email: string | null
+  invite_code: string | null
+}
+
 type AgencyDashboard = {
   agency_name: string | null
   week_start: string | null
@@ -43,6 +50,7 @@ type CreatorPerformance = {
 
 type AgencyPayload = {
   currentWeek: unknown
+  agency: AgencyInfo | null
   dashboard: AgencyDashboard | null
   creators: CreatorPerformance[]
   ranking: AgencyRanking | null
@@ -95,9 +103,12 @@ function AccessDenied() {
 
 export default function AgenciaPage() {
   const router = useRouter()
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, '') ?? ''
   const [payload, setPayload] = useState<AgencyPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [accessDenied, setAccessDenied] = useState(false)
+  const [copiedInviteLink, setCopiedInviteLink] = useState(false)
+  const [appBaseUrl, setAppBaseUrl] = useState(configuredAppUrl)
 
   useEffect(() => {
     async function load() {
@@ -143,6 +154,11 @@ export default function AgenciaPage() {
     load()
   }, [router])
 
+  useEffect(() => {
+    if (configuredAppUrl || typeof window === 'undefined') return
+    setAppBaseUrl(window.location.origin.replace(/\/+$/, ''))
+  }, [configuredAppUrl])
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -153,9 +169,29 @@ export default function AgenciaPage() {
 
   if (accessDenied || !payload) return <AccessDenied />
 
-  const { currentWeek, dashboard, creators, ranking, agencyUserRole } = payload
+  const { currentWeek, agency, dashboard, creators, ranking, agencyUserRole } = payload
   const performanceLevel = firstText(dashboard?.agency_score_label_pt, ranking?.agency_score_label_pt)
   const performanceDescription = dashboard?.agency_score_description ?? null
+  const inviteCode = agency?.invite_code ?? null
+  const inviteLink = inviteCode && appBaseUrl ? `${appBaseUrl}/agencia/convite/${inviteCode}` : null
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return
+
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = inviteLink
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
+
+    setCopiedInviteLink(true)
+    setTimeout(() => setCopiedInviteLink(false), 2500)
+  }
 
   const cards = [
     { label: 'Score', value: int(dashboard?.agency_score ?? ranking?.agency_score), desc: 'Pontuacao semanal' },
@@ -187,6 +223,35 @@ export default function AgenciaPage() {
             <div className="text-white/70 text-sm mt-1">{agencyUserRole ?? 'agency'}</div>
           </div>
         </header>
+
+        <section className="bg-[#111] rounded-xl border border-white/5 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-white/30 text-[11px] uppercase tracking-wide">Link de convite para creators</div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)]">
+                <div className="rounded-lg bg-[#0d0d0d] border border-white/5 px-3 py-2">
+                  <div className="text-white/25 text-[10px] uppercase tracking-wide">Codigo</div>
+                  <div className="text-white text-sm font-medium font-mono tracking-wide mt-1">{inviteCode ?? '-'}</div>
+                </div>
+                <div className="min-w-0 rounded-lg bg-[#0d0d0d] border border-white/5 px-3 py-2">
+                  <div className="text-white/25 text-[10px] uppercase tracking-wide">Link copiavel</div>
+                  <div className="text-white/65 text-xs truncate mt-1">{inviteLink ?? 'Link indisponivel'}</div>
+                </div>
+              </div>
+              <p className="text-white/35 text-xs mt-3 leading-relaxed">
+                Creators convidadas ainda precisam concluir onboarding e passar pela verificação antes de serem vinculadas à agência.
+              </p>
+            </div>
+
+            <button
+              onClick={copyInviteLink}
+              disabled={!inviteLink}
+              className="w-full lg:w-auto rounded-xl bg-[#ff4d7d] px-4 py-3 text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-transform"
+            >
+              {copiedInviteLink ? 'Copiado' : 'Copiar link'}
+            </button>
+          </div>
+        </section>
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {cards.map(card => (

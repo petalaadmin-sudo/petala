@@ -12,6 +12,13 @@ type AgencyUser = {
   active: boolean | null
 }
 
+type AgencyInfo = {
+  id: string
+  name: string | null
+  email: string | null
+  invite_code: string | null
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
 
@@ -46,7 +53,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const [currentWeekResult, dashboardResult] = await Promise.all([
+  const [currentWeekResult, dashboardResult, agencyResult] = await Promise.all([
     admin.rpc('get_current_bloom_week'),
     admin
       .from('agency_dashboard_full')
@@ -54,6 +61,11 @@ export async function GET(request: NextRequest) {
       .eq('agency_id', agencyLink.agency_id)
       .order('week_start', { ascending: false })
       .limit(1)
+      .maybeSingle(),
+    admin
+      .from('agencies')
+      .select('id, name, email, invite_code')
+      .eq('id', agencyLink.agency_id)
       .maybeSingle(),
   ])
 
@@ -69,7 +81,16 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  if (agencyResult.error) {
+    console.error('[agencia/dashboard] agencies', agencyResult.error)
+    return NextResponse.json(
+      { success: false, error: 'Erro ao buscar dados da agencia' },
+      { status: 500 }
+    )
+  }
+
   const dashboard = dashboardResult.data
+  const agency = agencyResult.data as AgencyInfo | null
 
   let creators = []
   let rankingRows = []
@@ -109,6 +130,7 @@ export async function GET(request: NextRequest) {
     success: true,
     data: {
       currentWeek: currentWeekResult.data ?? null,
+      agency: agency ?? null,
       dashboard: dashboard ?? null,
       creators: creators ?? [],
       ranking: (rankingRows ?? [])[0] ?? null,
