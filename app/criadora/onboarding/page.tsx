@@ -11,6 +11,12 @@ type AgencyInviteStatus = 'onboarding_started' | 'pending_verification'
 type AuthStatus = 'checking' | 'authenticated' | 'anonymous'
 type AuthMode = 'signup' | 'login'
 type AuthAction = 'signup' | 'login' | 'email'
+type CreatorVerificationStatus = 'pending' | 'approved' | 'rejected'
+
+type CreatorVerificationSummary = {
+  id: string
+  status: CreatorVerificationStatus | null
+}
 
 const PENDING_AGENCY_INVITE_CODE_KEY = 'pending_agency_invite_code'
 const AGENCY_INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/
@@ -206,6 +212,47 @@ export default function CreatorOnboardingPage() {
 
     setPixCpf(digits)
     setPixCpfError(null)
+  }
+
+  const ensurePendingVerification = async (creatorId: string, userId: string) => {
+    const { data: existing, error: lookupError } = await supabase
+      .from('creator_verifications')
+      .select('id, status')
+      .eq('creator_id', creatorId)
+      .maybeSingle()
+
+    if (lookupError) {
+      throw new Error('Nao foi possivel verificar a solicitacao de aprovacao.')
+    }
+
+    const verification = existing as CreatorVerificationSummary | null
+
+    if (verification?.id) {
+      return verification
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('creator_verifications')
+      .insert({
+        creator_id: creatorId,
+        user_id: userId,
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+      })
+      .select('id, status')
+      .single()
+
+    if (insertError) {
+      const duplicateCode = (insertError as { code?: string }).code
+
+      if (duplicateCode === '23505') {
+        return null
+      }
+
+      throw new Error('Nao foi possivel enviar seu perfil para aprovacao.')
+    }
+
+    return inserted as CreatorVerificationSummary
   }
 
   const registerAgencyInvite = useCallback(async (
@@ -447,6 +494,10 @@ export default function CreatorOnboardingPage() {
         .eq('id', user.id)
 
       const createdCreatorId = (creator as { id?: string } | null)?.id
+      if (!createdCreatorId) throw new Error('Nao foi possivel confirmar o perfil criado.')
+
+      await ensurePendingVerification(createdCreatorId, user.id)
+
       const inviteRegistered = createdCreatorId
         ? await registerAgencyInvite('pending_verification', createdCreatorId)
         : false
