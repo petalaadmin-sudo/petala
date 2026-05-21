@@ -16,16 +16,21 @@ export function createClient() {
         storageKey: 'sb-petala-auth',
       },
       cookies: {
-        getAll() {
-          return cookieStore.getAll()
+        get(name) {
+          return cookieStore.get(name)?.value
         },
-        setAll(cookiesToSet) {
+        set(name, value, options) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookieStore.set(name, value, options)
           } catch {
-            // Server Component — cookies só podem ser setados em Route Handlers
+            // Server Components cannot set cookies; Route Handlers can.
+          }
+        },
+        remove(name, options) {
+          try {
+            cookieStore.set(name, '', { ...options, maxAge: 0 })
+          } catch {
+            // Server Components cannot set cookies; Route Handlers can.
           }
         },
       },
@@ -33,14 +38,18 @@ export function createClient() {
   )
 }
 
-// Cliente com service_role para operações admin
-// NUNCA exponha no browser
+// Cliente com service_role para operacoes admin.
+// NUNCA exponha no browser.
 export function createAdminClient() {
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: { getAll: () => [], setAll: () => {} },
+      cookies: {
+        get: () => undefined,
+        set: () => {},
+        remove: () => {},
+      },
       auth: { persistSession: false },
     }
   )
