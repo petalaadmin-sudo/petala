@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import CreatorVerificationActions from './CreatorVerificationActions'
 
 export default async function AdminModeracaoPage() {
   const supabase = createClient()
@@ -47,6 +48,7 @@ export default async function AdminModeracaoPage() {
                 <th className="text-left text-white/30 text-xs px-4 py-3">Status</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Enviado em</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Revisado em</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Acoes</th>
               </tr>
             </thead>
             <tbody>
@@ -69,6 +71,9 @@ export default async function AdminModeracaoPage() {
                   </td>
                   <td className="px-4 py-3 text-white/30 text-xs">
                     {v.reviewed_at ? new Date(v.reviewed_at).toLocaleString('pt-BR') : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <CreatorVerificationActions verificationId={v.id} status={v.status} />
                   </td>
                 </tr>
               ))}
