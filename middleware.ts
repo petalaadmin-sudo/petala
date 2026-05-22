@@ -26,6 +26,13 @@ const PUBLIC_ROUTES = [
   '/favoritos',
 ]
 
+function withNoStore(response: NextResponse) {
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
+  response.headers.set('CDN-Cache-Control', 'no-store')
+  response.headers.set('Vercel-CDN-Cache-Control', 'no-store')
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -60,10 +67,29 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
 
   const isPublicRoute = PUBLIC_ROUTES.some(
     r => pathname === r || pathname.startsWith(r + '/')
   )
+
+  if (isAdminRoute) {
+    if (!user) {
+      return withNoStore(NextResponse.redirect(new URL('/auth/login', request.url)))
+    }
+
+    const { data: userData, error: roleError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (roleError || userData?.role !== 'admin') {
+      return withNoStore(NextResponse.redirect(new URL('/feed', request.url)))
+    }
+
+    return withNoStore(supabaseResponse)
+  }
 
   if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL('/auth/login', request.url))

@@ -6,6 +6,14 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
+      urlPattern: /^https?:\/\/[^/]+\/admin(?:\/.*)?$/,
+      handler: 'NetworkOnly',
+    },
+    {
+      urlPattern: /^https?:\/\/[^/]+\/api\/admin(?:\/.*)?$/,
+      handler: 'NetworkOnly',
+    },
+    {
       urlPattern: /^https?.*/,
       handler: 'NetworkFirst',
       options: {
@@ -28,6 +36,14 @@ const nextConfig = {
   },
   async headers() {
     return [
+      {
+        source: '/admin/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Vercel-CDN-Cache-Control', value: 'no-store' },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [

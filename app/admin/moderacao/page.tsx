@@ -1,5 +1,10 @@
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import { createAdminClient } from '@/lib/supabase/server'
 import CreatorVerificationActions from './CreatorVerificationActions'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 type VerificationStatus = 'pending' | 'approved' | 'rejected'
 
@@ -32,6 +37,8 @@ function formatDate(value: string | null) {
 }
 
 export default async function AdminModeracaoPage() {
+  await requireAdminPage()
+
   const admin = createAdminClient() as any
 
   const { data: verificationData, error: verificationError } = await admin
