@@ -10,6 +10,9 @@ type ChatBillingResult = {
   session_ended?: boolean
   required?: number
   current_balance?: number
+  duration_seconds?: number
+  paid_until_seconds?: number
+  effective_ended_at?: string
   petals_charged?: number
 }
 
@@ -55,6 +58,9 @@ export async function POST(request: NextRequest) {
         session_ended: Boolean(result?.session_ended),
         required: result?.required,
         current: result?.current_balance,
+        duration_seconds: result?.duration_seconds,
+        paid_until_seconds: result?.paid_until_seconds,
+        effective_ended_at: result?.effective_ended_at,
         petals_charged: result?.petals_charged,
       }, { status: statusForBillingResult(result) })
     }

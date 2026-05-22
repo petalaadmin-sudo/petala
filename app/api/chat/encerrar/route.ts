@@ -9,6 +9,8 @@ type ChatBillingResult = {
   code?: string
   session_ended?: boolean
   duration_seconds?: number
+  paid_until_seconds?: number
+  effective_ended_at?: string
   petals_charged?: number
   required?: number
   current_balance?: number
@@ -26,6 +28,8 @@ function billingFailureResponse(result: ChatBillingResult | null) {
     code: result?.code ?? 'CHAT_BILLING_FAILED',
     session_ended: Boolean(result?.session_ended),
     duration_seconds: result?.duration_seconds,
+    paid_until_seconds: result?.paid_until_seconds,
+    effective_ended_at: result?.effective_ended_at,
     petals_charged: result?.petals_charged,
     required: result?.required,
     current: result?.current_balance,

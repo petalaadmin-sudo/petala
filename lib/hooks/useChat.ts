@@ -32,6 +32,7 @@ type MinuteBillingResponse = {
   session_ended?: boolean
   new_balance?: number
   duration_seconds?: number
+  paid_until_seconds?: number
   petals_charged?: number
 }
 
@@ -50,6 +51,7 @@ interface UseChatReturn {
   status: 'idle' | 'starting' | 'active' | 'ending' | 'ended' | 'error'
   error: string | null
   elapsedSeconds: number
+  serverDurationSeconds: number | null
   isTyping: boolean
 
   // Ações
@@ -87,6 +89,7 @@ export function useChat({
   const [status, setStatus]         = useState<UseChatReturn['status']>('idle')
   const [error, setError]           = useState<string | null>(null)
   const [elapsedSeconds, setElapsed] = useState(0)
+  const [serverDurationSeconds, setServerDurationSeconds] = useState<number | null>(null)
   const [isTyping, setIsTyping]     = useState(false)
 
   const channelRef    = useRef<RealtimeChannel | null>(null)
@@ -102,6 +105,14 @@ export function useChat({
   const stopBilling = useCallback(() => {
     if (billingRef.current) { clearInterval(billingRef.current); billingRef.current = null }
     if (elapsedRef.current)  { clearInterval(elapsedRef.current);  elapsedRef.current = null }
+  }, [])
+
+  const applyServerDuration = useCallback((duration: number | null | undefined) => {
+    if (typeof duration !== 'number' || !Number.isFinite(duration)) return null
+    const safeDuration = Math.max(0, Math.floor(duration))
+    setServerDurationSeconds(safeDuration)
+    setElapsed(safeDuration)
+    return safeDuration
   }, [])
 
   // Busca saldo inicial do usuário
@@ -161,10 +172,11 @@ export function useChat({
         (payload) => {
           const updated = payload.new as any
           if (updated.ended_at) {
+            const duration = applyServerDuration(updated.duration_seconds)
             stopBilling()
             setStatus('ended')
             onSessionEnded?.({
-              duration: updated.duration_seconds,
+              duration: duration ?? updated.duration_seconds,
               petals:   updated.petals_charged,
             })
           }
@@ -173,7 +185,7 @@ export function useChat({
       .subscribe()
 
     channelRef.current = channel
-  }, [onSessionEnded, stopBilling, supabase])
+  }, [applyServerDuration, onSessionEnded, stopBilling, supabase])
 
   // ── Billing por minuto ───────────────────────────────────
   const startBilling = useCallback((sessionId: string) => {
@@ -206,11 +218,12 @@ export function useChat({
       const result = (await res.json().catch(() => ({}))) as MinuteBillingResponse
 
       if (result.session_ended) {
+        const duration = applyServerDuration(result.duration_seconds ?? result.paid_until_seconds)
         stopBilling()
         setStatus('ended')
         setError(result.error ?? 'Sessao encerrada')
         onSessionEnded?.({
-          duration: result.duration_seconds ?? 0,
+          duration: duration ?? 0,
           petals: result.petals_charged ?? 0,
         })
         return
@@ -226,7 +239,7 @@ export function useChat({
         onBalanceUpdate?.(result.new_balance)
       }
     }, 60_000)
-  }, [getAccessToken, onBalanceUpdate, onSessionEnded, stopBilling])
+  }, [applyServerDuration, getAccessToken, onBalanceUpdate, onSessionEnded, stopBilling])
 
   // ── Ações públicas ───────────────────────────────────────
 
@@ -267,6 +280,8 @@ export function useChat({
       }
 
       sessionIdRef.current = data.session_id
+      setServerDurationSeconds(null)
+      setElapsed(0)
       setSession(chatSession)
       setStatus('active')
 
@@ -316,11 +331,12 @@ export function useChat({
 
       if (!res.ok) {
         if (data.session_ended) {
+          const duration = applyServerDuration(data.duration_seconds ?? data.paid_until_seconds)
           channelRef.current?.unsubscribe()
           setStatus('ended')
           setError(data.error ?? 'Sessao encerrada')
           onSessionEnded?.({
-            duration: data.duration_seconds ?? 0,
+            duration: duration ?? 0,
             petals: data.petals_charged ?? 0,
           })
           return
@@ -332,9 +348,10 @@ export function useChat({
       }
 
       channelRef.current?.unsubscribe()
+      const duration = applyServerDuration(data.duration_seconds)
       setStatus('ended')
       onSessionEnded?.({
-        duration: data.duration_seconds ?? elapsedSeconds,
+        duration: duration ?? elapsedSeconds,
         petals: data.petals_charged ?? 0,
       })
     } catch (err: any) {
@@ -437,6 +454,7 @@ export function useChat({
     status,
     error,
     elapsedSeconds,
+    serverDurationSeconds,
     isTyping,
     startChat,
     endChat,

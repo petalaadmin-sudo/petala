@@ -69,7 +69,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
 
   const {
     session, messages, balance, status, error,
-    elapsedSeconds, isTyping,
+    elapsedSeconds, serverDurationSeconds, isTyping,
     startChat, endChat, sendMessage, sendGift, setIsTyping,
   } = useChat({
     creatorId: creator.id,
@@ -86,6 +86,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef       = useRef<HTMLInputElement>(null)
+  const endedDisplaySeconds = serverDurationSeconds ?? elapsedSeconds
 
   // Scroll automático ao receber mensagem
   useEffect(() => {
@@ -189,7 +190,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
           <div className="text-center mb-4">
             <div className="text-4xl mb-2">✨</div>
             <div className="text-white font-medium">Chat encerrado</div>
-            <div className="text-white/40 text-xs mt-1">{fmtTime(elapsedSeconds)} de conversa</div>
+            <div className="text-white/40 text-xs mt-1">{fmtTime(endedDisplaySeconds)} de conversa</div>
           </div>
 
           {!rating && (
