@@ -25,6 +25,16 @@ export interface ChatSession {
   started_at: string
 }
 
+type MinuteBillingResponse = {
+  success?: boolean
+  error?: string
+  code?: string
+  session_ended?: boolean
+  new_balance?: number
+  duration_seconds?: number
+  petals_charged?: number
+}
+
 interface UseChatOptions {
   creatorId: string
   chatType?: 'text' | 'video'
@@ -84,10 +94,15 @@ export function useChat({
   const elapsedRef    = useRef<NodeJS.Timeout | null>(null)
   const sessionIdRef  = useRef<string | null>(null)
 
-  const getAccessToken = async () => {
+  const getAccessToken = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
     return session?.access_token ?? null
-  }
+  }, [supabase])
+
+  const stopBilling = useCallback(() => {
+    if (billingRef.current) { clearInterval(billingRef.current); billingRef.current = null }
+    if (elapsedRef.current)  { clearInterval(elapsedRef.current);  elapsedRef.current = null }
+  }, [])
 
   // Busca saldo inicial do usuário
   useEffect(() => {
@@ -102,7 +117,7 @@ export function useChat({
       if (data) setBalance(data.balance_petals)
     }
     fetchBalance()
-  }, [])
+  }, [supabase])
 
   // Cleanup ao desmontar
   useEffect(() => {
@@ -110,7 +125,7 @@ export function useChat({
       stopBilling()
       channelRef.current?.unsubscribe()
     }
-  }, [])
+  }, [stopBilling])
 
   // ── Supabase Realtime ────────────────────────────────────
   const subscribeToSession = useCallback((sessionId: string) => {
@@ -158,10 +173,10 @@ export function useChat({
       .subscribe()
 
     channelRef.current = channel
-  }, [supabase])
+  }, [onSessionEnded, stopBilling, supabase])
 
   // ── Billing por minuto ───────────────────────────────────
-  const startBilling = useCallback((sessionId: string, pricePerMin: number) => {
+  const startBilling = useCallback((sessionId: string) => {
     // Timer de exibição (segundos decorridos)
     elapsedRef.current = setInterval(() => {
       setElapsed(s => s + 1)
@@ -169,31 +184,49 @@ export function useChat({
 
     // Billing real a cada 60 segundos
     billingRef.current = setInterval(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (sessionIdRef.current !== sessionId) return
 
-      const { data: result } = await supabase.rpc('charge_chat_minute', {
-        p_session_id: sessionId,
-        p_user_id:    user.id,
+      const accessToken = await getAccessToken()
+      if (!accessToken) {
+        stopBilling()
+        setError('Nao autenticado')
+        setStatus('error')
+        return
+      }
+
+      const res = await fetch('/api/chat/minuto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ session_id: sessionId }),
       })
 
-      if (result?.success) {
-        setBalance(result.new_balance)
-        onBalanceUpdate?.(result.new_balance)
-      } else if (result?.session_ended) {
-        // Saldo insuficiente — sessão encerrada pelo servidor
+      const result = (await res.json().catch(() => ({}))) as MinuteBillingResponse
+
+      if (result.session_ended) {
         stopBilling()
         setStatus('ended')
-        setError('Saldo insuficiente — sessão encerrada')
-        onSessionEnded?.({ duration: elapsedSeconds, petals: 0 })
+        setError(result.error ?? 'Sessao encerrada')
+        onSessionEnded?.({
+          duration: result.duration_seconds ?? 0,
+          petals: result.petals_charged ?? 0,
+        })
+        return
+      }
+
+      if (!res.ok || !result.success) {
+        setError(result.error ?? 'Falha ao cobrar minuto do chat')
+        return
+      }
+
+      if (typeof result.new_balance === 'number') {
+        setBalance(result.new_balance)
+        onBalanceUpdate?.(result.new_balance)
       }
     }, 60_000)
-  }, [supabase, elapsedSeconds])
-
-  const stopBilling = () => {
-    if (billingRef.current) { clearInterval(billingRef.current); billingRef.current = null }
-    if (elapsedRef.current)  { clearInterval(elapsedRef.current);  elapsedRef.current = null }
-  }
+  }, [getAccessToken, onBalanceUpdate, onSessionEnded, stopBilling])
 
   // ── Ações públicas ───────────────────────────────────────
 
@@ -237,8 +270,15 @@ export function useChat({
       setSession(chatSession)
       setStatus('active')
 
+      if (typeof data.new_balance === 'number') {
+        setBalance(data.new_balance)
+        onBalanceUpdate?.(data.new_balance)
+      }
+
       subscribeToSession(data.session_id)
-      startBilling(data.session_id, data.price_per_min)
+      if (chatSession.type === 'text') {
+        startBilling(data.session_id)
+      }
 
     } catch (err: any) {
       setError(err.message)
@@ -259,7 +299,7 @@ export function useChat({
         return
       }
 
-      await fetch('/api/chat/encerrar', {
+      const res = await fetch('/api/chat/encerrar', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -272,8 +312,31 @@ export function useChat({
         }),
       })
 
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        if (data.session_ended) {
+          channelRef.current?.unsubscribe()
+          setStatus('ended')
+          setError(data.error ?? 'Sessao encerrada')
+          onSessionEnded?.({
+            duration: data.duration_seconds ?? 0,
+            petals: data.petals_charged ?? 0,
+          })
+          return
+        }
+
+        setError(data.error ?? 'Erro ao encerrar chat')
+        setStatus('error')
+        return
+      }
+
       channelRef.current?.unsubscribe()
       setStatus('ended')
+      onSessionEnded?.({
+        duration: data.duration_seconds ?? elapsedSeconds,
+        petals: data.petals_charged ?? 0,
+      })
     } catch (err: any) {
       setError(err.message)
       setStatus('error')

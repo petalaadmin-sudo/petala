@@ -3,6 +3,30 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/api-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
+type ChatBillingResult = {
+  success?: boolean
+  error?: string
+  code?: string
+  session_ended?: boolean
+  new_balance?: number
+  petals_charged?: number
+  required?: number
+  current_balance?: number
+}
+
+function billingFailureResponse(result: ChatBillingResult) {
+  const status = result.code === 'INSUFFICIENT_BALANCE' ? 402 : 400
+
+  return NextResponse.json({
+    error: result.error ?? 'Falha ao cobrar chat',
+    code: result.code ?? 'CHAT_BILLING_FAILED',
+    session_ended: Boolean(result.session_ended),
+    required: result.required,
+    current: result.current_balance,
+    petals_charged: result.petals_charged,
+  }, { status })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
@@ -12,15 +36,16 @@ export async function POST(request: NextRequest) {
     }
 
     const user = auth.user
-
     const { creator_id, type = 'text' } = await request.json()
-    if (!creator_id) return NextResponse.json({ error: 'creator_id obrigatório' }, { status: 400 })
 
-    const admin = createAdminClient()
+    if (!creator_id) {
+      return NextResponse.json({ error: 'creator_id obrigatorio' }, { status: 400 })
+    }
+
+    const admin = createAdminClient() as any
     const textFirstMinutePrice = 10
     const textNextMinutePrice = 50
 
-    // 1. Busca criadora e verifica se está ativa e online
     const { data: creator } = await admin
       .from('creators')
       .select('id, user_id, price_text_petals, price_video_petals, active')
@@ -28,14 +53,14 @@ export async function POST(request: NextRequest) {
       .eq('active', true)
       .single()
 
-    if (!creator) return NextResponse.json({ error: 'Criadora não encontrada' }, { status: 404 })
-
-    // Não permite chat consigo mesmo
-    if (creator.user_id === user.id) {
-      return NextResponse.json({ error: 'Você não pode iniciar chat com você mesmo' }, { status: 400 })
+    if (!creator) {
+      return NextResponse.json({ error: 'Criadora nao encontrada' }, { status: 404 })
     }
 
-    // 2. Verifica presença online
+    if (creator.user_id === user.id) {
+      return NextResponse.json({ error: 'Voce nao pode iniciar chat com voce mesmo' }, { status: 400 })
+    }
+
     const { data: presence } = await admin
       .from('creator_presence')
       .select('online, in_session')
@@ -43,14 +68,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (!presence?.online) {
-      return NextResponse.json({ error: 'Criadora está offline no momento' }, { status: 409 })
+      return NextResponse.json({ error: 'Criadora esta offline no momento' }, { status: 409 })
     }
 
-    // 3. Verifica saldo mínimo
     const pricePerMin = type === 'video'
       ? creator.price_video_petals
       : textNextMinutePrice
-    const minBalance = type === 'text' ? textFirstMinutePrice : pricePerMin * 5
+    const initialRequiredBalance = type === 'text'
+      ? textFirstMinutePrice
+      : pricePerMin * 5
 
     const { data: userData } = await admin
       .from('users')
@@ -58,16 +84,15 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (!userData || userData.balance_petals < minBalance) {
+    if (!userData || userData.balance_petals < initialRequiredBalance) {
       return NextResponse.json({
         error: 'Saldo insuficiente',
-        required: minBalance,
+        required: initialRequiredBalance,
         current: userData?.balance_petals ?? 0,
         code: 'INSUFFICIENT_BALANCE',
       }, { status: 402 })
     }
 
-    // 4. Verifica sessão ativa existente (só uma por vez)
     const { data: activeSession } = await admin
       .from('chat_sessions')
       .select('id')
@@ -76,125 +101,83 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (activeSession) {
-      return NextResponse.json({ error: 'Você já tem uma sessão ativa', session_id: activeSession.id }, { status: 409 })
+      return NextResponse.json({
+        error: 'Voce ja tem uma sessao ativa',
+        session_id: activeSession.id,
+      }, { status: 409 })
     }
 
-    // 5. Cria a sessão
     const { data: session, error: sessionError } = await admin
       .from('chat_sessions')
       .insert({
-        user_id:    user.id,
-        creator_id: creator_id,
-        type:       type,
+        user_id: user.id,
+        creator_id,
+        type,
       })
       .select()
       .single()
 
     if (sessionError || !session) {
-      throw new Error('Falha ao criar sessão: ' + sessionError?.message)
+      throw new Error('Falha ao criar sessao: ' + sessionError?.message)
     }
 
+    let billingResult: ChatBillingResult | null = null
+
     if (type === 'text') {
-      const { data: spendResult } = await admin.rpc('spend_petals', {
+      const { data, error } = await admin.rpc('charge_chat_text_due_minutes', {
+        p_session_id: session.id,
         p_user_id: user.id,
-        p_amount: textFirstMinutePrice,
-        p_type: 'spend',
-        p_ref_id: session.id,
-        p_idempotency_key: `chat_text_start:debit:${session.id}`,
       })
 
-      if (!spendResult?.success) {
+      billingResult = (data ?? null) as ChatBillingResult | null
+
+      if (error || !billingResult?.success) {
         await admin
           .from('chat_sessions')
           .update({ ended_at: new Date().toISOString() })
           .eq('id', session.id)
+          .is('ended_at', null)
 
-        await admin
-          .from('creator_presence')
-          .update({ in_session: false })
-          .eq('creator_id', creator_id)
+        if (error) {
+          console.error('[/api/chat/iniciar] charge_chat_text_due_minutes', error)
+        }
 
-        return NextResponse.json({
-          error: 'Saldo insuficiente',
-          required: textFirstMinutePrice,
-          current: userData?.balance_petals ?? 0,
-          code: 'INSUFFICIENT_BALANCE',
-        }, { status: 402 })
+        return billingFailureResponse(billingResult ?? {
+          error: 'Falha ao cobrar primeiro minuto',
+          code: 'CHAT_BILLING_FAILED',
+        })
       }
-
-      const creatorEarn = Math.floor(textFirstMinutePrice * 0.7)
-      const debitKey = `chat_text_start:debit:${session.id}`
-      const creditKey = `chat_text_start:credit:${session.id}`
-
-      await admin.rpc('credit_petals', {
-        p_user_id: creator.user_id,
-        p_amount: creatorEarn,
-        p_type: 'gift_received',
-        p_ref_id: session.id,
-        p_idempotency_key: creditKey,
-      })
-
-      const { data: creatorEarningResult, error: creatorEarningError } = await admin.rpc('record_creator_earning', {
-        p_creator_id: creator.id,
-        p_petals_amount: creatorEarn,
-        p_source_type: 'chat_text_start',
-        p_source_ref_id: session.id,
-        p_metadata: {
-          session_id: session.id,
-          session_type: 'text',
-          minute_number: 1,
-          petals_charged: textFirstMinutePrice,
-          creator_petals_earned: creatorEarn,
-          debit_key: debitKey,
-          credit_key: creditKey,
-        },
-        p_idempotency_key: `creator_earning:chat_text_start:credit:${session.id}`,
-      })
-
-      if (creatorEarningError || !creatorEarningResult?.success) {
-        return NextResponse.json({
-          error: 'Falha ao registrar ganho da criadora',
-          debit_processed: true,
-          credit_processed: true,
-        }, { status: 500 })
-      }
-
-      await admin
-        .from('chat_sessions')
-        .update({ petals_charged: textFirstMinutePrice })
-        .eq('id', session.id)
     }
 
-    // 6. Marca criadora como in_session
     await admin
       .from('creator_presence')
       .update({ in_session: true })
       .eq('creator_id', creator_id)
 
-    // 7. Insere mensagem de sistema para iniciar o chat
     await admin.from('chat_messages').insert({
-      session_id:  session.id,
-      sender_id:   user.id,
+      session_id: session.id,
+      sender_id: user.id,
       sender_role: 'system',
-      content:     type === 'text'
-        ? 'Chat iniciado · 10 \u{1F338} no primeiro minuto · depois 50 \u{1F338}/min'
-        : `Chat iniciado · ${pricePerMin} 🌸/min`,
-      type:        'system',
+      content: type === 'text'
+        ? 'Chat iniciado - 10 petalas no primeiro minuto - depois 50 petalas/min'
+        : `Chat iniciado - ${pricePerMin} petalas/min`,
+      type: 'system',
     })
 
     const response: Record<string, unknown> = {
-      session_id:    session.id,
-      type:          session.type,
+      session_id: session.id,
+      type: session.type,
       price_per_min: pricePerMin,
-      started_at:    session.started_at,
+      started_at: session.started_at,
     }
 
     if (type === 'text') {
       response.first_minute_price = textFirstMinutePrice
+      response.new_balance = billingResult?.new_balance
+      response.petals_charged = billingResult?.petals_charged
     }
 
     return NextResponse.json(response)
-
   } catch (err) {
     console.error('[/api/chat/iniciar]', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

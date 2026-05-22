@@ -3,6 +3,35 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/api-auth'
 import { NextRequest, NextResponse } from 'next/server'
 
+type ChatBillingResult = {
+  success?: boolean
+  error?: string
+  code?: string
+  session_ended?: boolean
+  duration_seconds?: number
+  petals_charged?: number
+  required?: number
+  current_balance?: number
+}
+
+function billingFailureResponse(result: ChatBillingResult | null) {
+  const status =
+    result?.code === 'INSUFFICIENT_BALANCE' ? 402 :
+    result?.code === 'UNAUTHORIZED' ? 403 :
+    result?.code === 'SESSION_ENDED' ? 409 :
+    400
+
+  return NextResponse.json({
+    error: result?.error ?? 'Falha ao cobrar minutos pendentes',
+    code: result?.code ?? 'CHAT_BILLING_FAILED',
+    session_ended: Boolean(result?.session_ended),
+    duration_seconds: result?.duration_seconds,
+    petals_charged: result?.petals_charged,
+    required: result?.required,
+    current: result?.current_balance,
+  }, { status })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
@@ -12,13 +41,14 @@ export async function POST(request: NextRequest) {
     }
 
     const user = auth.user
-
     const { session_id, rating, rating_comment } = await request.json()
-    if (!session_id) return NextResponse.json({ error: 'session_id obrigatório' }, { status: 400 })
 
-    const admin = createAdminClient()
+    if (!session_id) {
+      return NextResponse.json({ error: 'session_id obrigatorio' }, { status: 400 })
+    }
 
-    // Busca sessão — valida que o usuário é participante
+    const admin = createAdminClient() as any
+
     const { data: session } = await admin
       .from('chat_sessions')
       .select('*, creators!inner(user_id)')
@@ -27,14 +57,31 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão não encontrada ou já encerrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Sessao nao encontrada ou ja encerrada' }, { status: 404 })
     }
 
-    // Valida que é participante (usuário ou criadora)
-    const isUser    = session.user_id === user.id
+    const isUser = session.user_id === user.id
     const isCreator = session.creators.user_id === user.id
+
     if (!isUser && !isCreator) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+      return NextResponse.json({ error: 'Nao autorizado' }, { status: 403 })
+    }
+
+    if (session.type === 'text') {
+      const { data, error } = await admin.rpc('charge_chat_text_due_minutes', {
+        p_session_id: session_id,
+        p_user_id: session.user_id,
+      })
+
+      const billingResult = (data ?? null) as ChatBillingResult | null
+
+      if (error || !billingResult?.success) {
+        if (error) {
+          console.error('[/api/chat/encerrar] charge_chat_text_due_minutes', error)
+        }
+
+        return billingFailureResponse(billingResult)
+      }
     }
 
     const now = new Date().toISOString()
@@ -42,17 +89,22 @@ export async function POST(request: NextRequest) {
       (new Date(now).getTime() - new Date(session.started_at).getTime()) / 1000
     )
 
-    // Encerra a sessão
-    await admin
+    const { data: updatedSession, error: updateError } = await admin
       .from('chat_sessions')
       .update({
-        ended_at:         now,
+        ended_at: now,
         duration_seconds: durationSeconds,
         ...(isUser && rating ? { rating, rating_comment: rating_comment ?? null } : {}),
       })
       .eq('id', session_id)
+      .is('ended_at', null)
+      .select('duration_seconds, petals_charged')
+      .single()
 
-    // Atualiza rating da criadora (média ponderada simples)
+    if (updateError || !updatedSession) {
+      throw new Error('Falha ao encerrar sessao: ' + updateError?.message)
+    }
+
     if (isUser && rating) {
       const { data: creator } = await admin
         .from('creators')
@@ -71,27 +123,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Libera presença da criadora
     await admin
       .from('creator_presence')
       .update({ in_session: false })
       .eq('creator_id', session.creator_id)
 
-    // Insere mensagem de sistema de encerramento
     await admin.from('chat_messages').insert({
-      session_id:  session_id,
-      sender_id:   user.id,
+      session_id,
+      sender_id: user.id,
       sender_role: 'system',
-      content:     `Chat encerrado · ${Math.floor(durationSeconds / 60)}min ${durationSeconds % 60}s · ${session.petals_charged} 🌸 usados`,
-      type:        'system',
+      content: `Chat encerrado - ${Math.floor(durationSeconds / 60)}min ${durationSeconds % 60}s - ${updatedSession.petals_charged} petalas usadas`,
+      type: 'system',
     })
 
     return NextResponse.json({
       session_id,
-      duration_seconds: durationSeconds,
-      petals_charged:   session.petals_charged,
+      duration_seconds: updatedSession.duration_seconds,
+      petals_charged: updatedSession.petals_charged,
     })
-
   } catch (err) {
     console.error('[/api/chat/encerrar]', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
