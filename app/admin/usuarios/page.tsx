@@ -1,13 +1,31 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export default async function AdminUsuariosPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
-  const { data: users } = await supabase
+  const { data: users, error } = await supabase
     .from('users')
     .select('id, email, username, balance_petals, role, created_at, vip_until')
     .order('created_at', { ascending: false })
     .limit(100)
+
+  if (error) {
+    console.error('[admin/usuarios] Failed to load users', error)
+
+    return (
+      <div>
+        <h1 className="text-white text-xl font-medium mb-6">Usuários</h1>
+
+        <div className="bg-red-950/30 border border-red-500/20 rounded-xl p-4 text-red-200 text-sm">
+          Erro ao carregar usuarios.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
