@@ -120,7 +120,9 @@ export default async function AdminAgenciasPage() {
     <div className="space-y-8">
       <header>
         <h1 className="text-white text-xl font-medium">Agencias parceiras</h1>
-        <p className="text-white/35 text-xs mt-1">Agencias aprovadas e candidaturas recebidas.</p>
+        <p className="text-white/35 text-xs mt-1">
+          Agencias cadastradas/operacionais e candidaturas de agencia.
+        </p>
       </header>
 
       {agenciesResult.error && (
@@ -165,8 +167,8 @@ function AgencySection({ agencies }: { agencies: AdminAgency[] }) {
   return (
     <section>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-white text-sm font-medium">Agencias cadastradas</h2>
-        <span className="text-white/30 text-xs">{int(agencies.length)} agencias</span>
+        <h2 className="text-white text-sm font-medium">Agencias cadastradas/operacionais</h2>
+        <span className="text-white/30 text-xs">{int(agencies.length)} agencias operacionais</span>
       </div>
 
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
@@ -180,7 +182,7 @@ function AgencySection({ agencies }: { agencies: AdminAgency[] }) {
                   'Email',
                   'WhatsApp',
                   'Pais',
-                  'Status',
+                  'Status operacional',
                   'Comissao',
                   'Usuarios',
                   'Criadoras',
@@ -243,7 +245,7 @@ function ApplicationSection({
   return (
     <section>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-white text-sm font-medium">{title}</h2>
+        <h2 className="text-white text-sm font-medium">Candidaturas de agencia - {title}</h2>
         <span className="text-white/30 text-xs">{int(applications.length)} candidaturas</span>
       </div>
 
