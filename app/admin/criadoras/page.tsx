@@ -4,6 +4,29 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
+type AdminCreator = {
+  creator_id: string
+  user_id: string
+  email: string | null
+  username: string | null
+  user_role: string | null
+  creator_name: string | null
+  verified: boolean | null
+  active: boolean | null
+  price_text_petals: number | null
+  price_video_petals: number | null
+  rating: number | null
+  rating_count: number | null
+  total_gifts: number | null
+  total_earnings_petals: number | null
+  agency_id: string | null
+  agency_name: string | null
+  created_at: string | null
+  updated_at: string | null
+  role_mismatch: boolean | null
+  status_label: string | null
+}
+
 function AdminError({ message }: { message: string }) {
   return (
     <div>
@@ -18,60 +41,49 @@ function AdminError({ message }: { message: string }) {
 
 function formatDate(value: string | null) {
   if (!value) return '-'
-  return new Date(value).toLocaleDateString('pt-BR')
+
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString('pt-BR')
+}
+
+function statusText(value: string | null) {
+  if (value === 'active_verified') return 'Ativa/verificada'
+  if (value === 'pending_verification') return 'Pendente'
+  if (value === 'role_mismatch') return 'Role divergente'
+  if (value === 'missing_user') return 'Sem usuario'
+  if (value === 'inactive') return 'Inativa'
+  if (value === 'active') return 'Ativa'
+  return value ?? '-'
+}
+
+function statusClass(value: string | null) {
+  if (value === 'active_verified') return 'bg-green-400/20 text-green-400'
+  if (value === 'pending_verification') return 'bg-yellow-400/20 text-yellow-300'
+  if (value === 'role_mismatch' || value === 'missing_user') return 'bg-red-400/20 text-red-300'
+  if (value === 'inactive') return 'bg-white/5 text-white/30'
+  return 'bg-white/5 text-white/40'
+}
+
+function yesNo(value: boolean | null | undefined) {
+  return value ? 'Sim' : 'Nao'
 }
 
 export default async function AdminCriadorasPage() {
-  const supabase = createAdminClient()
+  const admin = createAdminClient() as any
 
-  const { data: creators, error: creatorsError } = await supabase
-    .from('creators')
-    .select('id, user_id, name, active, verified, verified_at, created_at, price_text_petals, price_video_petals, total_gifts, total_earnings_petals, rating, rating_count, agency_id')
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const { data, error } = await admin.rpc('admin_list_creators', {
+    p_limit: 100,
+    p_offset: 0,
+    p_status: 'all',
+    p_search: null,
+  })
 
-  if (creatorsError) {
-    console.error('[admin/criadoras] Failed to load creators', creatorsError)
+  if (error) {
+    console.error('[admin/criadoras] admin_list_creators', error)
     return <AdminError message="Erro ao carregar criadoras." />
   }
 
-  const creatorRows = creators ?? []
-  const userIds = Array.from(new Set(creatorRows.map(c => c.user_id).filter((id): id is string => Boolean(id))))
-  const agencyIds = Array.from(new Set(creatorRows.map(c => c.agency_id).filter((id): id is string => Boolean(id))))
-
-  let relatedUsers: { id: string; email: string | null; username: string | null }[] = []
-  let agencies: { id: string; name: string }[] = []
-
-  if (userIds.length > 0) {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, email, username')
-      .in('id', userIds)
-
-    if (error) {
-      console.error('[admin/criadoras] Failed to load creator users', error)
-      return <AdminError message="Erro ao carregar usuarios das criadoras." />
-    }
-
-    relatedUsers = data ?? []
-  }
-
-  if (agencyIds.length > 0) {
-    const { data, error } = await supabase
-      .from('agencies')
-      .select('id, name')
-      .in('id', agencyIds)
-
-    if (error) {
-      console.error('[admin/criadoras] Failed to load agencies', error)
-      return <AdminError message="Erro ao carregar agencias das criadoras." />
-    }
-
-    agencies = data ?? []
-  }
-
-  const usersById = new Map(relatedUsers.map(user => [user.id, user]))
-  const agenciesById = new Map(agencies.map(agency => [agency.id, agency]))
+  const creators = (data ?? []) as AdminCreator[]
 
   return (
     <div>
@@ -79,12 +91,14 @@ export default async function AdminCriadorasPage() {
 
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden mb-6">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[1300px]">
             <thead>
               <tr className="border-b border-white/5">
                 <th className="text-left text-white/30 text-xs px-4 py-3">Nome</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Email</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Username</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Status</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Role</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Agencia</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Texto</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Video</th>
@@ -96,36 +110,41 @@ export default async function AdminCriadorasPage() {
               </tr>
             </thead>
             <tbody>
-              {creatorRows.map(c => {
-                const user = usersById.get(c.user_id)
-                const agency = c.agency_id ? agenciesById.get(c.agency_id) : null
+              {creators.map(creator => (
+                <tr key={creator.creator_id} className="border-b border-white/5 hover:bg-white/2 transition-all">
+                  <td className="px-4 py-3 text-white/70 text-sm font-medium">{creator.creator_name ?? '-'}</td>
+                  <td className="px-4 py-3 text-white/50 text-sm">{creator.email ?? '-'}</td>
+                  <td className="px-4 py-3 text-white/50 text-sm">{creator.username ?? '-'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusClass(creator.status_label)}`}>
+                      {statusText(creator.status_label)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${creator.role_mismatch ? 'bg-red-400/20 text-red-300' : 'bg-white/5 text-white/40'}`}>
+                      {creator.user_role ?? '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-white/40 text-xs">{creator.agency_name ?? creator.agency_id ?? '-'}</td>
+                  <td className="px-4 py-3 text-[#ff4d7d] text-xs">{creator.price_text_petals ?? 0} petalas</td>
+                  <td className="px-4 py-3 text-[#ff4d7d] text-xs">{creator.price_video_petals ?? 0} petalas</td>
+                  <td className="px-4 py-3 text-white/40 text-xs">{creator.total_gifts ?? 0}</td>
+                  <td className="px-4 py-3 text-white/40 text-xs">
+                    {Number(creator.rating ?? 0).toFixed(1)} ({creator.rating_count ?? 0})
+                  </td>
+                  <td className="px-4 py-3 text-white/40 text-xs">{yesNo(creator.verified)}</td>
+                  <td className="px-4 py-3 text-white/40 text-xs">{yesNo(creator.active)}</td>
+                  <td className="px-4 py-3 text-white/30 text-xs">{formatDate(creator.created_at)}</td>
+                </tr>
+              ))}
 
-                return (
-                  <tr key={c.id} className="border-b border-white/5 hover:bg-white/2 transition-all">
-                    <td className="px-4 py-3 text-white/70 text-sm font-medium">{c.name}</td>
-                    <td className="px-4 py-3 text-white/50 text-sm">{user?.email ?? '-'}</td>
-                    <td className="px-4 py-3 text-white/50 text-sm">{user?.username ?? '-'}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{agency?.name ?? c.agency_id ?? '-'}</td>
-                    <td className="px-4 py-3 text-[#ff4d7d] text-xs">{c.price_text_petals} petalas</td>
-                    <td className="px-4 py-3 text-[#ff4d7d] text-xs">{c.price_video_petals} petalas</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{c.total_gifts}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">
-                      {Number(c.rating ?? 0).toFixed(1)} ({c.rating_count ?? 0})
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${c.verified ? 'bg-green-400/20 text-green-400' : 'bg-white/5 text-white/30'}`}>
-                        {c.verified ? 'Sim' : 'Nao'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${c.active ? 'bg-green-400/20 text-green-400' : 'bg-red-400/20 text-red-400'}`}>
-                        {c.active ? 'Ativa' : 'Inativa'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white/30 text-xs">{formatDate(c.created_at)}</td>
-                  </tr>
-                )
-              })}
+              {creators.length === 0 && (
+                <tr>
+                  <td colSpan={13} className="px-4 py-8 text-center text-white/30 text-sm">
+                    Nenhuma criadora encontrada.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
