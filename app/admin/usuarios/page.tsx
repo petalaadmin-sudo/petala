@@ -10,6 +10,7 @@ export default async function AdminUsuariosPage() {
   const { data: users, error } = await supabase
     .from('users')
     .select('id, email, username, balance_petals, role, created_at, vip_until')
+    .eq('role', 'user')
     .order('created_at', { ascending: false })
     .limit(100)
 
