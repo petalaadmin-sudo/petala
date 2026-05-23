@@ -1,54 +1,81 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
+function AdminError({ message }: { message: string }) {
+  return (
+    <div>
+      <h1 className="text-white text-xl font-medium mb-6">Criadoras</h1>
+
+      <div className="bg-red-950/30 border border-red-500/20 rounded-xl p-4 text-red-200 text-sm">
+        {message}
+      </div>
+    </div>
+  )
+}
+
+function formatDate(value: string | null) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('pt-BR')
+}
 
 export default async function AdminCriadorasPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
-  const { data: creators } = await supabase
-    .from('criadores')
-    .select('id, name, bio, active, verified, verified_at, created_at, price_text_petals, price_video_petals, category')
+  const { data: creators, error: creatorsError } = await supabase
+    .from('creators')
+    .select('id, user_id, name, active, verified, verified_at, created_at, price_text_petals, price_video_petals, total_gifts, total_earnings_petals, rating, rating_count, agency_id')
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const { data: pending } = await supabase
-    .from('verificações_do_criador')
-    .select('id, creator_id, submitted_at, status')
-    .eq('status', 'pending')
-
-  const { data: gifts } = await supabase
-    .from('gifts')
-    .select('creator_id, petals_amount')
-
-  const { data: lives } = await supabase
-    .from('vidas')
-    .select('creator_id, status, started_at, ended_at')
-
-  function getNivel(petalsTotal: number) {
-    if (petalsTotal >= 10000) return { label: 'Diamante', color: 'text-blue-400', bg: 'bg-blue-400/20' }
-    if (petalsTotal >= 5000) return { label: 'Ouro', color: 'text-yellow-400', bg: 'bg-yellow-400/20' }
-    if (petalsTotal >= 1000) return { label: 'Prata', color: 'text-white/70', bg: 'bg-white/10' }
-    return { label: 'Bronze', color: 'text-orange-400', bg: 'bg-orange-400/20' }
+  if (creatorsError) {
+    console.error('[admin/criadoras] Failed to load creators', creatorsError)
+    return <AdminError message="Erro ao carregar criadoras." />
   }
 
-  function getScore(creatorId: string) {
-    const totalGifts = gifts?.filter(g => g.creator_id === creatorId)
-      .reduce((sum, g) => sum + (g.petals_amount || 0), 0) ?? 0
-    const totalLives = lives?.filter(l => l.creator_id === creatorId).length ?? 0
-    const score = Math.min(100, Math.round((totalGifts / 100) + (totalLives * 5)))
-    return { totalGifts, totalLives, score }
+  const creatorRows = creators ?? []
+  const userIds = Array.from(new Set(creatorRows.map(c => c.user_id).filter((id): id is string => Boolean(id))))
+  const agencyIds = Array.from(new Set(creatorRows.map(c => c.agency_id).filter((id): id is string => Boolean(id))))
+
+  let relatedUsers: { id: string; email: string | null; username: string | null }[] = []
+  let agencies: { id: string; name: string }[] = []
+
+  if (userIds.length > 0) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, username')
+      .in('id', userIds)
+
+    if (error) {
+      console.error('[admin/criadoras] Failed to load creator users', error)
+      return <AdminError message="Erro ao carregar usuarios das criadoras." />
+    }
+
+    relatedUsers = data ?? []
   }
+
+  if (agencyIds.length > 0) {
+    const { data, error } = await supabase
+      .from('agencies')
+      .select('id, name')
+      .in('id', agencyIds)
+
+    if (error) {
+      console.error('[admin/criadoras] Failed to load agencies', error)
+      return <AdminError message="Erro ao carregar agencias das criadoras." />
+    }
+
+    agencies = data ?? []
+  }
+
+  const usersById = new Map(relatedUsers.map(user => [user.id, user]))
+  const agenciesById = new Map(agencies.map(agency => [agency.id, agency]))
 
   return (
     <div>
       <h1 className="text-white text-xl font-medium mb-2">Criadoras</h1>
-
-      {pending && pending.length > 0 && (
-        <div className="bg-yellow-400/10 border border-yellow-400/20 rounded-xl p-4 mb-6 flex items-center justify-between">
-          <div className="text-yellow-400 text-sm">
-            ⚠️ {pending.length} verificação(ões) pendente(s)
-          </div>
-          <a href="/admin/moderacao" className="text-yellow-400 text-xs underline">Revisar</a>
-        </div>
-      )}
 
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden mb-6">
         <div className="overflow-x-auto">
@@ -56,41 +83,38 @@ export default async function AdminCriadorasPage() {
             <thead>
               <tr className="border-b border-white/5">
                 <th className="text-left text-white/30 text-xs px-4 py-3">Nome</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Nível</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Score</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Email</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Username</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Agencia</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Texto</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Video</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Gifts</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Lives</th>
-                <th className="text-left text-white/30 text-xs px-4 py-3">Preço texto</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Rating</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Verificada</th>
                 <th className="text-left text-white/30 text-xs px-4 py-3">Ativa</th>
+                <th className="text-left text-white/30 text-xs px-4 py-3">Cadastro</th>
               </tr>
             </thead>
             <tbody>
-              {creators?.map(c => {
-                const { totalGifts, totalLives, score } = getScore(c.id)
-                const nivel = getNivel(totalGifts)
+              {creatorRows.map(c => {
+                const user = usersById.get(c.user_id)
+                const agency = c.agency_id ? agenciesById.get(c.agency_id) : null
+
                 return (
                   <tr key={c.id} className="border-b border-white/5 hover:bg-white/2 transition-all">
                     <td className="px-4 py-3 text-white/70 text-sm font-medium">{c.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${nivel.bg} ${nivel.color}`}>
-                        {nivel.label}
-                      </span>
+                    <td className="px-4 py-3 text-white/50 text-sm">{user?.email ?? '-'}</td>
+                    <td className="px-4 py-3 text-white/50 text-sm">{user?.username ?? '-'}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">{agency?.name ?? c.agency_id ?? '-'}</td>
+                    <td className="px-4 py-3 text-[#ff4d7d] text-xs">{c.price_text_petals} petalas</td>
+                    <td className="px-4 py-3 text-[#ff4d7d] text-xs">{c.price_video_petals} petalas</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">{c.total_gifts}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">
+                      {Number(c.rating ?? 0).toFixed(1)} ({c.rating_count ?? 0})
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-white/5 rounded-full h-1.5">
-                          <div className="bg-[#ff4d7d] h-1.5 rounded-full" style={{ width: `${score}%` }} />
-                        </div>
-                        <span className="text-white/40 text-xs">{score}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[#ff4d7d] text-xs">{totalGifts} 🌸</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{totalLives}</td>
-                    <td className="px-4 py-3 text-[#ff4d7d] text-xs">{c.price_text_petals} 🌸</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${c.verified ? 'bg-green-400/20 text-green-400' : 'bg-white/5 text-white/30'}`}>
-                        {c.verified ? '✓ Sim' : 'Não'}
+                        {c.verified ? 'Sim' : 'Nao'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -98,6 +122,7 @@ export default async function AdminCriadorasPage() {
                         {c.active ? 'Ativa' : 'Inativa'}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-white/30 text-xs">{formatDate(c.created_at)}</td>
                   </tr>
                 )
               })}
