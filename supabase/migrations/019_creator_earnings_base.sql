@@ -3,53 +3,104 @@ create extension if not exists "uuid-ossp";
 create table if not exists public.creator_earnings (
   id uuid primary key default uuid_generate_v4(),
   creator_id uuid not null references public.creators(id),
-  user_id uuid not null references public.users(id),
+  creator_user_id uuid not null references public.users(id),
   agency_id uuid references public.agencies(id),
   source_type text not null,
-  source_id uuid not null,
-  source_idempotency_key text not null,
-  gross_petals integer not null,
-  eligible_petals integer not null,
-  non_eligible_petals integer not null default 0,
-  agency_eligible_petals integer not null default 0,
-  usd_rate_petals_per_usd integer not null default 850,
-  amount_usd numeric(12,6) not null,
-  agency_commission_rate numeric(5,4) not null default 0.30,
-  agency_commission_usd numeric(12,6) not null default 0,
+  source_ref_id uuid,
+  source_id uuid,
+  idempotency_key text,
+  source_idempotency_key text,
+  petals_amount integer not null,
+  gross_petals integer,
+  eligible_petals integer,
+  non_eligible_petals integer default 0,
+  agency_eligible_petals integer default 0,
+  usd_rate_petals_per_usd integer default 850,
+  usd_amount numeric not null,
+  amount_usd numeric(12,6),
+  agency_commission_rate numeric(5,4) default 0.30,
+  agency_commission_usd numeric(12,6) default 0,
+  eligible_for_payout boolean not null,
   status text not null default 'pending',
   available_at timestamptz,
+  metadata jsonb default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  metadata jsonb not null default '{}'::jsonb,
-
-  constraint creator_earnings_source_type_not_empty
-    check (btrim(source_type) <> ''),
-  constraint creator_earnings_source_idempotency_key_not_empty
-    check (btrim(source_idempotency_key) <> ''),
-  constraint creator_earnings_petals_check
-    check (
-      gross_petals > 0
-      and eligible_petals > 0
-      and non_eligible_petals >= 0
-      and agency_eligible_petals >= 0
-      and gross_petals = eligible_petals + non_eligible_petals
-      and agency_eligible_petals <= eligible_petals
-    ),
-  constraint creator_earnings_usd_rate_check
-    check (usd_rate_petals_per_usd > 0),
-  constraint creator_earnings_amounts_check
-    check (amount_usd >= 0 and agency_commission_usd >= 0),
-  constraint creator_earnings_commission_rate_check
-    check (agency_commission_rate >= 0 and agency_commission_rate <= 1),
-  constraint creator_earnings_status_check
-    check (status in ('pending', 'available', 'paid', 'reversed', 'blocked')),
-  constraint creator_earnings_metadata_object_check
-    check (jsonb_typeof(metadata) = 'object'),
-  constraint creator_earnings_source_unique
-    unique (source_type, source_id),
-  constraint creator_earnings_source_idempotency_unique
-    unique (source_type, source_idempotency_key)
+  updated_at timestamptz not null default now()
 );
+
+alter table public.creator_earnings
+  add column if not exists user_id uuid references public.users(id),
+  add column if not exists source_id uuid,
+  add column if not exists source_idempotency_key text,
+  add column if not exists gross_petals integer,
+  add column if not exists eligible_petals integer,
+  add column if not exists non_eligible_petals integer default 0,
+  add column if not exists agency_eligible_petals integer default 0,
+  add column if not exists usd_rate_petals_per_usd integer default 850,
+  add column if not exists amount_usd numeric(12,6),
+  add column if not exists agency_commission_rate numeric(5,4) default 0.30,
+  add column if not exists agency_commission_usd numeric(12,6) default 0,
+  add column if not exists available_at timestamptz,
+  add column if not exists updated_at timestamptz default now();
+
+update public.creator_earnings
+set
+  gross_petals = coalesce(gross_petals, petals_amount),
+  eligible_petals = coalesce(
+    eligible_petals,
+    case when eligible_for_payout then petals_amount else 0 end
+  ),
+  non_eligible_petals = coalesce(
+    non_eligible_petals,
+    case when eligible_for_payout then 0 else petals_amount end,
+    0
+  ),
+  agency_eligible_petals = coalesce(agency_eligible_petals, 0),
+  usd_rate_petals_per_usd = coalesce(usd_rate_petals_per_usd, 850),
+  amount_usd = coalesce(amount_usd, usd_amount),
+  agency_commission_rate = coalesce(agency_commission_rate, 0.30),
+  agency_commission_usd = coalesce(agency_commission_usd, 0),
+  updated_at = coalesce(updated_at, created_at, now()),
+  metadata = coalesce(metadata, '{}'::jsonb);
+
+with unique_refs as (
+  select source_type, source_ref_id
+  from public.creator_earnings
+  where source_ref_id is not null
+  group by source_type, source_ref_id
+  having count(*) = 1
+)
+update public.creator_earnings ce
+set source_id = ce.source_ref_id
+from unique_refs ur
+where ce.source_id is null
+  and ce.source_type = ur.source_type
+  and ce.source_ref_id = ur.source_ref_id;
+
+update public.creator_earnings
+set source_idempotency_key = 'legacy_creator_earning:' || id::text
+where nullif(btrim(source_idempotency_key), '') is null;
+
+with unique_old_keys as (
+  select source_type, nullif(btrim(idempotency_key), '') as old_key
+  from public.creator_earnings
+  where nullif(btrim(idempotency_key), '') is not null
+  group by source_type, nullif(btrim(idempotency_key), '')
+  having count(*) = 1
+)
+update public.creator_earnings ce
+set source_idempotency_key = uk.old_key
+from unique_old_keys uk
+where ce.source_type = uk.source_type
+  and nullif(btrim(ce.idempotency_key), '') = uk.old_key
+  and ce.source_idempotency_key = 'legacy_creator_earning:' || ce.id::text
+  and not exists (
+    select 1
+    from public.creator_earnings other
+    where other.id <> ce.id
+      and other.source_type = ce.source_type
+      and other.source_idempotency_key = uk.old_key
+  );
 
 create index if not exists idx_creator_earnings_creator_status_created
   on public.creator_earnings (creator_id, status, created_at desc);
@@ -61,6 +112,14 @@ create index if not exists idx_creator_earnings_agency_status_created
 create index if not exists idx_creator_earnings_available
   on public.creator_earnings (status, available_at)
   where status in ('pending', 'available');
+
+create unique index if not exists idx_creator_earnings_source_type_source_id_unique
+  on public.creator_earnings (source_type, source_id)
+  where source_id is not null;
+
+create unique index if not exists idx_creator_earnings_source_type_source_idempotency_unique
+  on public.creator_earnings (source_type, source_idempotency_key)
+  where source_idempotency_key is not null;
 
 drop trigger if exists set_creator_earnings_updated_at
   on public.creator_earnings;
@@ -102,7 +161,8 @@ begin
   into v_existing
   from public.creator_earnings
   where source_type = v_source_type
-    and source_id = p_charge_id;
+    and (source_id = p_charge_id or source_ref_id = p_charge_id)
+  limit 1;
 
   if found then
     return jsonb_build_object(
@@ -110,8 +170,8 @@ begin
       'idempotent_replay', true,
       'created', false,
       'earning_id', v_existing.id,
-      'amount_usd', v_existing.amount_usd,
-      'agency_commission_usd', v_existing.agency_commission_usd,
+      'amount_usd', coalesce(v_existing.amount_usd, v_existing.usd_amount),
+      'agency_commission_usd', coalesce(v_existing.agency_commission_usd, 0),
       'status', v_existing.status
     );
   end if;
@@ -130,6 +190,7 @@ begin
     c.agency_eligible_petals_spent,
     s.user_id as session_user_id,
     s.creator_id as session_creator_id,
+    cr.user_id as creator_user_id,
     cr.agency_id
   into v_charge
   from public.chat_minute_charges c
@@ -197,17 +258,21 @@ begin
   into v_existing
   from public.creator_earnings
   where source_type = v_source_type
-    and source_idempotency_key = v_charge.idempotency_key;
+    and (
+      source_idempotency_key = v_charge.idempotency_key
+      or idempotency_key = v_charge.idempotency_key
+    )
+  limit 1;
 
   if found then
-    if v_existing.source_id = p_charge_id then
+    if v_existing.source_id = p_charge_id or v_existing.source_ref_id = p_charge_id then
       return jsonb_build_object(
         'success', true,
         'idempotent_replay', true,
         'created', false,
         'earning_id', v_existing.id,
-        'amount_usd', v_existing.amount_usd,
-        'agency_commission_usd', v_existing.agency_commission_usd,
+        'amount_usd', coalesce(v_existing.amount_usd, v_existing.usd_amount),
+        'agency_commission_usd', coalesce(v_existing.agency_commission_usd, 0),
         'status', v_existing.status
       );
     end if;
@@ -230,37 +295,49 @@ begin
 
   insert into public.creator_earnings (
     creator_id,
+    creator_user_id,
     user_id,
     agency_id,
     source_type,
+    source_ref_id,
     source_id,
+    idempotency_key,
     source_idempotency_key,
+    petals_amount,
     gross_petals,
     eligible_petals,
     non_eligible_petals,
     agency_eligible_petals,
     usd_rate_petals_per_usd,
+    usd_amount,
     amount_usd,
     agency_commission_rate,
     agency_commission_usd,
+    eligible_for_payout,
     status,
     available_at,
     metadata
   ) values (
     v_charge.creator_id,
+    v_charge.creator_user_id,
     v_charge.user_id,
     v_charge.agency_id,
     v_source_type,
     v_charge.charge_id,
+    v_charge.charge_id,
     v_charge.idempotency_key,
+    v_charge.idempotency_key,
+    v_charge.eligible_petals_spent,
     v_charge.amount_petals,
     v_charge.eligible_petals_spent,
     v_charge.non_eligible_petals_spent,
     v_charge.agency_eligible_petals_spent,
     v_rate,
     v_amount_usd,
+    v_amount_usd,
     v_agency_rate,
     v_agency_commission_usd,
+    true,
     'pending',
     null,
     jsonb_build_object(
