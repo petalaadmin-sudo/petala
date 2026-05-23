@@ -46,7 +46,7 @@ type AdminAgency = {
 }
 
 const STATUSES: Array<{ id: 'all' | AgencyApplicationStatus; label: string; tone: string }> = [
-  { id: 'all', label: 'Todos', tone: 'border-white/10 bg-white/[0.03] text-white' },
+  { id: 'all', label: 'Todas candidaturas', tone: 'border-white/10 bg-white/[0.03] text-white' },
   { id: 'pending', label: 'Pendentes', tone: 'border-yellow-400/20 bg-yellow-400/10 text-yellow-300' },
   { id: 'approved', label: 'Aprovadas', tone: 'border-green-400/20 bg-green-400/10 text-green-300' },
   { id: 'rejected', label: 'Rejeitadas', tone: 'border-red-400/20 bg-red-400/10 text-red-300' },
@@ -119,9 +119,9 @@ export default async function AdminAgenciasPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-white text-xl font-medium">Agencias parceiras</h1>
+        <h1 className="text-white text-xl font-medium">Agências parceiras</h1>
         <p className="text-white/35 text-xs mt-1">
-          Agencias cadastradas/operacionais e candidaturas de agencia.
+          Agências cadastradas/operacionais e candidaturas de agência.
         </p>
       </header>
 
@@ -141,16 +141,19 @@ export default async function AdminAgenciasPage() {
 
       {!applicationsResult.error && (
         <>
-          <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            {STATUSES.map(status => {
-              const value = status.id === 'all' ? applications.length : countByStatus(status.id)
-              return (
-                <div key={status.id} className={`rounded-xl p-4 border ${status.tone}`}>
-                  <div className="text-2xl font-medium">{int(value)}</div>
-                  <div className="text-xs mt-1 opacity-70">{status.label}</div>
-                </div>
-              )
-            })}
+          <section className="space-y-3">
+            <h2 className="text-white text-sm font-medium">Resumo das candidaturas de agência</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              {STATUSES.map(status => {
+                const value = status.id === 'all' ? applications.length : countByStatus(status.id)
+                return (
+                  <div key={status.id} className={`rounded-xl p-4 border ${status.tone}`}>
+                    <div className="text-2xl font-medium">{int(value)}</div>
+                    <div className="text-xs mt-1 opacity-70">{status.label}</div>
+                  </div>
+                )
+              })}
+            </div>
           </section>
 
           <ApplicationSection title="Pendentes" applications={grouped.pending} />
@@ -167,8 +170,8 @@ function AgencySection({ agencies }: { agencies: AdminAgency[] }) {
   return (
     <section>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-white text-sm font-medium">Agencias cadastradas/operacionais</h2>
-        <span className="text-white/30 text-xs">{int(agencies.length)} agencias operacionais</span>
+        <h2 className="text-white text-sm font-medium">Agências cadastradas/operacionais</h2>
+        <span className="text-white/30 text-xs">{int(agencies.length)} agências operacionais</span>
       </div>
 
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
@@ -177,14 +180,14 @@ function AgencySection({ agencies }: { agencies: AdminAgency[] }) {
             <thead>
               <tr className="border-b border-white/5">
                 {[
-                  'Agencia',
-                  'Responsavel',
+                  'Agência',
+                  'Responsável',
                   'Email',
                   'WhatsApp',
-                  'Pais',
+                  'País',
                   'Status operacional',
-                  'Comissao',
-                  'Usuarios',
+                  'Comissão',
+                  'Usuários',
                   'Criadoras',
                   'Convite',
                   'Aprovada em',
@@ -223,7 +226,7 @@ function AgencySection({ agencies }: { agencies: AdminAgency[] }) {
               {agencies.length === 0 && (
                 <tr>
                   <td colSpan={12} className="px-4 py-8 text-center text-white/30 text-xs">
-                    Nenhuma agencia cadastrada.
+                    Nenhuma agência cadastrada.
                   </td>
                 </tr>
               )}
@@ -245,7 +248,7 @@ function ApplicationSection({
   return (
     <section>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-white text-sm font-medium">Candidaturas de agencia - {title}</h2>
+        <h2 className="text-white text-sm font-medium">Candidaturas de agência - {title}</h2>
         <span className="text-white/30 text-xs">{int(applications.length)} candidaturas</span>
       </div>
 
@@ -255,20 +258,20 @@ function ApplicationSection({
             <thead>
               <tr className="border-b border-white/5">
                 {[
-                  'Agencia',
-                  'Responsavel',
+                  'Agência',
+                  'Responsável',
                   'Email',
                   'WhatsApp',
-                  'Pais',
+                  'País',
                   'Criadoras',
-                  'Experiencia',
+                  'Experiência',
                   'Links sociais',
-                  'Observacoes',
+                  'Observações',
                   'Status',
                   'Criada em',
                   'Revisada em',
-                  'Notas da revisao',
-                  'Acoes',
+                  'Notas da revisão',
+                  'Ações',
                 ].map(header => (
                   <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
                 ))}
