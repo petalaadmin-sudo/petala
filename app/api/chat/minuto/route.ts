@@ -16,6 +16,12 @@ type ChatBillingResult = {
   petals_charged?: number
 }
 
+function billingRpcForType(type: string | null | undefined) {
+  if (type === 'text') return 'charge_chat_text_due_minutes'
+  if (type === 'video') return 'charge_chat_video_due_minutes'
+  return null
+}
+
 function statusForBillingResult(result: ChatBillingResult | null) {
   if (!result) return 500
   if (result.code === 'INSUFFICIENT_BALANCE') return 402
@@ -40,7 +46,40 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient() as any
-    const { data, error } = await admin.rpc('charge_chat_text_due_minutes', {
+    const { data: session, error: sessionError } = await admin
+      .from('chat_sessions')
+      .select('id, user_id, type')
+      .eq('id', session_id)
+      .single()
+
+    if (sessionError || !session) {
+      if (sessionError) {
+        console.error('[/api/chat/minuto] chat_sessions lookup', sessionError)
+      }
+
+      return NextResponse.json({
+        error: 'Sessao invalida',
+        code: 'INVALID_SESSION',
+      }, { status: 404 })
+    }
+
+    if (session.user_id !== auth.user.id) {
+      return NextResponse.json({
+        error: 'Usuario nao autorizado para esta sessao',
+        code: 'UNAUTHORIZED',
+      }, { status: 403 })
+    }
+
+    const billingRpc = billingRpcForType(session.type)
+
+    if (!billingRpc) {
+      return NextResponse.json({
+        error: 'Tipo de sessao invalido',
+        code: 'INVALID_SESSION_TYPE',
+      }, { status: 400 })
+    }
+
+    const { data, error } = await admin.rpc(billingRpc, {
       p_session_id: session_id,
       p_user_id: auth.user.id,
     })
@@ -49,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (error || !result?.success) {
       if (error) {
-        console.error('[/api/chat/minuto] charge_chat_text_due_minutes', error)
+        console.error(`[/api/chat/minuto] ${billingRpc}`, error)
       }
 
       return NextResponse.json({
@@ -58,6 +97,7 @@ export async function POST(request: NextRequest) {
         session_ended: Boolean(result?.session_ended),
         required: result?.required,
         current: result?.current_balance,
+        current_balance: result?.current_balance,
         duration_seconds: result?.duration_seconds,
         paid_until_seconds: result?.paid_until_seconds,
         effective_ended_at: result?.effective_ended_at,

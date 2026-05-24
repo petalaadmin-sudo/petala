@@ -16,10 +16,17 @@ type ChatBillingResult = {
   current_balance?: number
 }
 
+function billingRpcForType(type: string | null | undefined) {
+  if (type === 'text') return 'charge_chat_text_due_minutes'
+  if (type === 'video') return 'charge_chat_video_due_minutes'
+  return null
+}
+
 function billingFailureResponse(result: ChatBillingResult | null) {
   const status =
     result?.code === 'INSUFFICIENT_BALANCE' ? 402 :
     result?.code === 'UNAUTHORIZED' ? 403 :
+    result?.code === 'INVALID_SESSION' ? 404 :
     result?.code === 'SESSION_ENDED' ? 409 :
     400
 
@@ -33,6 +40,7 @@ function billingFailureResponse(result: ChatBillingResult | null) {
     petals_charged: result?.petals_charged,
     required: result?.required,
     current: result?.current_balance,
+    current_balance: result?.current_balance,
   }, { status })
 }
 
@@ -71,21 +79,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 403 })
     }
 
-    if (session.type === 'text') {
-      const { data, error } = await admin.rpc('charge_chat_text_due_minutes', {
-        p_session_id: session_id,
-        p_user_id: session.user_id,
-      })
+    const billingRpc = billingRpcForType(session.type)
 
-      const billingResult = (data ?? null) as ChatBillingResult | null
+    if (!billingRpc) {
+      return NextResponse.json({
+        error: 'Tipo de sessao invalido',
+        code: 'INVALID_SESSION_TYPE',
+      }, { status: 400 })
+    }
 
-      if (error || !billingResult?.success) {
-        if (error) {
-          console.error('[/api/chat/encerrar] charge_chat_text_due_minutes', error)
-        }
+    const { data, error } = await admin.rpc(billingRpc, {
+      p_session_id: session_id,
+      p_user_id: session.user_id,
+    })
 
-        return billingFailureResponse(billingResult)
+    const billingResult = (data ?? null) as ChatBillingResult | null
+
+    if (error || !billingResult?.success) {
+      if (error) {
+        console.error(`[/api/chat/encerrar] ${billingRpc}`, error)
       }
+
+      return billingFailureResponse(billingResult)
     }
 
     const now = new Date().toISOString()
@@ -143,6 +158,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       session_id,
       duration_seconds: updatedSession.duration_seconds,
+      paid_until_seconds: billingResult?.paid_until_seconds,
+      effective_ended_at: billingResult?.effective_ended_at,
       petals_charged: updatedSession.petals_charged,
     })
   } catch (err) {

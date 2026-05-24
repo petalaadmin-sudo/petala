@@ -37,18 +37,27 @@ export async function POST(request: NextRequest) {
 
     const user = auth.user
     const { creator_id, type = 'text' } = await request.json()
+    const sessionType = type === 'video' ? 'video' : type === 'text' ? 'text' : null
 
     if (!creator_id) {
       return NextResponse.json({ error: 'creator_id obrigatorio' }, { status: 400 })
     }
 
+    if (!sessionType) {
+      return NextResponse.json({
+        error: 'Tipo de sessao invalido',
+        code: 'INVALID_SESSION_TYPE',
+      }, { status: 400 })
+    }
+
     const admin = createAdminClient() as any
     const textFirstMinutePrice = 10
     const textNextMinutePrice = 50
+    const videoPricePerMinute = 120
 
     const { data: creator } = await admin
       .from('creators')
-      .select('id, user_id, price_text_petals, price_video_petals, active')
+      .select('id, user_id, active')
       .eq('id', creator_id)
       .eq('active', true)
       .single()
@@ -71,12 +80,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Criadora esta offline no momento' }, { status: 409 })
     }
 
-    const pricePerMin = type === 'video'
-      ? creator.price_video_petals
+    const pricePerMin = sessionType === 'video'
+      ? videoPricePerMinute
       : textNextMinutePrice
-    const initialRequiredBalance = type === 'text'
+    const initialRequiredBalance = sessionType === 'text'
       ? textFirstMinutePrice
-      : pricePerMin * 5
+      : videoPricePerMinute
 
     const { data: userData } = await admin
       .from('users')
@@ -112,7 +121,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         creator_id,
-        type,
+        type: sessionType,
       })
       .select()
       .single()
@@ -123,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     let billingResult: ChatBillingResult | null = null
 
-    if (type === 'text') {
+    if (sessionType === 'text') {
       const { data, error } = await admin.rpc('charge_chat_text_due_minutes', {
         p_session_id: session.id,
         p_user_id: user.id,
@@ -158,7 +167,7 @@ export async function POST(request: NextRequest) {
       session_id: session.id,
       sender_id: user.id,
       sender_role: 'system',
-      content: type === 'text'
+      content: sessionType === 'text'
         ? 'Chat iniciado - 10 petalas no primeiro minuto - depois 50 petalas/min'
         : `Chat iniciado - ${pricePerMin} petalas/min`,
       type: 'system',
@@ -171,7 +180,7 @@ export async function POST(request: NextRequest) {
       started_at: session.started_at,
     }
 
-    if (type === 'text') {
+    if (sessionType === 'text') {
       response.first_minute_price = textFirstMinutePrice
       response.new_balance = billingResult?.new_balance
       response.petals_charged = billingResult?.petals_charged
