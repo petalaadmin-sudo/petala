@@ -310,6 +310,7 @@ export default function FeedPage() {
           creator={chatCreator}
           chatType={chatType}
           initialBalance={userBalance}
+          onBalanceUpdate={setUserBalance}
           onClose={() => setChatCreator(null)}
         />
       )}

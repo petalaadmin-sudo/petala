@@ -336,6 +336,11 @@ export function useChat({
 
       const data = await res.json().catch(() => ({}))
 
+      if (typeof data.new_balance === 'number') {
+        setBalance(data.new_balance)
+        onBalanceUpdate?.(data.new_balance)
+      }
+
       if (!res.ok) {
         if (data.session_ended) {
           const duration = applyServerDuration(data.duration_seconds ?? data.paid_until_seconds)

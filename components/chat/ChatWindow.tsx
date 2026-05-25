@@ -18,6 +18,7 @@ interface Props {
   creator: Creator
   chatType?: ChatType
   initialBalance: number
+  onBalanceUpdate?: (balance: number) => void
   onClose: () => void
 }
 
@@ -67,7 +68,7 @@ function MessageBubble({ msg, isMe }: { msg: any; isMe: boolean }) {
 }
 
 // ── Componente principal ────────────────────────────────────
-export function ChatWindow({ creator, chatType = 'text', initialBalance, onClose }: Props) {
+export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalanceUpdate, onClose }: Props) {
   const presence = useCreatorPresence(creator.id)
   const isVideo = chatType === 'video'
   const priceLabel = isVideo ? '120 🌸/min' : '10 🌸 primeiro minuto · depois 50 🌸/min'
@@ -82,7 +83,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onClose
   } = useChat({
     creatorId: creator.id,
     chatType,
-    onBalanceUpdate: (b) => {},
+    onBalanceUpdate,
   })
 
   const [input, setInput]         = useState('')
