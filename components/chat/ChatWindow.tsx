@@ -12,8 +12,11 @@ interface Creator {
   price_text_petals: number
 }
 
+type ChatType = 'text' | 'video'
+
 interface Props {
   creator: Creator
+  chatType?: ChatType
   initialBalance: number
   onClose: () => void
 }
@@ -64,8 +67,13 @@ function MessageBubble({ msg, isMe }: { msg: any; isMe: boolean }) {
 }
 
 // ── Componente principal ────────────────────────────────────
-export function ChatWindow({ creator, initialBalance, onClose }: Props) {
+export function ChatWindow({ creator, chatType = 'text', initialBalance, onClose }: Props) {
   const presence = useCreatorPresence(creator.id)
+  const isVideo = chatType === 'video'
+  const priceLabel = isVideo ? '120 🌸/min' : '10 🌸 primeiro minuto · depois 50 🌸/min'
+  const activePriceLabel = isVideo ? 'vídeo em teste · 120 🌸/min' : '10 🌸 + 50 🌸/min'
+  const startLabel = isVideo ? 'Iniciar vídeo' : 'Iniciar chat'
+  const endedLabel = isVideo ? 'Vídeo encerrado' : 'Chat encerrado'
 
   const {
     session, messages, balance, status, error,
@@ -73,7 +81,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
     startChat, endChat, sendMessage, sendGift, setIsTyping,
   } = useChat({
     creatorId: creator.id,
-    chatType:  'text',
+    chatType,
     onBalanceUpdate: (b) => {},
   })
 
@@ -134,7 +142,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
   }
 
   // ── TELA: Idle / Iniciando ──────────────────────────────
-  if (status === 'idle' || status === 'starting') {
+  if (status === 'idle' || status === 'starting' || status === 'error') {
     return (
       <div className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center">
         <div className="bg-[#161616] rounded-t-2xl w-full max-w-sm p-5 border-t border-white/8">
@@ -150,6 +158,18 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
             </div>
           </div>
 
+          {isVideo ? (
+            <div className="bg-black/40 rounded-xl p-3 mb-4 border border-white/5">
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-white/40">Custo</span>
+                <span className="text-yellow-400 font-medium">{priceLabel}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/40">Seu saldo</span>
+                <span className="text-white font-medium">{initialBalance} 🌸</span>
+              </div>
+            </div>
+          ) : (
           <div className="bg-black/40 rounded-xl p-3 mb-4 border border-white/5">
             <div className="flex justify-between text-xs mb-2">
               <span className="text-white/40">Custo</span>
@@ -160,10 +180,23 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
               <span className="text-white font-medium">{initialBalance} 🌸</span>
             </div>
           </div>
+          )}
 
           {!presence.online && (
             <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-3 mb-4 text-xs text-red-300">
               Esta criadora está offline no momento. Tente mais tarde.
+            </div>
+          )}
+
+          {isVideo && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 mb-4 text-xs text-yellow-100">
+              Vídeo em teste interno. A cobrança por minuto já está ativa, mas a chamada Agora ainda não será aberta automaticamente.
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-3 mb-4 text-xs text-red-300">
+              {error}
             </div>
           )}
 
@@ -174,7 +207,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
           >
             {status === 'starting' ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Iniciando…</>
-            ) : '💬 Iniciar chat'}
+            ) : startLabel}
           </button>
           <button onClick={onClose} className="w-full text-white/25 text-xs py-2">cancelar</button>
         </div>
@@ -189,7 +222,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
         <div className="bg-[#161616] rounded-2xl p-5 w-full max-w-sm border border-white/8">
           <div className="text-center mb-4">
             <div className="text-4xl mb-2">✨</div>
-            <div className="text-white font-medium">Chat encerrado</div>
+            <div className="text-white font-medium">{endedLabel}</div>
             <div className="text-white/40 text-xs mt-1">{fmtTime(endedDisplaySeconds)} de conversa</div>
           </div>
 
@@ -229,7 +262,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-white text-sm font-medium">{creator.name}</div>
-          <div className="text-green-400 text-xs">● Online · 10 🌸 + 50 🌸/min</div>
+          <div className="text-green-400 text-xs">● Online · {activePriceLabel}</div>
         </div>
         <div className="text-right">
           <div className="text-yellow-400 text-xs font-medium">🌸 {balance}</div>
@@ -250,7 +283,19 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
           </div>
         ))}
 
-        {messages.map(msg => {
+        {isVideo && (
+          <div className="h-full flex items-center justify-center">
+            <div className="bg-white/6 border border-white/10 rounded-2xl p-5 text-center max-w-xs">
+              <div className="text-3xl mb-3">🎥</div>
+              <div className="text-white text-sm font-medium mb-1">Vídeo em teste</div>
+              <div className="text-white/45 text-xs leading-relaxed">
+                A sessão de vídeo está aberta para validar billing. A cobrança de 120 pétalas/min já está ativa; Agora/token ainda não foi liberado neste fluxo.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isVideo && messages.map(msg => {
           const { data: { user } } = { data: { user: null } } as any
           return (
             <MessageBubble
@@ -261,7 +306,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
           )
         })}
 
-        {isTyping && (
+        {!isVideo && isTyping && (
           <div className="flex justify-start mb-1">
             <div className="bg-[#1e1e1e] rounded-2xl rounded-bl-md px-4 py-3">
               <div className="flex gap-1">
@@ -285,7 +330,7 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
       )}
 
       {/* Painel de presentes */}
-      {showGifts && (
+      {showGifts && !isVideo && (
         <div className="bg-[#111] border-t border-white/5 px-4 py-3 flex-shrink-0">
           <div className="flex gap-4 overflow-x-auto pb-1">
             {GIFT_CATALOG.map(g => (
@@ -306,6 +351,19 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
       )}
 
       {/* Input */}
+      {isVideo ? (
+        <div className="px-3 py-3 border-t border-white/5 bg-[#111] flex items-center gap-2 flex-shrink-0">
+          <div className="flex-1 text-white/45 text-xs">
+            Cobrança ativa: 120 🌸/min
+          </div>
+          <button
+            onClick={() => setShowEndModal(true)}
+            className="bg-[#ff4d7d] text-white rounded-xl px-4 py-2.5 text-sm font-medium"
+          >
+            Encerrar vídeo
+          </button>
+        </div>
+      ) : (
       <div className="px-3 py-3 border-t border-white/5 bg-[#111] flex items-center gap-2 flex-shrink-0">
         <button
           onClick={() => setShowGifts(v => !v)}
@@ -333,12 +391,13 @@ export function ChatWindow({ creator, initialBalance, onClose }: Props) {
           ➤
         </button>
       </div>
+      )}
 
       {/* Modal de encerrar */}
       {showEndModal && (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
           <div className="bg-[#161616] rounded-2xl p-5 mx-4 w-full max-w-xs border border-white/8">
-            <h3 className="text-white font-medium text-center mb-2">Encerrar chat?</h3>
+            <h3 className="text-white font-medium text-center mb-2">{isVideo ? 'Encerrar vídeo?' : 'Encerrar chat?'}</h3>
             <p className="text-white/40 text-xs text-center mb-4">
               Você conversou por {fmtTime(elapsedSeconds)}
             </p>

@@ -36,9 +36,11 @@ type MinuteBillingResponse = {
   petals_charged?: number
 }
 
+type ChatType = 'text' | 'video'
+
 interface UseChatOptions {
   creatorId: string
-  chatType?: 'text' | 'video'
+  chatType?: ChatType
   onBalanceUpdate?: (newBalance: number) => void
   onSessionEnded?: (summary: { duration: number; petals: number }) => void
 }
@@ -114,6 +116,51 @@ export function useChat({
     setElapsed(safeDuration)
     return safeDuration
   }, [])
+
+  const chargeMinute = useCallback(async (sessionId: string) => {
+    if (sessionIdRef.current !== sessionId) return
+
+    const accessToken = await getAccessToken()
+    if (!accessToken) {
+      stopBilling()
+      setError('Nao autenticado')
+      setStatus('error')
+      return
+    }
+
+    const res = await fetch('/api/chat/minuto', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ session_id: sessionId }),
+    })
+
+    const result = (await res.json().catch(() => ({}))) as MinuteBillingResponse
+
+    if (result.session_ended) {
+      const duration = applyServerDuration(result.duration_seconds ?? result.paid_until_seconds)
+      stopBilling()
+      setStatus('ended')
+      setError(result.error ?? 'Sessao encerrada')
+      onSessionEnded?.({
+        duration: duration ?? 0,
+        petals: result.petals_charged ?? 0,
+      })
+      return
+    }
+
+    if (!res.ok || !result.success) {
+      setError(result.error ?? 'Falha ao cobrar minuto do chat')
+      return
+    }
+
+    if (typeof result.new_balance === 'number') {
+      setBalance(result.new_balance)
+      onBalanceUpdate?.(result.new_balance)
+    }
+  }, [applyServerDuration, getAccessToken, onBalanceUpdate, onSessionEnded, stopBilling])
 
   // Busca saldo inicial do usuário
   useEffect(() => {
@@ -195,51 +242,10 @@ export function useChat({
     }, 1000)
 
     // Billing real a cada 60 segundos
-    billingRef.current = setInterval(async () => {
-      if (sessionIdRef.current !== sessionId) return
-
-      const accessToken = await getAccessToken()
-      if (!accessToken) {
-        stopBilling()
-        setError('Nao autenticado')
-        setStatus('error')
-        return
-      }
-
-      const res = await fetch('/api/chat/minuto', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ session_id: sessionId }),
-      })
-
-      const result = (await res.json().catch(() => ({}))) as MinuteBillingResponse
-
-      if (result.session_ended) {
-        const duration = applyServerDuration(result.duration_seconds ?? result.paid_until_seconds)
-        stopBilling()
-        setStatus('ended')
-        setError(result.error ?? 'Sessao encerrada')
-        onSessionEnded?.({
-          duration: duration ?? 0,
-          petals: result.petals_charged ?? 0,
-        })
-        return
-      }
-
-      if (!res.ok || !result.success) {
-        setError(result.error ?? 'Falha ao cobrar minuto do chat')
-        return
-      }
-
-      if (typeof result.new_balance === 'number') {
-        setBalance(result.new_balance)
-        onBalanceUpdate?.(result.new_balance)
-      }
+    billingRef.current = setInterval(() => {
+      void chargeMinute(sessionId)
     }, 60_000)
-  }, [applyServerDuration, getAccessToken, onBalanceUpdate, onSessionEnded, stopBilling])
+  }, [chargeMinute])
 
   // ── Ações públicas ───────────────────────────────────────
 
@@ -291,8 +297,9 @@ export function useChat({
       }
 
       subscribeToSession(data.session_id)
-      if (chatSession.type === 'text') {
-        startBilling(data.session_id)
+      startBilling(data.session_id)
+      if (chatSession.type === 'video') {
+        void chargeMinute(data.session_id)
       }
 
     } catch (err: any) {

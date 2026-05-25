@@ -14,11 +14,12 @@ interface Creator {
   photo_url: string | null
   bio: string | null
   price_text_petals: number
-  price_video_petals: number
   rating: number
   total_gifts: number
   rank_weekly: number | null
 }
+
+type ChatType = 'text' | 'video'
 
 function FeedCard({
   creator,
@@ -31,7 +32,7 @@ function FeedCard({
   creator: Creator
   isActive: boolean
   userBalance: number
-  onChatOpen: (creator: Creator) => void
+  onChatOpen: (creator: Creator, type: ChatType) => void
   isFavorited: boolean
   onToggleFavorite: (creatorId: string) => void
 }) {
@@ -125,17 +126,24 @@ function FeedCard({
           {creator.bio ?? 'Conteúdo exclusivo para você 🌸'}
         </p>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
-            onClick={() => onChatOpen(creator)}
+            onClick={() => onChatOpen(creator, 'text')}
             disabled={!presence.online}
-            className="flex-[2] bg-[#ff4d7d] text-white rounded-xl py-2.5 text-xs font-medium disabled:opacity-40 active:scale-95 transition-transform"
+            className="bg-[#ff4d7d] text-white rounded-xl py-2.5 text-[11px] font-medium disabled:opacity-40 active:scale-95 transition-transform"
           >
-            {presence.online ? '📹 Chat — 10 🌸 + 50/min' : '💤 Offline'}
+            {presence.online ? '💬 Chat — 10 🌸 + 50/min' : '💤 Offline'}
+          </button>
+          <button
+            onClick={() => onChatOpen(creator, 'video')}
+            disabled={!presence.online}
+            className="bg-white text-[#17070f] rounded-xl py-2.5 text-[11px] font-semibold disabled:opacity-40 active:scale-95 transition-transform"
+          >
+            {presence.online ? '🎥 Vídeo — 120 🌸/min' : '💤 Offline'}
           </button>
           <Link
             href={`/criadora/${creator.id}`}
-            className="flex-1 bg-white/10 text-white rounded-xl py-2.5 text-xs font-medium text-center border border-white/10"
+            className="bg-white/10 text-white rounded-xl py-2.5 text-[11px] font-medium text-center border border-white/10"
           >
             📸 Álbum
           </Link>
@@ -151,6 +159,7 @@ export default function FeedPage() {
   const [currentIdx, setCurrentIdx]   = useState(0)
   const [userBalance, setUserBalance] = useState(0)
   const [chatCreator, setChatCreator] = useState<Creator | null>(null)
+  const [chatType, setChatType]       = useState<ChatType>('text')
   const [loading, setLoading]         = useState(true)
   const [favorites, setFavorites]     = useState<Set<string>>(new Set())
   const [userId, setUserId]           = useState<string | null>(null)
@@ -159,6 +168,11 @@ export default function FeedPage() {
 
   // Bônus diário
   const { status, claiming, result, showModal, claim, closeModal } = useDailyBonus()
+
+  const openChat = useCallback((creator: Creator, type: ChatType) => {
+    setChatCreator(creator)
+    setChatType(type)
+  }, [])
 
   // Atualiza saldo após coletar bônus
   useEffect(() => {
@@ -177,7 +191,7 @@ export default function FeedPage() {
       const [creatorsRes, balanceRes, favoritesRes] = await Promise.all([
         supabase
           .from('creators')
-          .select('id, name, photo_url, bio, price_text_petals, price_video_petals, rating, total_gifts, rank_weekly')
+          .select('id, name, photo_url, bio, price_text_petals, rating, total_gifts, rank_weekly')
           .eq('active', true)
           .order('rank_weekly', { ascending: true, nullsFirst: false })
           .limit(20),
@@ -259,7 +273,7 @@ export default function FeedPage() {
               creator={creator}
               isActive={idx === currentIdx}
               userBalance={userBalance}
-              onChatOpen={setChatCreator}
+              onChatOpen={openChat}
               isFavorited={favorites.has(creator.id)}
               onToggleFavorite={toggleFavorite}
             />
@@ -294,6 +308,7 @@ export default function FeedPage() {
       {chatCreator && (
         <ChatWindow
           creator={chatCreator}
+          chatType={chatType}
           initialBalance={userBalance}
           onClose={() => setChatCreator(null)}
         />
