@@ -38,6 +38,17 @@ type MinuteBillingResponse = {
   petals_charged?: number
 }
 
+type HeartbeatResponse = {
+  success?: boolean
+  error?: string
+  code?: string
+  session_ended?: boolean
+  new_balance?: number
+  duration_seconds?: number
+  petals_charged?: number
+  last_heartbeat_at?: string
+}
+
 type ChatType = 'text' | 'video'
 
 type MinuteChargeOutcome = {
@@ -114,6 +125,7 @@ export function useChat({
 
   const channelRef    = useRef<RealtimeChannel | null>(null)
   const billingRef    = useRef<NodeJS.Timeout | null>(null)
+  const heartbeatRef  = useRef<NodeJS.Timeout | null>(null)
   const elapsedRef    = useRef<NodeJS.Timeout | null>(null)
   const sessionIdRef  = useRef<string | null>(null)
   const accessTokenRef = useRef<string | null>(null)
@@ -130,6 +142,7 @@ export function useChat({
 
   const stopBilling = useCallback(() => {
     if (billingRef.current) { clearInterval(billingRef.current); billingRef.current = null }
+    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
     if (elapsedRef.current)  { clearInterval(elapsedRef.current);  elapsedRef.current = null }
   }, [])
 
@@ -235,6 +248,42 @@ export function useChat({
 
     applyBalance(result.new_balance)
     return { ok: true, result }
+  }, [applyBalance, applyServerDuration, getAccessToken, onSessionEnded, stopBilling])
+
+  const sendHeartbeat = useCallback(async (sessionId: string) => {
+    if (sessionIdRef.current !== sessionId) return
+
+    const accessToken = await getAccessToken()
+    if (!accessToken) return
+
+    const res = await fetch('/api/chat/heartbeat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ session_id: sessionId }),
+    })
+
+    const result = (await res.json().catch(() => ({}))) as HeartbeatResponse
+
+    if (result.session_ended) {
+      const duration = applyServerDuration(result.duration_seconds)
+      stopBilling()
+      sessionIdRef.current = null
+      statusRef.current = 'ended'
+      setStatus('ended')
+      setError(result.error ?? 'Sessao encerrada')
+      onSessionEnded?.({
+        duration: duration ?? 0,
+        petals: result.petals_charged ?? 0,
+      })
+      return
+    }
+
+    if (res.ok && result.success) {
+      applyBalance(result.new_balance)
+    }
   }, [applyBalance, applyServerDuration, getAccessToken, onSessionEnded, stopBilling])
 
   // Busca saldo inicial do usuário
@@ -354,11 +403,16 @@ export function useChat({
       setElapsed(s => s + 1)
     }, 1000)
 
+    void sendHeartbeat(sessionId)
+    heartbeatRef.current = setInterval(() => {
+      void sendHeartbeat(sessionId)
+    }, 15_000)
+
     // Billing real a cada 60 segundos
     billingRef.current = setInterval(() => {
       void chargeMinute(sessionId)
     }, 60_000)
-  }, [chargeMinute])
+  }, [chargeMinute, sendHeartbeat])
 
   // ── Ações públicas ───────────────────────────────────────
 

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient() as any
     const { data: session, error: sessionError } = await admin
       .from('chat_sessions')
-      .select('id, user_id, type')
+      .select('id, user_id, type, ended_at, duration_seconds, petals_charged')
       .eq('id', session_id)
       .single()
 
@@ -69,6 +69,26 @@ export async function POST(request: NextRequest) {
         error: 'Usuario nao autorizado para esta sessao',
         code: 'UNAUTHORIZED',
       }, { status: 403 })
+    }
+
+    if (session.ended_at) {
+      return NextResponse.json({
+        error: 'Sessao ja encerrada',
+        code: 'SESSION_ENDED',
+        session_ended: true,
+        duration_seconds: session.duration_seconds,
+        petals_charged: session.petals_charged,
+      }, { status: 409 })
+    }
+
+    const { error: heartbeatError } = await admin
+      .from('chat_sessions')
+      .update({ last_heartbeat_at: new Date().toISOString() })
+      .eq('id', session_id)
+      .is('ended_at', null)
+
+    if (heartbeatError) {
+      console.error('[/api/chat/minuto] heartbeat update', heartbeatError)
     }
 
     const billingRpc = billingRpcForType(session.type)

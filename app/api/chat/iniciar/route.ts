@@ -55,6 +55,14 @@ export async function POST(request: NextRequest) {
     const textNextMinutePrice = 50
     const videoPricePerMinute = 120
 
+    const { error: expireError } = await admin.rpc('expire_stale_chat_sessions', {
+      p_stale_after_seconds: 90,
+    })
+
+    if (expireError) {
+      console.error('[/api/chat/iniciar] expire_stale_chat_sessions', expireError)
+    }
+
     const { data: creator } = await admin
       .from('creators')
       .select('id, user_id, active')
@@ -104,14 +112,14 @@ export async function POST(request: NextRequest) {
 
     const { data: activeSession } = await admin
       .from('chat_sessions')
-      .select('id, type, creator_id, started_at, petals_charged')
+      .select('id, type, creator_id, started_at, petals_charged, last_heartbeat_at')
       .eq('user_id', user.id)
       .is('ended_at', null)
       .maybeSingle()
 
     if (activeSession) {
       const ageSeconds = Math.floor(
-        (Date.now() - new Date(activeSession.started_at).getTime()) / 1000
+        (Date.now() - new Date(activeSession.last_heartbeat_at ?? activeSession.started_at).getTime()) / 1000
       )
       const canCloseStaleUnchargedVideo =
         activeSession.type === 'video' &&
@@ -156,6 +164,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         creator_id,
         type: sessionType,
+        last_heartbeat_at: new Date().toISOString(),
       })
       .select()
       .single()
