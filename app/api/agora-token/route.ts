@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 
 const VIDEO_PRICE_PER_MINUTE = 120
 const TOKEN_TTL_SECONDS = 15 * 60
+const HEARTBEAT_STALE_SECONDS = 120
 
 function agoraUidFor(sessionId: string, userId: string, role: 'user' | 'creator') {
   const input = `${sessionId}:${userId}:${role}`
@@ -20,6 +21,15 @@ function agoraUidFor(sessionId: string, userId: string, role: 'user' | 'creator'
 
 function channelNameForSession(sessionId: string) {
   return `video_session_${sessionId.replace(/-/g, '')}`
+}
+
+function secondsSince(timestamp: string | null | undefined) {
+  if (!timestamp) return Number.POSITIVE_INFINITY
+
+  const parsed = new Date(timestamp).getTime()
+  if (!Number.isFinite(parsed)) return Number.POSITIVE_INFINITY
+
+  return Math.max(0, Math.floor((Date.now() - parsed) / 1000))
 }
 
 export async function POST(req: NextRequest) {
@@ -53,7 +63,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient() as any
     const { data: session, error: sessionError } = await admin
       .from('chat_sessions')
-      .select('id, type, user_id, creator_id, ended_at, petals_charged, creators!inner(user_id)')
+      .select('id, type, user_id, creator_id, started_at, ended_at, petals_charged, last_heartbeat_at, creators!inner(user_id)')
       .eq('id', session_id)
       .maybeSingle()
 
@@ -95,6 +105,17 @@ export async function POST(req: NextRequest) {
         error: 'Usuario nao autorizado para esta sessao de video',
         code: 'UNAUTHORIZED',
       }, { status: 403 })
+    }
+
+    const heartbeatAgeSeconds = secondsSince(session.last_heartbeat_at ?? session.started_at)
+
+    if (heartbeatAgeSeconds > HEARTBEAT_STALE_SECONDS) {
+      return NextResponse.json({
+        error: 'Sessao de video sem heartbeat recente',
+        code: 'SESSION_STALE',
+        heartbeat_age_seconds: heartbeatAgeSeconds,
+        stale_after_seconds: HEARTBEAT_STALE_SECONDS,
+      }, { status: 409 })
     }
 
     const { data: firstCharge, error: chargeError } = await admin
