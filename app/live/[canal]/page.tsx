@@ -1,52 +1,30 @@
 'use client'
-import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import dynamic from 'next/dynamic'
-const VideoCall = dynamic(() => import('@/components/VideoCall'), { ssr: false })
+
+import { useParams, useRouter } from 'next/navigation'
 
 export default function LivePage() {
   const params = useParams()
+  const router = useRouter()
   const canal = decodeURIComponent(params.canal as string)
-  const [uid, setUid] = useState<number>(0)
-  const [role, setRole] = useState<'host' | 'audience'>('audience')
-  const [ready, setReady] = useState(false)
-  const supabase = createClient()
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: creator } = await supabase
-          .from('creators')
-          .select('id, name')
-          .eq('user_id', user.id)
-          .single()
-        const newUid = Math.floor(Math.random() * 100000) + 1
-        setUid(newUid)
-        if (creator && creator.name === canal) {
-          setRole('host')
-        }
-      }
-      setReady(true)
-    }
-    getUser()
-  }, [canal])
-
-  if (!ready || !uid) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
-        <p className="text-white">Conectando...</p>
-      </div>
-    )
-  }
 
   return (
-    <VideoCall
-      channelName={canal}
-      uid={uid}
-      role={role}
-      onEnd={() => window.history.back()}
-    />
+    <div className="min-h-screen bg-black flex items-center justify-center px-5">
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
+        <div className="text-3xl mb-3">🎥</div>
+        <h1 className="text-white text-lg font-semibold mb-2">Video privado em teste</h1>
+        <p className="text-white/55 text-sm leading-relaxed mb-2">
+          O canal antigo "{canal}" nao emite mais token Agora livre.
+        </p>
+        <p className="text-white/45 text-xs leading-relaxed mb-5">
+          Tokens agora exigem uma sessao de video ativa, paga e validada pelo servidor.
+        </p>
+        <button
+          onClick={() => router.back()}
+          className="w-full rounded-xl bg-[#ff4d7d] py-3 text-sm font-medium text-white"
+        >
+          Voltar
+        </button>
+      </div>
+    </div>
   )
 }

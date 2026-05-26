@@ -5,30 +5,41 @@ import AgoraRTC, {
   ICameraVideoTrack,
   IMicrophoneAudioTrack,
 } from 'agora-rtc-sdk-ng'
+import { createClient } from '@/lib/supabase/client'
 
 interface VideoCallProps {
-  channelName: string
-  uid: number
-  role: 'host' | 'audience'
+  sessionId?: string
   onEnd?: () => void
 }
 
-export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallProps) {
+type AgoraTokenResponse = {
+  token?: string
+  appId?: string
+  channelName?: string
+  uid?: number
+  agoraRole?: 'host' | 'audience'
+  error?: string
+}
+
+export default function VideoCall({ sessionId, onEnd }: VideoCallProps) {
   const clientRef = useRef<IAgoraRTCClient | null>(null)
   const [joined, setJoined] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [localTracks, setLocalTracks] = useState<[IMicrophoneAudioTrack, ICameraVideoTrack] | null>(null)
   const localVideoRef = useRef<HTMLDivElement>(null)
   const remoteVideoRef = useRef<HTMLDivElement>(null)
+  const [supabase] = useState(() => createClient())
 
   useEffect(() => {
-    if (!uid) return
+    if (!sessionId) {
+      setError('Sessao de video ausente')
+      return
+    }
+
     let cancelled = false
 
-    const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID!
     const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' })
     clientRef.current = client
-
-    client.setClientRole(role === 'host' ? 'host' : 'audience')
 
     client.on('user-published', async (user, mediaType) => {
       await client.subscribe(user, mediaType)
@@ -42,16 +53,37 @@ export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallPr
 
     const join = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+
+        if (!accessToken) {
+          throw new Error('Nao autenticado')
+        }
+
         const res = await fetch('/api/agora-token', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channelName, uid }),
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ session_id: sessionId }),
         })
-        const { token } = await res.json()
+
+        const tokenData = (await res.json()) as AgoraTokenResponse
+
+        if (!res.ok || !tokenData.token || !tokenData.appId || !tokenData.channelName || !tokenData.uid) {
+          throw new Error(tokenData.error ?? 'Token de video negado')
+        }
+
         if (cancelled) return
-        await client.join(appId, channelName, token, uid)
+
+        const agoraRole = tokenData.agoraRole ?? 'host'
+        client.setClientRole(agoraRole)
+
+        await client.join(tokenData.appId, tokenData.channelName, tokenData.token, tokenData.uid)
         if (cancelled) return
-        if (role === 'host') {
+
+        if (agoraRole === 'host') {
           const tracks = await AgoraRTC.createMicrophoneAndCameraTracks()
           if (cancelled) {
             tracks[0].close()
@@ -64,6 +96,7 @@ export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallPr
         setJoined(true)
       } catch (err) {
         console.error('Erro ao entrar na live:', err)
+        setError(err instanceof Error ? err.message : 'Erro ao entrar no video')
       }
     }
 
@@ -75,7 +108,7 @@ export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallPr
       localTracks?.[1].close()
       client.leave()
     }
-  }, [uid, channelName, role])
+  }, [sessionId, supabase])
 
   useEffect(() => {
     if (localTracks && localVideoRef.current) {
@@ -93,7 +126,7 @@ export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallPr
   return (
     <div className="flex flex-col items-center gap-4 p-4 bg-black min-h-screen">
       <div
-        ref={role === 'host' ? localVideoRef : remoteVideoRef}
+        ref={remoteVideoRef}
         style={{
           width: '100%',
           maxWidth: '672px',
@@ -104,19 +137,17 @@ export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallPr
           position: 'relative',
         }}
       />
-      {role === 'audience' && (
-        <div
-          ref={localVideoRef}
-          style={{
-            width: '160px',
-            height: '120px',
-            backgroundColor: '#222',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        />
-      )}
+      <div
+        ref={localVideoRef}
+        style={{
+          width: '160px',
+          height: '120px',
+          backgroundColor: '#222',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      />
       <div className="flex gap-4 mt-4">
         <button
           onClick={handleEnd}
@@ -125,7 +156,8 @@ export default function VideoCall({ channelName, uid, role, onEnd }: VideoCallPr
           Encerrar
         </button>
       </div>
-      {!joined && <p className="text-white">Conectando...</p>}
+      {error && <p className="text-red-300 text-sm">{error}</p>}
+      {!joined && !error && <p className="text-white">Conectando...</p>}
     </div>
   )
 }
