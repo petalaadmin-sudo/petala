@@ -31,12 +31,30 @@ type MinuteBillingResponse = {
   code?: string
   session_ended?: boolean
   new_balance?: number
+  required?: number
+  current_balance?: number
   duration_seconds?: number
   paid_until_seconds?: number
   petals_charged?: number
 }
 
 type ChatType = 'text' | 'video'
+
+type MinuteChargeOutcome = {
+  ok: boolean
+  sessionEnded?: boolean
+  ignored?: boolean
+  error?: string
+  result?: MinuteBillingResponse
+}
+
+type EndSessionOptions = {
+  rating?: number
+  comment?: string
+  keepalive?: boolean
+  cleanupUnpaid?: boolean
+  silent?: boolean
+}
 
 interface UseChatOptions {
   creatorId: string
@@ -98,10 +116,16 @@ export function useChat({
   const billingRef    = useRef<NodeJS.Timeout | null>(null)
   const elapsedRef    = useRef<NodeJS.Timeout | null>(null)
   const sessionIdRef  = useRef<string | null>(null)
+  const accessTokenRef = useRef<string | null>(null)
+  const statusRef = useRef<UseChatReturn['status']>('idle')
+  const endingRef = useRef(false)
+  const cleanupActiveSessionRef = useRef<((keepalive?: boolean) => void) | null>(null)
 
   const getAccessToken = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token ?? null
+    const token = session?.access_token ?? null
+    accessTokenRef.current = token
+    return token
   }, [supabase])
 
   const stopBilling = useCallback(() => {
@@ -117,15 +141,66 @@ export function useChat({
     return safeDuration
   }, [])
 
-  const chargeMinute = useCallback(async (sessionId: string) => {
-    if (sessionIdRef.current !== sessionId) return
+  const applyBalance = useCallback((newBalance: unknown) => {
+    if (typeof newBalance !== 'number') return
+    setBalance(newBalance)
+    onBalanceUpdate?.(newBalance)
+  }, [onBalanceUpdate])
+
+  const requestEndSession = useCallback(async (
+    sessionId: string,
+    options: EndSessionOptions = {}
+  ) => {
+    const accessToken = options.keepalive ? accessTokenRef.current : await getAccessToken()
+
+    if (!accessToken) {
+      if (!options.silent) {
+        setError('Nao autenticado')
+        statusRef.current = 'error'
+        setStatus('error')
+      }
+      return { ok: false, data: {} as any }
+    }
+
+    const request = fetch('/api/chat/encerrar', {
+      method: 'POST',
+      keepalive: Boolean(options.keepalive),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        rating: options.rating,
+        rating_comment: options.comment,
+        cleanup_unpaid: Boolean(options.cleanupUnpaid),
+      }),
+    })
+
+    if (options.keepalive) {
+      void request.catch((err) => console.error('[useChat cleanup]', err))
+      return { ok: true, data: {} as any }
+    }
+
+    const res = await request
+    const data = await res.json().catch(() => ({}))
+    applyBalance(data.new_balance)
+
+    return { ok: res.ok, data }
+  }, [applyBalance, getAccessToken])
+
+  const chargeMinute = useCallback(async (sessionId: string): Promise<MinuteChargeOutcome> => {
+    if (sessionIdRef.current !== sessionId) {
+      return { ok: false, ignored: true }
+    }
 
     const accessToken = await getAccessToken()
     if (!accessToken) {
       stopBilling()
       setError('Nao autenticado')
+      statusRef.current = 'error'
       setStatus('error')
-      return
+      return { ok: false, error: 'Nao autenticado' }
     }
 
     const res = await fetch('/api/chat/minuto', {
@@ -142,25 +217,25 @@ export function useChat({
     if (result.session_ended) {
       const duration = applyServerDuration(result.duration_seconds ?? result.paid_until_seconds)
       stopBilling()
+      sessionIdRef.current = null
+      statusRef.current = 'ended'
       setStatus('ended')
       setError(result.error ?? 'Sessao encerrada')
       onSessionEnded?.({
         duration: duration ?? 0,
         petals: result.petals_charged ?? 0,
       })
-      return
+      return { ok: false, sessionEnded: true, error: result.error, result }
     }
 
     if (!res.ok || !result.success) {
       setError(result.error ?? 'Falha ao cobrar minuto do chat')
-      return
+      return { ok: false, error: result.error ?? 'Falha ao cobrar minuto do chat', result }
     }
 
-    if (typeof result.new_balance === 'number') {
-      setBalance(result.new_balance)
-      onBalanceUpdate?.(result.new_balance)
-    }
-  }, [applyServerDuration, getAccessToken, onBalanceUpdate, onSessionEnded, stopBilling])
+    applyBalance(result.new_balance)
+    return { ok: true, result }
+  }, [applyBalance, applyServerDuration, getAccessToken, onSessionEnded, stopBilling])
 
   // Busca saldo inicial do usuário
   useEffect(() => {
@@ -177,9 +252,45 @@ export function useChat({
     fetchBalance()
   }, [supabase])
 
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+
+  const cleanupActiveSession = useCallback((keepalive = false) => {
+    const activeSessionId = sessionIdRef.current
+    const currentStatus = statusRef.current
+
+    if (!activeSessionId || endingRef.current) return
+    if (currentStatus !== 'active' && currentStatus !== 'starting') return
+
+    endingRef.current = true
+    statusRef.current = 'ending'
+    stopBilling()
+    channelRef.current?.unsubscribe()
+    void requestEndSession(activeSessionId, {
+      keepalive,
+      cleanupUnpaid: true,
+      silent: true,
+    })
+  }, [requestEndSession, stopBilling])
+
+  useEffect(() => {
+    cleanupActiveSessionRef.current = cleanupActiveSession
+  }, [cleanupActiveSession])
+
   // Cleanup ao desmontar
   useEffect(() => {
+    const cleanupWithKeepalive = () => {
+      cleanupActiveSessionRef.current?.(true)
+    }
+
+    window.addEventListener('pagehide', cleanupWithKeepalive)
+    window.addEventListener('beforeunload', cleanupWithKeepalive)
+
     return () => {
+      cleanupWithKeepalive()
+      window.removeEventListener('pagehide', cleanupWithKeepalive)
+      window.removeEventListener('beforeunload', cleanupWithKeepalive)
       stopBilling()
       channelRef.current?.unsubscribe()
     }
@@ -221,6 +332,8 @@ export function useChat({
           if (updated.ended_at) {
             const duration = applyServerDuration(updated.duration_seconds)
             stopBilling()
+            sessionIdRef.current = null
+            statusRef.current = 'ended'
             setStatus('ended')
             onSessionEnded?.({
               duration: duration ?? updated.duration_seconds,
@@ -250,6 +363,7 @@ export function useChat({
   // ── Ações públicas ───────────────────────────────────────
 
   const startChat = async () => {
+    statusRef.current = 'starting'
     setStatus('starting')
     setError(null)
 
@@ -257,6 +371,7 @@ export function useChat({
       const accessToken = await getAccessToken()
       if (!accessToken) {
         setError('Não autenticado')
+        statusRef.current = 'error'
         setStatus('error')
         return
       }
@@ -274,6 +389,7 @@ export function useChat({
 
       if (!res.ok) {
         setError(data.error ?? 'Erro ao iniciar chat')
+        statusRef.current = 'error'
         setStatus('error')
         return
       }
@@ -286,65 +402,64 @@ export function useChat({
       }
 
       sessionIdRef.current = data.session_id
+      endingRef.current = false
       setServerDurationSeconds(null)
       setElapsed(0)
       setSession(chatSession)
-      setStatus('active')
 
-      if (typeof data.new_balance === 'number') {
-        setBalance(data.new_balance)
-        onBalanceUpdate?.(data.new_balance)
+      applyBalance(data.new_balance)
+
+      if (chatSession.type === 'video') {
+        const firstCharge = await chargeMinute(data.session_id)
+
+        if (!firstCharge.ok) {
+          stopBilling()
+          channelRef.current?.unsubscribe()
+          await requestEndSession(data.session_id, {
+            cleanupUnpaid: true,
+            silent: true,
+          })
+          sessionIdRef.current = null
+          setSession(null)
+          setError(firstCharge.error ?? 'Nao foi possivel cobrar o primeiro minuto do video')
+          statusRef.current = 'error'
+          setStatus('error')
+          return
+        }
       }
 
       subscribeToSession(data.session_id)
       startBilling(data.session_id)
-      if (chatSession.type === 'video') {
-        void chargeMinute(data.session_id)
-      }
+      statusRef.current = 'active'
+      setStatus('active')
 
     } catch (err: any) {
       setError(err.message)
+      statusRef.current = 'error'
       setStatus('error')
     }
   }
 
   const endChat = async (rating?: number, comment?: string) => {
-    if (!session) return
+    if (!session || endingRef.current) return
+    endingRef.current = true
+    statusRef.current = 'ending'
     setStatus('ending')
     stopBilling()
 
     try {
-      const accessToken = await getAccessToken()
-      if (!accessToken) {
-        setError('Não autenticado')
-        setStatus('error')
-        return
-      }
-
-      const res = await fetch('/api/chat/encerrar', {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body:    JSON.stringify({
-          session_id:      session.session_id,
-          rating,
-          rating_comment:  comment,
-        }),
+      const { ok, data } = await requestEndSession(session.session_id, {
+        rating,
+        comment,
+        cleanupUnpaid: true,
       })
 
-      const data = await res.json().catch(() => ({}))
-
-      if (typeof data.new_balance === 'number') {
-        setBalance(data.new_balance)
-        onBalanceUpdate?.(data.new_balance)
-      }
-
-      if (!res.ok) {
+      if (!ok) {
         if (data.session_ended) {
           const duration = applyServerDuration(data.duration_seconds ?? data.paid_until_seconds)
           channelRef.current?.unsubscribe()
+          sessionIdRef.current = null
+          statusRef.current = 'ended'
           setStatus('ended')
           setError(data.error ?? 'Sessao encerrada')
           onSessionEnded?.({
@@ -355,12 +470,16 @@ export function useChat({
         }
 
         setError(data.error ?? 'Erro ao encerrar chat')
+        statusRef.current = 'error'
         setStatus('error')
+        endingRef.current = false
         return
       }
 
       channelRef.current?.unsubscribe()
       const duration = applyServerDuration(data.duration_seconds)
+      sessionIdRef.current = null
+      statusRef.current = 'ended'
       setStatus('ended')
       onSessionEnded?.({
         duration: duration ?? elapsedSeconds,
@@ -368,7 +487,9 @@ export function useChat({
       })
     } catch (err: any) {
       setError(err.message)
+      statusRef.current = 'error'
       setStatus('error')
+      endingRef.current = false
     }
   }
 

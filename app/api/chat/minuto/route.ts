@@ -8,6 +8,7 @@ type ChatBillingResult = {
   error?: string
   code?: string
   session_ended?: boolean
+  new_balance?: number
   required?: number
   current_balance?: number
   duration_seconds?: number

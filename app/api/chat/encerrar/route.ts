@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = auth.user
-    const { session_id, rating, rating_comment } = await request.json()
+    const { session_id, rating, rating_comment, cleanup_unpaid } = await request.json()
 
     if (!session_id) {
       return NextResponse.json({ error: 'session_id obrigatorio' }, { status: 400 })
@@ -77,6 +77,57 @@ export async function POST(request: NextRequest) {
 
     if (!isUser && !isCreator) {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 403 })
+    }
+
+    if (
+      cleanup_unpaid === true &&
+      isUser &&
+      session.type === 'video' &&
+      Number(session.petals_charged ?? 0) === 0
+    ) {
+      const now = new Date().toISOString()
+
+      const { data: updatedSession, error: updateError } = await admin
+        .from('chat_sessions')
+        .update({
+          ended_at: now,
+          duration_seconds: 0,
+        })
+        .eq('id', session_id)
+        .is('ended_at', null)
+        .select('duration_seconds, petals_charged')
+        .single()
+
+      if (updateError || !updatedSession) {
+        throw new Error('Falha ao limpar sessao de video: ' + updateError?.message)
+      }
+
+      await admin
+        .from('creator_presence')
+        .update({ in_session: false })
+        .eq('creator_id', session.creator_id)
+
+      await admin.from('chat_messages').insert({
+        session_id,
+        sender_id: user.id,
+        sender_role: 'system',
+        content: 'Video encerrado sem cobranca confirmada',
+        type: 'system',
+      })
+
+      const { data: balanceData } = await admin
+        .from('users')
+        .select('balance_petals')
+        .eq('id', session.user_id)
+        .single()
+
+      return NextResponse.json({
+        session_id,
+        duration_seconds: updatedSession.duration_seconds,
+        petals_charged: updatedSession.petals_charged,
+        new_balance: balanceData?.balance_petals,
+        cleanup_unpaid: true,
+      })
     }
 
     const billingRpc = billingRpcForType(session.type)
@@ -155,12 +206,19 @@ export async function POST(request: NextRequest) {
       type: 'system',
     })
 
+    const { data: balanceData } = await admin
+      .from('users')
+      .select('balance_petals')
+      .eq('id', session.user_id)
+      .single()
+
     return NextResponse.json({
       session_id,
       duration_seconds: updatedSession.duration_seconds,
       paid_until_seconds: billingResult?.paid_until_seconds,
       effective_ended_at: billingResult?.effective_ended_at,
       petals_charged: updatedSession.petals_charged,
+      new_balance: balanceData?.balance_petals,
     })
   } catch (err) {
     console.error('[/api/chat/encerrar]', err)

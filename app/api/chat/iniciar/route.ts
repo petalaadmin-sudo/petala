@@ -104,16 +104,50 @@ export async function POST(request: NextRequest) {
 
     const { data: activeSession } = await admin
       .from('chat_sessions')
-      .select('id')
+      .select('id, type, creator_id, started_at, petals_charged')
       .eq('user_id', user.id)
       .is('ended_at', null)
-      .single()
+      .maybeSingle()
 
     if (activeSession) {
-      return NextResponse.json({
-        error: 'Voce ja tem uma sessao ativa',
-        session_id: activeSession.id,
-      }, { status: 409 })
+      const ageSeconds = Math.floor(
+        (Date.now() - new Date(activeSession.started_at).getTime()) / 1000
+      )
+      const canCloseStaleUnchargedVideo =
+        activeSession.type === 'video' &&
+        Number(activeSession.petals_charged ?? 0) === 0 &&
+        ageSeconds >= 15
+
+      if (canCloseStaleUnchargedVideo) {
+        const staleEndedAt = new Date().toISOString()
+
+        const { error: staleCloseError } = await admin
+          .from('chat_sessions')
+          .update({
+            ended_at: staleEndedAt,
+            duration_seconds: 0,
+          })
+          .eq('id', activeSession.id)
+          .is('ended_at', null)
+
+        if (staleCloseError) {
+          console.error('[/api/chat/iniciar] stale video cleanup', staleCloseError)
+          return NextResponse.json({
+            error: 'Voce ja tem uma sessao ativa',
+            session_id: activeSession.id,
+          }, { status: 409 })
+        }
+
+        await admin
+          .from('creator_presence')
+          .update({ in_session: false })
+          .eq('creator_id', activeSession.creator_id)
+      } else {
+        return NextResponse.json({
+          error: 'Voce ja tem uma sessao ativa',
+          session_id: activeSession.id,
+        }, { status: 409 })
+      }
     }
 
     const { data: session, error: sessionError } = await admin
