@@ -188,6 +188,33 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
     setShowEndModal(false)
   }
 
+  const renderMessages = () => (
+    <>
+      {messages.map(msg => (
+        <MessageBubble
+          key={msg.id}
+          msg={msg}
+          isMe={msg.sender_role === 'user'}
+        />
+      ))}
+
+      {isTyping && (
+        <div className="flex justify-start mb-1">
+          <div className="bg-[#1e1e1e] rounded-2xl rounded-bl-md px-4 py-3">
+            <div className="flex gap-1">
+              {[0,1,2].map(i => (
+                <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div ref={messagesEndRef} />
+    </>
+  )
+
   // ── TELA: Idle / Iniciando ──────────────────────────────
   if (status === 'idle' || status === 'starting' || status === 'error') {
     return (
@@ -333,11 +360,13 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
         {isVideo && (
           <div className="flex h-full min-h-[360px] flex-col justify-center gap-3">
             {session?.session_id ? (
-              <VideoCall
-                sessionId={session.session_id}
-                onEnd={() => void endChat()}
-                onError={handleVideoCallError}
-              />
+              <div className="min-h-[300px] flex-1">
+                <VideoCall
+                  sessionId={session.session_id}
+                  onEnd={() => void endChat()}
+                  onError={handleVideoCallError}
+                />
+              </div>
             ) : (
               <div className="bg-white/6 border border-white/10 rounded-2xl p-5 text-center max-w-xs mx-auto">
                 <div className="text-3xl mb-3">🎥</div>
@@ -357,34 +386,13 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {!isVideo && messages.map(msg => {
-          const { data: { user } } = { data: { user: null } } as any
-          return (
-            <MessageBubble
-              key={msg.id}
-              msg={msg}
-              isMe={msg.sender_role === 'user'}
-            />
-          )
-        })}
-
-        {!isVideo && isTyping && (
-          <div className="flex justify-start mb-1">
-            <div className="bg-[#1e1e1e] rounded-2xl rounded-bl-md px-4 py-3">
-              <div className="flex gap-1">
-                {[0,1,2].map(i => (
-                  <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }} />
-                ))}
-              </div>
+            <div className="max-h-44 overflow-y-auto rounded-2xl border border-white/8 bg-black/45 p-3">
+              {renderMessages()}
             </div>
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+        {!isVideo && renderMessages()}
       </div>
 
       {/* Toast de feedback do presente */}
@@ -395,7 +403,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
       )}
 
       {/* Painel de presentes */}
-      {showGifts && !isVideo && (
+      {showGifts && (
         <div className="bg-[#111] border-t border-white/5 px-4 py-3 flex-shrink-0">
           <div className="flex gap-4 overflow-x-auto pb-1">
             {GIFT_CATALOG.map(g => (
@@ -417,16 +425,46 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
 
       {/* Input */}
       {isVideo ? (
-        <div className="px-3 py-3 border-t border-white/5 bg-[#111] flex items-center gap-2 flex-shrink-0">
-          <div className="flex-1 text-white/45 text-xs">
-            Cobrança ativa: 120 🌸/min
+        <div className="px-3 py-3 border-t border-white/5 bg-[#111] flex-shrink-0">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex-1 text-white/45 text-xs">
+              Cobrança ativa: 120 🌸/min
+            </div>
+            <button
+              onClick={() => setShowEndModal(true)}
+              className="bg-[#ff4d7d] text-white rounded-xl px-4 py-2.5 text-sm font-medium"
+            >
+              Encerrar vídeo
+            </button>
           </div>
-          <button
-            onClick={() => setShowEndModal(true)}
-            className="bg-[#ff4d7d] text-white rounded-xl px-4 py-2.5 text-sm font-medium"
-          >
-            Encerrar vídeo
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGifts(v => !v)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0 transition-colors ${
+                showGifts ? 'bg-[#ff4d7d]/20 border border-[#ff4d7d]/40' : 'bg-[#1e1e1e]'
+              }`}
+            >
+              🎁
+            </button>
+
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => { setInput(e.target.value); setIsTyping(e.target.value.length > 0) }}
+              onKeyDown={e => { if (e.key === 'Enter') handleSend() }}
+              placeholder="Mensagem durante o vídeo…"
+              className="flex-1 bg-[#1e1e1e] border border-white/8 rounded-full px-4 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/30 min-w-0"
+            />
+
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              className="w-9 h-9 rounded-full bg-[#ff4d7d] flex items-center justify-center text-sm disabled:opacity-30 flex-shrink-0"
+            >
+              ➤
+            </button>
+          </div>
         </div>
       ) : (
       <div className="px-3 py-3 border-t border-white/5 bg-[#111] flex items-center gap-2 flex-shrink-0">
