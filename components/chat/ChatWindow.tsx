@@ -1,9 +1,10 @@
 // components/chat/ChatWindow.tsx
 'use client'
 
+import VideoCall from '@/components/VideoCall'
 import { useChat, GIFT_CATALOG } from '@/lib/hooks/useChat'
 import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface Creator {
   id: string
@@ -20,6 +21,11 @@ interface Props {
   initialBalance: number
   onBalanceUpdate?: (balance: number) => void
   onClose: () => void
+}
+
+type VideoCallErrorState = {
+  message: string
+  detail?: string
 }
 
 // Formata segundos em mm:ss
@@ -72,9 +78,11 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
   const presence = useCreatorPresence(creator.id)
   const isVideo = chatType === 'video'
   const priceLabel = isVideo ? '120 🌸/min' : '10 🌸 primeiro minuto · depois 50 🌸/min'
-  const activePriceLabel = isVideo ? 'vídeo em teste · 120 🌸/min' : '10 🌸 + 50 🌸/min'
+  const activePriceLabel = isVideo ? 'vídeo seguro · 120 🌸/min' : '10 🌸 + 50 🌸/min'
   const startLabel = isVideo ? 'Iniciar vídeo' : 'Iniciar chat'
   const endedLabel = isVideo ? 'Vídeo encerrado' : 'Chat encerrado'
+
+  const headerPriceLabel = isVideo ? 'vídeo seguro · 120 🌸/min' : activePriceLabel
 
   const {
     session, messages, balance, status, error,
@@ -90,11 +98,19 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
   const [showGifts, setShowGifts] = useState(false)
   const [showEndModal, setShowEndModal] = useState(false)
   const [rating, setRating]       = useState(0)
+  const [videoCallError, setVideoCallError] = useState<VideoCallErrorState | null>(null)
   const [giftFeedback, setGiftFeedback] = useState<string | null>(null)
   const [floatingGifts, setFloatingGifts] = useState<{ id: string; emoji: string; x: number }[]>([])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef       = useRef<HTMLInputElement>(null)
+  const videoErrorHandledRef = useRef<string | null>(null)
+  const videoRuntimeRef = useRef({
+    isVideo,
+    status,
+    sessionId: session?.session_id ?? null,
+    endChat,
+  })
   const endedDisplaySeconds = serverDurationSeconds ?? elapsedSeconds
 
   // Scroll automático ao receber mensagem
@@ -108,6 +124,36 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
     const t = setTimeout(() => setFloatingGifts([]), 3000)
     return () => clearTimeout(t)
   }, [floatingGifts])
+
+  useEffect(() => {
+    if (!isVideo || !session?.session_id) {
+      setVideoCallError(null)
+    }
+  }, [isVideo, session?.session_id])
+
+  useEffect(() => {
+    videoRuntimeRef.current = {
+      isVideo,
+      status,
+      sessionId: session?.session_id ?? null,
+      endChat,
+    }
+  }, [endChat, isVideo, session?.session_id, status])
+
+  const handleVideoCallError = useCallback((message: string) => {
+    const runtime = videoRuntimeRef.current
+
+    setVideoCallError({
+      message: 'Não foi possível iniciar o vídeo. A sessão foi encerrada para evitar novas cobranças.',
+      detail: message,
+    })
+
+    if (!runtime.isVideo || runtime.status !== 'active' || !runtime.sessionId) return
+    if (videoErrorHandledRef.current === runtime.sessionId) return
+
+    videoErrorHandledRef.current = runtime.sessionId
+    void runtime.endChat().catch((err) => console.error('[ChatWindow video auto-end]', err))
+  }, [])
 
   const handleSend = () => {
     const trimmed = input.trim()
@@ -191,7 +237,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
 
           {isVideo && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 mb-4 text-xs text-yellow-100">
-              Vídeo em teste interno. A cobrança por minuto já está ativa, mas a chamada Agora ainda não será aberta automaticamente.
+              Vídeo em teste interno. A chamada Agora só abre depois da cobrança inicial confirmada e token seguro por sessão.
             </div>
           )}
 
@@ -263,7 +309,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-white text-sm font-medium">{creator.name}</div>
-          <div className="text-green-400 text-xs">● Online · {activePriceLabel}</div>
+          <div className="text-green-400 text-xs">● Online · {headerPriceLabel}</div>
         </div>
         <div className="text-right">
           <div className="text-yellow-400 text-xs font-medium">🌸 {balance}</div>
@@ -285,14 +331,32 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
         ))}
 
         {isVideo && (
-          <div className="h-full flex items-center justify-center">
-            <div className="bg-white/6 border border-white/10 rounded-2xl p-5 text-center max-w-xs">
-              <div className="text-3xl mb-3">🎥</div>
-              <div className="text-white text-sm font-medium mb-1">Vídeo em teste</div>
-              <div className="text-white/45 text-xs leading-relaxed">
-                A sessão de vídeo está aberta para validar billing. A cobrança de 120 pétalas/min já está ativa; Agora/token ainda não foi liberado neste fluxo.
+          <div className="flex h-full min-h-[360px] flex-col justify-center gap-3">
+            {session?.session_id ? (
+              <VideoCall
+                sessionId={session.session_id}
+                onEnd={() => void endChat()}
+                onError={handleVideoCallError}
+              />
+            ) : (
+              <div className="bg-white/6 border border-white/10 rounded-2xl p-5 text-center max-w-xs mx-auto">
+                <div className="text-3xl mb-3">🎥</div>
+                <div className="text-white text-sm font-medium mb-1">Preparando vídeo seguro</div>
+                <div className="text-white/45 text-xs leading-relaxed">
+                  A chamada abre somente depois da sessão paga e validada pelo servidor.
+                </div>
               </div>
-            </div>
+            )}
+            {videoCallError && (
+              <div className="rounded-xl border border-red-500/25 bg-red-950/35 p-3 text-xs text-red-100">
+                <div>{videoCallError.message}</div>
+                {videoCallError.detail && (
+                  <div className="mt-1 text-[11px] text-red-100/65">
+                    Detalhe: {videoCallError.detail}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
