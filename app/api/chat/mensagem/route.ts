@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       const giftRequestId = client_request_id || crypto.randomUUID()
       const idempotencyKey = `gift:${session_id}:${user.id}:${giftRequestId}`
 
-      // Envia presente via RPC atômica (débita usuário + credita criadora)
+      // Envia presente via RPC atomica (debita lotes, registra gift e mensagem)
       const { data: giftResult } = await admin.rpc('send_gift', {
         p_from_user:   user.id,
         p_to_creator:  session.creators.id,
@@ -97,31 +97,36 @@ export async function POST(request: NextRequest) {
       })
 
       if (!giftResult?.success) {
+        const code = giftResult?.code ?? 'GIFT_FAILED'
+        const status =
+          code === 'INSUFFICIENT_BALANCE' ? 402 :
+          code === 'SESSION_ENDED' ? 409 :
+          code === 'UNAUTHORIZED' ? 403 :
+          code === 'IDEMPOTENCY_KEY_CONFLICT' ? 409 :
+          400
+
         return NextResponse.json({
           error: giftResult?.error ?? 'Falha ao enviar presente',
-          code: 'GIFT_FAILED',
-        }, { status: 402 })
+          code,
+          required: giftResult?.required,
+          available_petals: giftResult?.available_petals,
+          new_balance: giftResult?.new_balance,
+        }, { status })
       }
 
-      // Insere mensagem de presente no chat
       const { data: msg } = await admin
         .from('chat_messages')
-        .insert({
-          session_id,
-          sender_id:   user.id,
-          sender_role: 'user',
-          content:     `enviou um presente ${gift.emoji}`,
-          type:        'gift',
-          gift_emoji:  gift.emoji,
-          gift_petals: gift.petals,
-        })
         .select()
+        .eq('id', giftResult.message_id)
         .single()
 
       return NextResponse.json({
         message:    msg,
         gift_id:    giftResult.gift_id,
         new_balance: giftResult.new_balance,
+        eligible_petals_spent: giftResult.eligible_petals_spent,
+        non_eligible_petals_spent: giftResult.non_eligible_petals_spent,
+        agency_eligible_petals_spent: giftResult.agency_eligible_petals_spent,
       })
     }
 
