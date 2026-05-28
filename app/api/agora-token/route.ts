@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient() as any
     const { data: session, error: sessionError } = await admin
       .from('chat_sessions')
-      .select('id, type, user_id, creator_id, started_at, ended_at, petals_charged, last_heartbeat_at, creators!inner(user_id)')
+      .select('id, type, status, user_id, creator_id, started_at, ended_at, petals_charged, last_heartbeat_at, creators!inner(user_id)')
       .eq('id', session_id)
       .maybeSingle()
 
@@ -105,6 +105,14 @@ export async function POST(req: NextRequest) {
         error: 'Usuario nao autorizado para esta sessao de video',
         code: 'UNAUTHORIZED',
       }, { status: 403 })
+    }
+
+    if (session.status !== 'active') {
+      return NextResponse.json({
+        error: 'Sessao de video ainda nao esta ativa',
+        code: 'SESSION_NOT_ACTIVE',
+        status: session.status,
+      }, { status: 409 })
     }
 
     const heartbeatAgeSeconds = secondsSince(session.last_heartbeat_at ?? session.started_at)

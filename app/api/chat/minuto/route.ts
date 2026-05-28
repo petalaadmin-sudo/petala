@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient() as any
     const { data: session, error: sessionError } = await admin
       .from('chat_sessions')
-      .select('id, user_id, type, ended_at, duration_seconds, petals_charged')
+      .select('id, user_id, type, status, ended_at, duration_seconds, petals_charged')
       .eq('id', session_id)
       .single()
 
@@ -78,6 +78,14 @@ export async function POST(request: NextRequest) {
         session_ended: true,
         duration_seconds: session.duration_seconds,
         petals_charged: session.petals_charged,
+      }, { status: 409 })
+    }
+
+    if (session.status !== 'active') {
+      return NextResponse.json({
+        error: 'Sessao ainda nao esta ativa',
+        code: 'SESSION_NOT_ACTIVE',
+        status: session.status,
       }, { status: 409 })
     }
 

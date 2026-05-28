@@ -51,6 +51,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
+    if (session.status !== 'active') {
+      return NextResponse.json({
+        error: 'Sessao ainda nao esta ativa',
+        code: 'SESSION_NOT_ACTIVE',
+        status: session.status,
+      }, { status: 409 })
+    }
+
     // ── Mensagem de texto simples ──────────────────────────────
     if (type === 'text') {
       const sanitized = content.trim().slice(0, 2000)

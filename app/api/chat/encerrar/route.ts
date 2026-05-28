@@ -79,6 +79,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nao autorizado' }, { status: 403 })
     }
 
+    if (session.status !== 'active') {
+      return NextResponse.json({
+        error: 'Sessao ainda nao esta ativa',
+        code: 'SESSION_NOT_ACTIVE',
+        status: session.status,
+      }, { status: 409 })
+    }
+
     if (
       cleanup_unpaid === true &&
       isUser &&
