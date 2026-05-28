@@ -1,7 +1,7 @@
 // app/criadora/dashboard/page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCreatorSelfPresence } from '@/lib/hooks/useCreatorPresence'
 import { PhotoUploader } from '@/components/album/PhotoUploader'
@@ -18,8 +18,44 @@ interface DashStats {
   recentGifts: { gift_emoji: string; from_user_id: string; petals_spent: number; created_at: string }[]
 }
 
+interface ChatRequest {
+  id: string
+  user_id: string
+  type: 'text' | 'video'
+  status: string
+  requested_at: string | null
+  request_expires_at: string | null
+  started_at: string | null
+  user: {
+    id: string
+    email: string | null
+    username: string | null
+  } | null
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '-'
+
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function requestTypeLabel(type: ChatRequest['type']) {
+  return type === 'video' ? 'Video' : 'Texto'
+}
+
+function requestStatusLabel(status: string) {
+  if (status === 'pending_creator_acceptance') return 'Pendente'
+  if (status === 'requested') return 'Solicitada'
+  return status
+}
+
 export default function DashboardPage() {
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   const router   = useRouter()
 
   const [creatorId, setCreatorId] = useState<string | null>(null)
@@ -29,8 +65,107 @@ export default function DashboardPage() {
   const [online, setOnlineState]  = useState(false)
   const [loading, setLoading]     = useState(true)
   const [pixKey, setPixKey]       = useState('')
+  const [requests, setRequests] = useState<ChatRequest[]>([])
+  const [requestsLoading, setRequestsLoading] = useState(false)
+  const [requestsError, setRequestsError] = useState<string | null>(null)
+  const [requestNotice, setRequestNotice] = useState<string | null>(null)
+  const [requestActionId, setRequestActionId] = useState<string | null>(null)
 
   const { setOnline } = useCreatorSelfPresence(creatorId ?? '')
+
+  const getAccessToken = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ?? null
+  }, [supabase])
+
+  const loadRequests = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!creatorId) return
+
+    if (!options.silent) {
+      setRequestsLoading(true)
+    }
+
+    try {
+      const accessToken = await getAccessToken()
+
+      if (!accessToken) {
+        setRequestsError('Sessao expirada. Entre novamente para ver solicitacoes.')
+        return
+      }
+
+      const res = await fetch('/api/chat/solicitacoes', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok || !data.success) {
+        setRequestsError(data.error ?? 'Falha ao carregar solicitacoes.')
+        return
+      }
+
+      setRequests(Array.isArray(data.requests) ? data.requests : [])
+      setRequestsError(null)
+    } catch (err) {
+      console.error('[creator requests]', err)
+      setRequestsError('Erro ao carregar solicitacoes.')
+    } finally {
+      if (!options.silent) {
+        setRequestsLoading(false)
+      }
+    }
+  }, [creatorId, getAccessToken])
+
+  const handleRequestAction = async (requestId: string, action: 'accept' | 'decline') => {
+    setRequestActionId(requestId)
+    setRequestNotice(null)
+    setRequestsError(null)
+
+    try {
+      const accessToken = await getAccessToken()
+
+      if (!accessToken) {
+        setRequestsError('Sessao expirada. Entre novamente para responder solicitacoes.')
+        return
+      }
+
+      const res = await fetch(action === 'accept' ? '/api/chat/aceitar' : '/api/chat/recusar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(
+          action === 'accept'
+            ? { session_id: requestId }
+            : { session_id: requestId, reason: 'creator_declined_from_dashboard' }
+        ),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok || !data.success) {
+        setRequestsError(data.error ?? 'Falha ao responder solicitacao.')
+        return
+      }
+
+      setRequestNotice(
+        action === 'accept'
+          ? 'Solicitacao aceita. A ativacao da chamada sera conectada na proxima etapa.'
+          : 'Solicitacao recusada.'
+      )
+      await loadRequests({ silent: true })
+    } catch (err) {
+      console.error('[creator request action]', err)
+      setRequestsError('Erro ao responder solicitacao.')
+    } finally {
+      setRequestActionId(null)
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +228,18 @@ export default function DashboardPage() {
     }
     load()
   }, [])
+
+  useEffect(() => {
+    if (!creatorId) return
+
+    void loadRequests()
+
+    const interval = window.setInterval(() => {
+      void loadRequests({ silent: true })
+    }, 5000)
+
+    return () => window.clearInterval(interval)
+  }, [creatorId, loadRequests])
 
   const toggleOnline = async (v: boolean) => {
     setOnlineState(v)
@@ -175,6 +322,90 @@ export default function DashboardPage() {
                 <div className="text-white/25 text-[10px] mt-1">{m.sub}</div>
               </div>
             ))}
+          </div>
+
+          <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5 flex items-start justify-between gap-3">
+              <div>
+                <div className="text-white text-xs font-medium">Solicitacoes de chat</div>
+                <div className="text-white/30 text-[10px] mt-1 leading-relaxed">
+                  Aceitar aqui ainda nao inicia cobranca nem chamada. A ativacao sera conectada na proxima etapa.
+                </div>
+              </div>
+              <button
+                onClick={() => loadRequests()}
+                disabled={requestsLoading}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-white/60 disabled:opacity-40"
+              >
+                Atualizar
+              </button>
+            </div>
+
+            {requestNotice && (
+              <div className="mx-4 mt-3 rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2 text-[11px] text-green-300">
+                {requestNotice}
+              </div>
+            )}
+
+            {requestsError && (
+              <div className="mx-4 mt-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                {requestsError}
+              </div>
+            )}
+
+            {requestsLoading && requests.length === 0 ? (
+              <div className="px-4 py-6 text-white/25 text-xs text-center">Carregando solicitacoes...</div>
+            ) : requests.length === 0 ? (
+              <div className="px-4 py-6 text-white/25 text-xs text-center">Nenhuma solicitacao pendente</div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {requests.map((request) => {
+                  const userLabel = request.user?.username || request.user?.email || request.user_id.slice(0, 8)
+                  const actionBusy = requestActionId === request.id
+
+                  return (
+                    <div key={request.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#ff4d7d]/10 px-2 py-0.5 text-[10px] font-medium text-[#ff4d7d]">
+                              {requestTypeLabel(request.type)}
+                            </span>
+                            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/45">
+                              {requestStatusLabel(request.status)}
+                            </span>
+                          </div>
+                          <div className="mt-2 truncate text-sm font-medium text-white">{userLabel}</div>
+                          <div className="mt-1 text-[10px] text-white/30">
+                            Solicitado: {formatDateTime(request.requested_at ?? request.started_at)}
+                          </div>
+                          <div className="text-[10px] text-white/30">
+                            Expira: {formatDateTime(request.request_expires_at)}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleRequestAction(request.id, 'accept')}
+                            disabled={Boolean(requestActionId)}
+                            className="rounded-lg bg-[#ff4d7d] px-3 py-1.5 text-[11px] font-medium text-white disabled:opacity-40"
+                          >
+                            {actionBusy ? '...' : 'Aceitar'}
+                          </button>
+                          <button
+                            onClick={() => handleRequestAction(request.id, 'decline')}
+                            disabled={Boolean(requestActionId)}
+                            className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-medium text-white/55 disabled:opacity-40"
+                          >
+                            Recusar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {stats.rankWeekly && (
