@@ -176,7 +176,11 @@ export default function FeedPage() {
 
   // Atualiza saldo após coletar bônus
   useEffect(() => {
-    if (result?.success && result.petals_earned) {
+    if (!result?.success) return
+
+    if (typeof result.new_balance === 'number') {
+      setUserBalance(result.new_balance)
+    } else if (result.petals_earned) {
       setUserBalance(prev => prev + result.petals_earned!)
     }
   }, [result])

@@ -14,11 +14,14 @@ interface BonusStatus {
 interface ClaimResult {
   success: boolean
   petals_earned?: number
+  new_balance?: number
   streak?: number
   multiplier?: number
   streak_broken?: boolean
   next_claim_at?: string
   is_milestone?: boolean
+  already_claimed?: boolean
+  idempotent_replay?: boolean
   error?: string
 }
 
