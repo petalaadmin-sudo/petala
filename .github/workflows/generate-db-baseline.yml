@@ -21,36 +21,59 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
+      - name: Show pg_dump 17 version
         shell: bash
         run: |
           set -euo pipefail
 
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client
-          pg_dump --version
+          # Supabase is on PostgreSQL 17. Use the official postgres:17 image so
+          # pg_dump is not older than the server version.
+          docker run --rm postgres:17 pg_dump --version
 
       - name: Generate schema-only baseline
         shell: bash
         env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL_READONLY_SCHEMA }}
+          PROD_DB_SCHEMA_HOST: ${{ secrets.PROD_DB_SCHEMA_HOST }}
+          PROD_DB_SCHEMA_PORT: ${{ secrets.PROD_DB_SCHEMA_PORT }}
+          PROD_DB_SCHEMA_NAME: ${{ secrets.PROD_DB_SCHEMA_NAME }}
+          PROD_DB_SCHEMA_USER: ${{ secrets.PROD_DB_SCHEMA_USER }}
+          PROD_DB_SCHEMA_PASSWORD: ${{ secrets.PROD_DB_SCHEMA_PASSWORD }}
         run: |
           set -euo pipefail
 
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "Missing required GitHub secret PROD_DATABASE_URL_READONLY_SCHEMA." >&2
-            exit 1
-          fi
+          for secret_name in \
+            PROD_DB_SCHEMA_HOST \
+            PROD_DB_SCHEMA_PORT \
+            PROD_DB_SCHEMA_NAME \
+            PROD_DB_SCHEMA_USER \
+            PROD_DB_SCHEMA_PASSWORD
+          do
+            if [ -z "${!secret_name:-}" ]; then
+              echo "Missing required GitHub secret ${secret_name}." >&2
+              exit 1
+            fi
+          done
 
           mkdir -p "$(dirname "$BASELINE_PATH")"
 
           # Schema-only dump for audit/versioning. This command does not apply
           # SQL to any database and intentionally keeps grants/revokes for review.
-          pg_dump \
-            --schema-only \
-            --no-owner \
-            --file "$BASELINE_PATH" \
-            "$DATABASE_URL"
+          # Separate secrets avoid URL encoding issues and pooler username parsing.
+          # Run pg_dump from postgres:17 for compatibility with Supabase Postgres 17.
+          docker run --rm \
+            -e PGPASSWORD="$PROD_DB_SCHEMA_PASSWORD" \
+            -v "$PWD:/work" \
+            -w /work \
+            postgres:17 \
+            pg_dump \
+              --host "$PROD_DB_SCHEMA_HOST" \
+              --port "$PROD_DB_SCHEMA_PORT" \
+              --username "$PROD_DB_SCHEMA_USER" \
+              --dbname "$PROD_DB_SCHEMA_NAME" \
+              --schema-only \
+              --no-owner \
+              --no-password \
+              --file "$BASELINE_PATH"
 
           test -s "$BASELINE_PATH"
 
