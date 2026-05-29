@@ -84,13 +84,52 @@ jobs:
 
           echo "Checking for data export markers..."
 
-          if grep -nE '^[[:space:]]*INSERT[[:space:]]' "$BASELINE_PATH"; then
-            echo "Unexpected INSERT statements found in schema-only baseline." >&2
-            exit 1
-          fi
+          found_data_marker=0
+          max_findings=20
 
-          if grep -nE '^[[:space:]]*COPY[[:space:]]' "$BASELINE_PATH"; then
-            echo "Unexpected COPY statements found in schema-only baseline." >&2
+          report_context() {
+            local label="$1"
+            local pattern="$2"
+            local total
+            local matches
+
+            total="$(grep -Ec "$pattern" "$BASELINE_PATH" || true)"
+            echo "${label}: ${total}"
+
+            if [ "$total" -eq 0 ]; then
+              return
+            fi
+
+            found_data_marker=1
+            mapfile -t matches < <(grep -nE "$pattern" "$BASELINE_PATH" | head -n "$max_findings" || true)
+
+            echo "Showing up to ${max_findings} contextual matches for ${label}:"
+            for match in "${matches[@]}"; do
+              local line_number
+              local start_line
+              local end_line
+
+              line_number="${match%%:*}"
+              start_line=$(( line_number > 3 ? line_number - 3 : 1 ))
+              end_line=$(( line_number + 3 ))
+
+              echo "::group::${label} near line ${line_number}"
+              sed -n "${start_line},${end_line}p" "$BASELINE_PATH" | nl -ba -v "$start_line"
+              echo "::endgroup::"
+            done
+
+            if [ "$total" -gt "$max_findings" ]; then
+              echo "Additional ${label} matches omitted: $(( total - max_findings ))"
+            fi
+          }
+
+          report_context "absolute INSERT lines" '^INSERT[[:space:]]'
+          report_context "absolute COPY lines" '^COPY[[:space:]]'
+          report_context "indented INSERT lines" '^[[:space:]]+INSERT[[:space:]]'
+          report_context "indented COPY lines" '^[[:space:]]+COPY[[:space:]]'
+
+          if [ "$found_data_marker" -ne 0 ]; then
+            echo "Unexpected INSERT/COPY markers found in schema-only baseline. Artifact upload is blocked until this is reviewed." >&2
             exit 1
           fi
 
