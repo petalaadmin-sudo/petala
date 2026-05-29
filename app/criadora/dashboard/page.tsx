@@ -247,7 +247,7 @@ export default function DashboardPage() {
   }
 
   const handleSaque = async () => {
-    alert('Saque solicitado! Processamento em até 1h via Pix.')
+    alert('Saque em preparação. O saldo sacável será exibido após integração com o ledger de ganhos elegíveis.')
   }
 
   if (loading) {
@@ -490,7 +490,7 @@ export default function DashboardPage() {
           <div className="bg-[#0e1a0e] border border-green-500/20 rounded-xl p-4 flex items-start gap-3">
             <span className="text-lg mt-0.5">ℹ️</span>
             <p className="text-green-400/70 text-xs leading-relaxed">
-              Saques são processados toda sexta-feira até as 18h. Valor mínimo: R$ 20,00. Processamento em até 1h via Pix.
+              Pagamentos serão processados semanalmente às segundas-feiras, às 15:00 no horário oficial da plataforma (America/Sao_Paulo). Para criadoras fora do Brasil, o horário local poderá variar conforme o país. O saldo sacável será exibido após integração com o ledger de ganhos elegíveis.
             </p>
           </div>
 
