@@ -311,7 +311,7 @@ export default function DashboardPage() {
         <div className="px-4 flex flex-col gap-3 pb-24">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Saldo disponível', value: `R$ ${(stats.balance * 0.035).toFixed(2)}`, sub: `${stats.balance} 🌸`, color: 'text-yellow-400' },
+              { label: 'Ganhos', value: 'Em validação', sub: 'Saldo sacável será calculado pelo ledger financeiro', color: 'text-yellow-400' },
               { label: 'Sessões hoje',      value: stats.sessionsToday,   sub: 'chats realizados',    color: 'text-[#ff4d7d]' },
               { label: 'Presentes totais',  value: stats.totalGifts,      sub: 'desde o início',      color: 'text-white' },
               { label: 'Avaliação',         value: stats.rating.toFixed(2), sub: `${stats.ratingCount} avaliações`, color: 'text-yellow-400' },
@@ -468,11 +468,13 @@ export default function DashboardPage() {
       {tab === 'saque' && stats && (
         <div className="px-4 pb-24 flex flex-col gap-4">
           <div className="bg-[#111] rounded-xl p-5 border border-white/5 text-center">
-            <div className="text-white/30 text-xs mb-2">Saldo para saque (70% dos ganhos)</div>
-            <div className="text-yellow-400 text-3xl font-medium mb-1">
-              R$ {(stats.balance * 0.035).toFixed(2)}
+            <div className="text-white/30 text-xs mb-2">Saque</div>
+            <div className="text-yellow-400 text-2xl font-medium mb-2">
+              Em preparação
             </div>
-            <div className="text-white/25 text-xs">{stats.balance} pétalas · R$ 0,035 por pétala</div>
+            <div className="text-white/35 text-xs leading-relaxed">
+              O saldo sacável será exibido após integração com o ledger de ganhos elegíveis.
+            </div>
           </div>
 
           <div className="bg-[#111] rounded-xl p-4 border border-white/5">
@@ -494,10 +496,10 @@ export default function DashboardPage() {
 
           <button
             onClick={handleSaque}
-            disabled={stats.balance < 572}
+            disabled
             className="w-full bg-[#ff4d7d] text-white rounded-xl py-4 text-sm font-medium disabled:opacity-40"
           >
-            Solicitar saque — R$ {(stats.balance * 0.035).toFixed(2)}
+            Solicitar saque indisponível
           </button>
         </div>
       )}
