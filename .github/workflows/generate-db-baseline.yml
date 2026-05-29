@@ -1,0 +1,89 @@
+name: Generate DB Baseline
+
+# Manual-only workflow to generate a schema-only baseline for staging/new
+# environments. Never apply this baseline to an existing production database.
+# The generated artifact must be audited manually before it is versioned.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-schema-baseline:
+    name: Generate schema-only baseline
+    runs-on: ubuntu-latest
+    env:
+      BASELINE_PATH: supabase/baselines/2026-05-29_post_034_schema.sql
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+          pg_dump --version
+
+      - name: Generate schema-only baseline
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL_READONLY_SCHEMA }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "Missing required GitHub secret PROD_DATABASE_URL_READONLY_SCHEMA." >&2
+            exit 1
+          fi
+
+          mkdir -p "$(dirname "$BASELINE_PATH")"
+
+          # Schema-only dump for audit/versioning. This command does not apply
+          # SQL to any database and intentionally keeps grants/revokes for review.
+          pg_dump \
+            --schema-only \
+            --no-owner \
+            --file "$BASELINE_PATH" \
+            "$DATABASE_URL"
+
+          test -s "$BASELINE_PATH"
+
+      - name: Run baseline safety checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking for data export markers..."
+
+          if grep -nE '^[[:space:]]*INSERT[[:space:]]' "$BASELINE_PATH"; then
+            echo "Unexpected INSERT statements found in schema-only baseline." >&2
+            exit 1
+          fi
+
+          if grep -nE '^[[:space:]]*COPY[[:space:]]' "$BASELINE_PATH"; then
+            echo "Unexpected COPY statements found in schema-only baseline." >&2
+            exit 1
+          fi
+
+          echo "Review signal counts. These are non-fatal because they can be schema identifiers:"
+          for pattern in '@' 'pix_key' 'token' 'secret' 'password' 'api_key' 'auth\.users' 'metadata'; do
+            count="$(grep -Eic "$pattern" "$BASELINE_PATH" || true)"
+            echo "${pattern}: ${count}"
+          done
+
+          echo "Baseline line count: $(wc -l < "$BASELINE_PATH")"
+          echo "Baseline byte count: $(wc -c < "$BASELINE_PATH")"
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-034-schema-baseline
+          path: ${{ env.BASELINE_PATH }}
+          if-no-files-found: error
+          retention-days: 1
