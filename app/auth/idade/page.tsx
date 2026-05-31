@@ -7,13 +7,15 @@ import { useState } from 'react'
 export default function GateIdadePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const confirmarIdade = async (confirmado: boolean) => {
     setLoading(true)
+    setErrorMessage('')
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
 
-    if (!user) {
+    if (!session) {
       router.push('/auth/login')
       return
     }
@@ -24,33 +26,28 @@ export default function GateIdadePage() {
       return
     }
 
-    const { error } = await supabase
-      .from('users')
-      .upsert({
-        id: user.id,
-        email: user.email,
-        age_confirmed: true,
-        age_confirmed_at: new Date().toISOString(),
-        role: 'user',
-        balance_petals: 0,
-      }, { onConflict: 'id' })
-
-    if (error) {
-      console.error('Erro ao confirmar idade:', error)
-    }
-
     try {
-      await supabase.rpc('credit_petals', {
-        p_user_id: user.id,
-        p_amount: 50,
-        p_type: 'bonus',
+      const response = await fetch('/api/auth/idade', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ confirmed: true }),
       })
-    } catch (e) {
-      console.error('Erro ao creditar pétalas:', e)
-    }
 
-window.location.href = '/feed'    
-setLoading(false)
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error ?? 'Nao foi possivel confirmar sua idade')
+      }
+
+      window.location.href = '/feed'
+    } catch (e) {
+      console.error('Erro ao confirmar idade:', e)
+      setErrorMessage('Nao foi possivel confirmar sua idade. Tente novamente.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -87,6 +84,11 @@ setLoading(false)
             <div className="text-[#E24B4A]/40 text-xs mt-1">tenho menos de 18 anos</div>
           </button>
         </div>
+        {errorMessage && (
+          <p className="text-[#E24B4A] text-xs text-center mb-4">
+            {errorMessage}
+          </p>
+        )}
         <p className="text-white/20 text-xs text-center leading-relaxed">
           Ao continuar você confirma ter lido e aceitar nossos{' '}
           <span className="text-[#ff4d7d]/50">Termos de Uso</span>
