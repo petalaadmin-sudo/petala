@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     const petals = Number(session.metadata?.petals)
     const packageName = session.metadata?.package_name
     const idempotencyKey = `stripe:${session.id}`
+    const amountBrl = (session.amount_total ?? 0) / 100
 
     console.log('[webhook] userId:', userId, 'petals:', petals)
 
@@ -62,12 +63,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 500 })
       }
 
-      const { data: credit, error: creditError } = await admin.rpc('credit_petals', {
+      const { data: credit, error: creditError } = await admin.rpc('credit_stripe_purchase_with_lot', {
         p_user_id: userId,
         p_amount: petals,
-        p_type: 'purchase',
-        p_ref_id: null,
+        p_stripe_session_id: session.id,
+        p_amount_brl: amountBrl,
+        p_package_name: packageName ?? null,
         p_idempotency_key: idempotencyKey,
+        p_metadata: {
+          provider: 'stripe',
+          stripe_session_id: session.id,
+          package_name: packageName,
+          amount_brl: amountBrl,
+        },
       })
 
       if (creditError || !credit?.success) {
@@ -77,50 +85,9 @@ export async function POST(request: Request) {
 
       console.log('[webhook] ✅ Saldo atualizado:', credit.new_balance)
 
-      const transactionData = {
-        amount_brl: (session.amount_total ?? 0) / 100,
-        gateway_id: session.id,
-        status: 'completed',
-        metadata: {
-          package_name: packageName,
-          stripe_session_id: session.id,
-          credited_at: new Date().toISOString(),
-        },
-      }
-
-      const { data: updatedTransaction, error: updateTransactionError } = await admin
-        .from('transactions')
-        .update(transactionData)
-        .eq('idempotency_key', idempotencyKey)
-        .select('id')
-        .maybeSingle()
-
-      if (updateTransactionError) {
-        console.error('[webhook] Erro ao atualizar transacao:', updateTransactionError)
-        return NextResponse.json({ error: 'Erro ao atualizar transacao' }, { status: 500 })
-      }
-
-      if (!updatedTransaction) {
-        const { error: insertTransactionError } = await admin.from('transactions').insert({
-          user_id: userId,
-          type: 'purchase',
-          petals_delta: petals,
-          balance_after: credit.new_balance,
-          amount_brl: (session.amount_total ?? 0) / 100,
-          gateway_id: session.id,
-          status: 'completed',
-          idempotency_key: idempotencyKey,
-          metadata: {
-            package_name: packageName,
-            stripe_session_id: session.id,
-            credited_at: new Date().toISOString(),
-          },
-        })
-
-        if (insertTransactionError) {
-          console.error('[webhook] Erro ao inserir transacao:', insertTransactionError)
-          return NextResponse.json({ error: 'Erro ao registrar transacao' }, { status: 500 })
-        }
+      if (credit.idempotent_replay) {
+        console.log('[webhook] Evento Stripe ja processado pela RPC:', session.id)
+        return NextResponse.json({ ok: true })
       }
 
       const emailDestino = userData.email || session.customer_details?.email
@@ -133,7 +100,7 @@ export async function POST(request: Request) {
             userData.username || '',
             petals,
             packageName || '',
-            (session.amount_total ?? 0) / 100
+            amountBrl
           )
           console.log('[webhook] ✅ Email enviado:', resultado)
         } catch (emailErr) {
