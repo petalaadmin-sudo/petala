@@ -1,6 +1,11 @@
 // app/api/pix/criar/route.ts
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { createPixCharge } from '@/lib/paggue'
+import {
+  createPixCharge,
+  PaggueConfigurationError,
+  PaggueHttpError,
+  PaggueNetworkError,
+} from '@/lib/paggue'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -8,12 +13,12 @@ export async function POST(request: Request) {
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+      return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })
     }
 
     const { package_id } = await request.json()
     if (!package_id) {
-      return NextResponse.json({ error: 'package_id obrigatório' }, { status: 400 })
+      return NextResponse.json({ error: 'package_id obrigatorio' }, { status: 400 })
     }
 
     const { data: pkg, error: pkgError } = await supabase
@@ -24,7 +29,7 @@ export async function POST(request: Request) {
       .single()
 
     if (pkgError || !pkg) {
-      return NextResponse.json({ error: 'Pacote não encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Pacote nao encontrado' }, { status: 404 })
     }
 
     const { data: userData } = await supabase
@@ -37,8 +42,8 @@ export async function POST(request: Request) {
 
     const charge = await createPixCharge({
       amount_cents: Math.round(pkg.price_brl * 100),
-      description: `Pétala — ${pkg.name} (${totalPetals} pétalas)`,
-      customer_name: userData?.email?.split('@')[0] ?? 'Usuário',
+      description: `Petala - ${pkg.name} (${totalPetals} petalas)`,
+      customer_name: userData?.email?.split('@')[0] ?? 'Usuario',
       customer_email: userData?.email ?? user.email ?? '',
       expires_in_minutes: 30,
       webhook_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/pix/webhook`,
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
 
     if (transactionError) {
       console.error('[/api/pix/criar] erro ao registrar transaction pending:', transactionError)
-      return NextResponse.json({ error: 'Erro ao registrar cobranÃ§a Pix' }, { status: 500 })
+      return NextResponse.json({ error: 'Erro ao registrar cobranca Pix' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -97,7 +102,46 @@ export async function POST(request: Request) {
     })
 
   } catch (err) {
+    if (err instanceof PaggueConfigurationError) {
+      console.error('[/api/pix/criar] configuracao Paggue ausente:', {
+        code: err.code,
+        envVar: err.envVar,
+      })
+      return NextResponse.json({
+        error: 'Gateway Pix nao configurado',
+        code: err.code,
+      }, { status: 500 })
+    }
+
+    if (err instanceof PaggueNetworkError) {
+      console.error('[/api/pix/criar] gateway Paggue indisponivel:', {
+        code: err.code,
+        host: err.host,
+        path: err.path,
+        causeCode: err.causeCode,
+      })
+      return NextResponse.json({
+        error: 'Gateway Pix indisponivel',
+        code: err.code,
+        cause_code: err.causeCode,
+      }, { status: 502 })
+    }
+
+    if (err instanceof PaggueHttpError) {
+      console.error('[/api/pix/criar] gateway Paggue retornou erro:', {
+        code: err.code,
+        host: err.host,
+        path: err.path,
+        status: err.status,
+      })
+      return NextResponse.json({
+        error: 'Gateway Pix retornou erro',
+        code: err.code,
+        status: err.status,
+      }, { status: 502 })
+    }
+
     console.error('[/api/pix/criar]', err)
-    return NextResponse.json({ error: 'Erro ao criar cobrança' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao criar cobranca' }, { status: 500 })
   }
 }
