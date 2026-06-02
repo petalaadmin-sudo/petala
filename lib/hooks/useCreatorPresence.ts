@@ -10,6 +10,13 @@ interface PresenceState {
   lastSeen: string | null
 }
 
+interface PresenceWriteResult {
+  success: true
+  creator_id: string
+  online: boolean
+  last_seen_at: string
+}
+
 // Monitora presenca de uma criadora, usado na tela de perfil/chat.
 export function useCreatorPresence(creatorId: string): PresenceState {
   const supabase = createClient()
@@ -80,21 +87,30 @@ export function useCreatorSelfPresence(creatorId: string) {
   const presenceLogKeyRef = useRef<string | null>(null)
   const desiredOnlineRef = useRef(false)
 
-  const writePresence = useCallback(async (online: boolean) => {
-    if (!creatorId) return
+  const writePresence = useCallback(async (online: boolean): Promise<PresenceWriteResult | null> => {
+    if (!creatorId) return null
 
-    const { error: presenceError } = await supabase
-      .from('creator_presence')
-      .upsert({
-        creator_id: creatorId,
-        online,
-        last_seen_at: new Date().toISOString(),
-        in_session: false,
-      })
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
 
-    if (presenceError) {
-      console.warn('[useCreatorSelfPresence] creator_presence upsert', presenceError)
-      throw presenceError
+    if (!accessToken) {
+      throw new Error('Sessao expirada')
+    }
+
+    const res = await fetch('/api/criadora/presenca', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ online }),
+    })
+
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok || !data.success) {
+      console.warn('[useCreatorSelfPresence] /api/criadora/presenca', data)
+      throw new Error(data.error ?? 'Falha ao atualizar presenca')
     }
 
     if (online) {
@@ -112,7 +128,7 @@ export function useCreatorSelfPresence(creatorId: string) {
         console.warn('[useCreatorSelfPresence] start_creator_presence_log', error)
       }
 
-      return
+      return data as PresenceWriteResult
     }
 
     const { error } = await supabase.rpc('end_creator_presence_log', {
@@ -125,6 +141,8 @@ export function useCreatorSelfPresence(creatorId: string) {
     }
 
     presenceLogKeyRef.current = null
+
+    return data as PresenceWriteResult
   }, [creatorId, supabase])
 
   const syncDesiredOnline = useCallback((online: boolean) => {
@@ -136,8 +154,14 @@ export function useCreatorSelfPresence(creatorId: string) {
   }, [])
 
   const setOnline = useCallback(async (online: boolean) => {
+    const previousDesired = desiredOnlineRef.current
     desiredOnlineRef.current = online
-    await writePresence(online)
+    try {
+      return await writePresence(online)
+    } catch (err) {
+      desiredOnlineRef.current = previousDesired
+      throw err
+    }
   }, [writePresence])
 
   useEffect(() => {

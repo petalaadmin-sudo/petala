@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const [view, setView] = useState<DashboardView>('home')
   const [online, setOnlineState] = useState(false)
   const [presenceSaving, setPresenceSaving] = useState(false)
+  const [presenceError, setPresenceError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState<ChatRequest[]>([])
   const [requestsLoading, setRequestsLoading] = useState(false)
@@ -265,13 +266,18 @@ export default function DashboardPage() {
     const previousOnline = online
 
     setPresenceSaving(true)
+    setPresenceError(null)
     setOnlineState(nextOnline)
 
     try {
-      await setOnline(nextOnline)
+      const presence = await setOnline(nextOnline)
+      if (presence) {
+        setOnlineState(Boolean(presence.online))
+      }
     } catch (err) {
       console.error('[creator presence toggle]', err)
       setOnlineState(previousOnline)
+      setPresenceError('Nao foi possivel atualizar sua presenca. Tente novamente.')
     } finally {
       setPresenceSaving(false)
     }
@@ -434,6 +440,12 @@ export default function DashboardPage() {
         {requestNotice && (
           <div className="mt-4 rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-xs text-green-300">
             {requestNotice}
+          </div>
+        )}
+
+        {presenceError && (
+          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+            {presenceError}
           </div>
         )}
 
