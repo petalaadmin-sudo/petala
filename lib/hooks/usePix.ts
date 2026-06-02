@@ -1,7 +1,7 @@
 // lib/hooks/usePix.ts
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type PixStatus = 'idle' | 'creating' | 'waiting' | 'paid' | 'expired' | 'error'
 
@@ -35,49 +35,64 @@ export function usePix(): UsePixReturn {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  const expiryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Para o polling quando desmonta ou quando pago
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current)
+  const clearTimers = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
     }
+
+    if (expiryTimeoutRef.current) {
+      clearTimeout(expiryTimeoutRef.current)
+      expiryTimeoutRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => clearTimers()
   }, [])
 
   const startPolling = (chargeId: string) => {
-    // Polling a cada 3 segundos
+    clearTimers()
+
     pollingRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/pix/status?charge_id=${chargeId}`)
+        if (!res.ok) return
+
         const data = await res.json()
 
         if (data.status === 'paid') {
-          clearInterval(pollingRef.current!)
+          clearTimers()
           setNewBalance(data.new_balance)
           setPetalsCredited(data.petals_credited)
           setStatus('paid')
         } else if (data.status === 'expired' || data.status === 'cancelled') {
-          clearInterval(pollingRef.current!)
+          clearTimers()
           setStatus('expired')
         }
       } catch (err) {
         console.error('[usePix polling]', err)
-        // Não para o polling por erro de rede — tenta de novo
       }
     }, 3000)
 
-    // Timeout de segurança: para de fazer polling depois de 35 minutos
-    setTimeout(() => {
+    expiryTimeoutRef.current = setTimeout(() => {
       if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-        setStatus(s => s === 'waiting' ? 'expired' : s)
+        clearTimers()
+        setStatus(current => current === 'waiting' ? 'expired' : current)
       }
     }, 35 * 60 * 1000)
   }
 
   const createCharge = async (packageId: string) => {
+    clearTimers()
     setStatus('creating')
     setError(null)
     setCharge(null)
+    setNewBalance(null)
+    setPetalsCredited(null)
+    setCopied(false)
 
     try {
       const res = await fetch('/api/pix/criar', {
@@ -95,9 +110,9 @@ export function usePix(): UsePixReturn {
       setCharge(data)
       setStatus('waiting')
       startPolling(data.charge_id)
-
     } catch (err: any) {
       console.error('[usePix createCharge]', err)
+      clearTimers()
       setError(err.message ?? 'Erro desconhecido')
       setStatus('error')
     }
@@ -105,12 +120,12 @@ export function usePix(): UsePixReturn {
 
   const copyQrCode = async () => {
     if (!charge?.pix_qr_code) return
+
     try {
       await navigator.clipboard.writeText(charge.pix_qr_code)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      // Fallback para dispositivos sem clipboard API
       const el = document.createElement('textarea')
       el.value = charge.pix_qr_code
       document.body.appendChild(el)
@@ -123,7 +138,7 @@ export function usePix(): UsePixReturn {
   }
 
   const reset = () => {
-    if (pollingRef.current) clearInterval(pollingRef.current)
+    clearTimers()
     setStatus('idle')
     setCharge(null)
     setNewBalance(null)
