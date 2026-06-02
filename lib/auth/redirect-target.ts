@@ -56,6 +56,30 @@ export async function resolveAccountRedirectTarget(
     return { redirectTo: '/admin', reason: 'admin_role' }
   }
 
+  if (userData?.role === 'creator') {
+    const { data: creator, error: creatorError } = await client
+      .from('creators')
+      .select('id, verified, active, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (creatorError) {
+      handleLookupError(options, 'creators', creatorError)
+    }
+
+    if (creator) {
+      if (creator.verified && creator.active) {
+        return { redirectTo: '/criadora/dashboard', reason: 'active_verified_creator_role' }
+      }
+
+      return { redirectTo: '/criadora/verificacao', reason: 'creator_role_pending_verification_or_activation' }
+    }
+
+    return { redirectTo: '/criadora/onboarding', reason: 'creator_role_without_creator_profile' }
+  }
+
   const { data: agencyUser, error: agencyError } = await client
     .from('agency_users')
     .select('id, agencies!inner(active)')
@@ -71,30 +95,6 @@ export async function resolveAccountRedirectTarget(
 
   if (agencyUser) {
     return { redirectTo: '/agencia', reason: 'active_agency_user_and_agency' }
-  }
-
-  const { data: creator, error: creatorError } = await client
-    .from('creators')
-    .select('id, verified, active, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (creatorError) {
-    handleLookupError(options, 'creators', creatorError)
-  }
-
-  if (creator) {
-    if (creator.verified && creator.active) {
-      return { redirectTo: '/criadora/dashboard', reason: 'active_verified_creator' }
-    }
-
-    return { redirectTo: '/criadora/verificacao', reason: 'creator_pending_verification_or_activation' }
-  }
-
-  if (userData?.role === 'creator') {
-    return { redirectTo: '/criadora/onboarding', reason: 'creator_role_without_creator_profile' }
   }
 
   return { redirectTo: '/feed', reason: 'default_user' }
