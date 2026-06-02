@@ -1,7 +1,7 @@
 // lib/hooks/useCreatorPresence.ts
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface PresenceState {
@@ -10,7 +10,7 @@ interface PresenceState {
   lastSeen: string | null
 }
 
-// Monitora presença de UMA criadora (usado na tela de perfil/chat)
+// Monitora presenca de uma criadora, usado na tela de perfil/chat.
 export function useCreatorPresence(creatorId: string): PresenceState {
   const supabase = createClient()
   const [presence, setPresence] = useState<PresenceState>({
@@ -24,30 +24,30 @@ export function useCreatorPresence(creatorId: string): PresenceState {
 
     let cancelled = false
 
-    // Busca estado inicial
     supabase
       .from('creator_presence')
       .select('online, in_session, last_seen_at')
       .eq('creator_id', creatorId)
       .single()
       .then(({ data }) => {
-        if (!cancelled && data) setPresence({
-          online:     data.online,
-          inSession:  data.in_session,
-          lastSeen:   data.last_seen_at,
-        })
+        if (!cancelled && data) {
+          setPresence({
+            online: data.online,
+            inSession: data.in_session,
+            lastSeen: data.last_seen_at,
+          })
+        }
       })
 
-    // Escuta mudanças em tempo real
     const channelName = `creator-presence:${creatorId}:${crypto.randomUUID()}`
     const channel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event:  '*',
+          event: '*',
           schema: 'public',
-          table:  'creator_presence',
+          table: 'creator_presence',
           filter: `creator_id=eq.${creatorId}`,
         },
         (payload) => {
@@ -55,9 +55,9 @@ export function useCreatorPresence(creatorId: string): PresenceState {
 
           const p = payload.new as any
           setPresence({
-            online:    p.online,
+            online: p.online,
             inSession: p.in_session,
-            lastSeen:  p.last_seen_at,
+            lastSeen: p.last_seen_at,
           })
         }
       )
@@ -72,22 +72,30 @@ export function useCreatorPresence(creatorId: string): PresenceState {
   return presence
 }
 
-// Hook para a CRIADORA gerenciar a própria presença
-// Deve ser montado no layout da área da criadora
+// Hook para a criadora gerenciar a propria presenca.
+// O heartbeat respeita a intencao manual: offline nao volta sozinho.
 export function useCreatorSelfPresence(creatorId: string) {
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
   const presenceLogKeyRef = useRef<string | null>(null)
+  const desiredOnlineRef = useRef(false)
 
-  const setOnline = async (online: boolean) => {
-    await supabase
+  const writePresence = useCallback(async (online: boolean) => {
+    if (!creatorId) return
+
+    const { error: presenceError } = await supabase
       .from('creator_presence')
       .upsert({
-        creator_id:   creatorId,
+        creator_id: creatorId,
         online,
         last_seen_at: new Date().toISOString(),
-        in_session:   false,
+        in_session: false,
       })
+
+    if (presenceError) {
+      console.warn('[useCreatorSelfPresence] creator_presence upsert', presenceError)
+      throw presenceError
+    }
 
     if (online) {
       if (!presenceLogKeyRef.current) {
@@ -103,44 +111,73 @@ export function useCreatorSelfPresence(creatorId: string) {
       if (error) {
         console.warn('[useCreatorSelfPresence] start_creator_presence_log', error)
       }
-    } else {
-      const { error } = await supabase.rpc('end_creator_presence_log', {
-        p_creator_id: creatorId,
-        p_source: 'app_presence',
-      })
 
-      if (error) {
-        console.warn('[useCreatorSelfPresence] end_creator_presence_log', error)
-      }
+      return
+    }
 
+    const { error } = await supabase.rpc('end_creator_presence_log', {
+      p_creator_id: creatorId,
+      p_source: 'app_presence',
+    })
+
+    if (error) {
+      console.warn('[useCreatorSelfPresence] end_creator_presence_log', error)
+    }
+
+    presenceLogKeyRef.current = null
+  }, [creatorId, supabase])
+
+  const syncDesiredOnline = useCallback((online: boolean) => {
+    desiredOnlineRef.current = online
+
+    if (!online) {
       presenceLogKeyRef.current = null
     }
-  }
+  }, [])
+
+  const setOnline = useCallback(async (online: boolean) => {
+    desiredOnlineRef.current = online
+    await writePresence(online)
+  }, [writePresence])
 
   useEffect(() => {
     if (!creatorId) return
 
-    // Marca como online ao montar
-    setOnline(true)
+    heartbeatRef.current = setInterval(() => {
+      if (desiredOnlineRef.current) {
+        void writePresence(true)
+      }
+    }, 30_000)
 
-    // Heartbeat a cada 30s para manter presença
-    heartbeatRef.current = setInterval(() => setOnline(true), 30_000)
-
-    // Marca offline ao desmontar (fechar aba/app)
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') setOnline(false)
-      else setOnline(true)
+      if (!desiredOnlineRef.current) return
+
+      if (document.visibilityState === 'hidden') {
+        void writePresence(false)
+      } else {
+        void writePresence(true)
+      }
+    }
+
+    const handleBeforeUnload = () => {
+      if (desiredOnlineRef.current) {
+        void writePresence(false)
+      }
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('beforeunload', () => setOnline(false))
+    window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
       document.removeEventListener('visibilitychange', handleVisibility)
-      setOnline(false)
-    }
-  }, [creatorId])
+      window.removeEventListener('beforeunload', handleBeforeUnload)
 
-  return { setOnline }
+      if (desiredOnlineRef.current) {
+        void writePresence(false)
+      }
+    }
+  }, [creatorId, writePresence])
+
+  return { setOnline, syncDesiredOnline }
 }
