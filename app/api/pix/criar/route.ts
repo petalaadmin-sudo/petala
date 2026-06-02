@@ -53,7 +53,23 @@ export async function POST(request: Request) {
     })
 
     const admin = createAdminClient()
-    await admin.from('transactions').insert({
+    const idempotencyKey = `pix:${charge.id}`
+    const transactionMetadata = {
+      provider: 'paggue',
+      source_type: 'pix_purchase_pending',
+      source_id: charge.id,
+      gateway_id: charge.id,
+      package_id: pkg.id,
+      package_name: pkg.name,
+      paid_petals: pkg.petals,
+      bonus_petals: pkg.bonus_petals,
+      total_petals: totalPetals,
+      amount_brl: pkg.price_brl,
+      pix_expires: charge.expires_at,
+      idempotency_key: idempotencyKey,
+    }
+
+    const { error: transactionError } = await admin.from('transactions').insert({
       user_id:      user.id,
       type:         'purchase',
       petals_delta: totalPetals,
@@ -61,12 +77,14 @@ export async function POST(request: Request) {
       amount_brl:   pkg.price_brl,
       gateway_id:   charge.id,
       status:       'pending',
-      metadata: {
-        package_id:   pkg.id,
-        package_name: pkg.name,
-        pix_expires:  charge.expires_at,
-      },
+      metadata:     transactionMetadata,
+      idempotency_key: idempotencyKey,
     })
+
+    if (transactionError) {
+      console.error('[/api/pix/criar] erro ao registrar transaction pending:', transactionError)
+      return NextResponse.json({ error: 'Erro ao registrar cobranÃ§a Pix' }, { status: 500 })
+    }
 
     return NextResponse.json({
       charge_id:    charge.id,
