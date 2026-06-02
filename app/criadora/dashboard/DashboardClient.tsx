@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useCreatorSelfPresence } from '@/lib/hooks/useCreatorPresence'
 import { PhotoUploader } from '@/components/album/PhotoUploader'
 import { useRouter } from 'next/navigation'
-import { CreatorAreaNav } from '@/components/criadora/CreatorAreaShell'
+import { CreatorAreaNav, type CreatorAreaContext } from '@/components/criadora/CreatorAreaShell'
 
 interface DashStats {
   totalGifts: number
@@ -34,6 +34,10 @@ interface ChatRequest {
 
 type DashboardView = 'home' | 'requests' | 'content' | 'earnings'
 
+type DashboardClientProps = {
+  initialCreator: CreatorAreaContext
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return '-'
 
@@ -60,14 +64,14 @@ function userLabel(request: ChatRequest) {
   return request.user?.username || request.user?.email || `Usuario ${request.user_id.slice(0, 8)}`
 }
 
-export function DashboardClient() {
+export function DashboardClient({ initialCreator }: DashboardClientProps) {
   const [supabase] = useState(() => createClient())
   const router = useRouter()
 
-  const [creatorId, setCreatorId] = useState<string | null>(null)
-  const [creatorName, setCreatorName] = useState('')
-  const [creatorVerified, setCreatorVerified] = useState(false)
-  const [creatorActive, setCreatorActive] = useState(false)
+  const creatorId = initialCreator.id
+  const creatorName = initialCreator.name ?? ''
+  const creatorVerified = initialCreator.verified
+  const creatorActive = initialCreator.active
   const [stats, setStats] = useState<DashStats | null>(null)
   const [view, setView] = useState<DashboardView>('home')
   const [online, setOnlineState] = useState(false)
@@ -80,7 +84,7 @@ export function DashboardClient() {
   const [requestNotice, setRequestNotice] = useState<string | null>(null)
   const [requestActionId, setRequestActionId] = useState<string | null>(null)
 
-  const { setOnline, syncDesiredOnline } = useCreatorSelfPresence(creatorId ?? '')
+  const { setOnline, syncDesiredOnline } = useCreatorSelfPresence(creatorId)
 
   const getAccessToken = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -178,33 +182,11 @@ export function DashboardClient() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      const { data: creator } = await supabase
+      const { data: creatorStats } = await supabase
         .from('creators')
-        .select('id, name, total_gifts, rating, rating_count, rank_weekly, verified, active')
-        .eq('user_id', user.id)
-        .single()
-
-      if (!creator) {
-        router.push('/feed')
-        return
-      }
-
-      if (!creator.verified || !creator.active) {
-        router.push('/criadora/verificacao')
-        return
-      }
-
-      setCreatorId(creator.id)
-      setCreatorName(creator.name ?? '')
-      setCreatorVerified(Boolean(creator.verified))
-      setCreatorActive(Boolean(creator.active))
+        .select('total_gifts, rating, rating_count, rank_weekly')
+        .eq('id', creatorId)
+        .maybeSingle()
 
       const today = new Date()
       today.setHours(0, 0, 0, 0)
@@ -212,13 +194,13 @@ export function DashboardClient() {
       const { count: sessionsToday } = await supabase
         .from('chat_sessions')
         .select('id', { count: 'exact', head: true })
-        .eq('creator_id', creator.id)
+        .eq('creator_id', creatorId)
         .gte('started_at', today.toISOString())
 
       const { data: presence } = await supabase
         .from('creator_presence')
         .select('online')
-        .eq('creator_id', creator.id)
+        .eq('creator_id', creatorId)
         .single()
 
       setOnlineState(presence?.online ?? false)
@@ -226,15 +208,15 @@ export function DashboardClient() {
       const { data: recentGifts } = await supabase
         .from('gifts')
         .select('gift_emoji, from_user_id, petals_spent, created_at')
-        .eq('to_creator_id', creator.id)
+        .eq('to_creator_id', creatorId)
         .order('created_at', { ascending: false })
         .limit(5)
 
       setStats({
-        totalGifts: creator.total_gifts ?? 0,
-        rating: creator.rating ?? 0,
-        ratingCount: creator.rating_count ?? 0,
-        rankWeekly: creator.rank_weekly,
+        totalGifts: creatorStats?.total_gifts ?? initialCreator.total_gifts ?? 0,
+        rating: creatorStats?.rating ?? 0,
+        ratingCount: creatorStats?.rating_count ?? 0,
+        rankWeekly: creatorStats?.rank_weekly ?? initialCreator.rank_weekly,
         sessionsToday: sessionsToday ?? 0,
         recentGifts: recentGifts ?? [],
       })
@@ -243,7 +225,7 @@ export function DashboardClient() {
     }
 
     void load()
-  }, [router, supabase])
+  }, [creatorId, initialCreator.rank_weekly, initialCreator.total_gifts, supabase])
 
   useEffect(() => {
     if (!creatorId) return

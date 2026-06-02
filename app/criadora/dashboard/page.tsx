@@ -2,7 +2,7 @@ import { requireCreatorAreaPage } from '@/lib/auth/require-creator-area'
 import { DashboardClient } from './DashboardClient'
 
 export default async function DashboardPage() {
-  await requireCreatorAreaPage()
+  const { creator } = await requireCreatorAreaPage()
 
-  return <DashboardClient />
+  return <DashboardClient initialCreator={creator} />
 }
