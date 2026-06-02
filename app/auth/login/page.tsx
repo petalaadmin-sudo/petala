@@ -2,10 +2,10 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 
 function LoginContent() {
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   const params = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -15,25 +15,61 @@ function LoginContent() {
   const [authError, setAuthError] = useState('')
   const [refInfo, setRefInfo] = useState<{ name: string } | null>(null)
 
-  useEffect(() => {
-    if (window.location.hash.includes('access_token')) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token) {
-          void redirectAfterPasswordLogin(session.access_token, session.refresh_token)
-        }
-      })
+  const redirectAfterPasswordLogin = useCallback(async (accessToken: string, refreshToken?: string) => {
+    document.cookie = `sb-access-token=${accessToken}; path=/; max-age=3600; SameSite=Lax; Secure`
+
+    if (refreshToken) {
+      document.cookie = `sb-refresh-token=${refreshToken}; path=/; max-age=86400; SameSite=Lax; Secure`
+    }
+
+    const redirectRes = await fetch('/api/auth/redirect-target', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+    const redirectData = await redirectRes.json().catch(() => null)
+
+    if (redirectRes.ok && redirectData?.success && redirectData.redirectTo) {
+      router.push(redirectData.redirectTo)
       return
     }
 
-    const ref = params.get('ref')
-    if (!ref) return
-    const code = ref.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
-    document.cookie = `pending_ref=${encodeURIComponent(code)}; path=/; max-age=600; SameSite=Lax`
-    fetch(`/api/indicacao/validar?code=${code}`)
-      .then(r => r.json())
-      .then(d => { if (d.valid) setRefInfo({ name: d.name }) })
-      .catch(() => {})
-  }, [params])
+    router.push('/feed')
+  }, [router])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const redirectExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (cancelled) return true
+
+      if (session?.access_token) {
+        void redirectAfterPasswordLogin(session.access_token, session.refresh_token)
+        return true
+      }
+
+      return false
+    }
+
+    void redirectExistingSession().then((didRedirect) => {
+      if (cancelled || didRedirect || window.location.hash.includes('access_token')) return
+
+      const ref = params.get('ref')
+      if (!ref) return
+      const code = ref.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+      document.cookie = `pending_ref=${encodeURIComponent(code)}; path=/; max-age=600; SameSite=Lax`
+      fetch(`/api/indicacao/validar?code=${code}`)
+        .then(r => r.json())
+        .then(d => { if (d.valid) setRefInfo({ name: d.name }) })
+        .catch(() => {})
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [params, redirectAfterPasswordLogin, supabase])
 
   const loginWith = async (provider: 'google' | 'apple') => {
     setLoading(provider)
@@ -65,28 +101,6 @@ function LoginContent() {
     }
 
     setSent(true)
-  }
-
-  const redirectAfterPasswordLogin = async (accessToken: string, refreshToken?: string) => {
-    document.cookie = `sb-access-token=${accessToken}; path=/; max-age=3600; SameSite=Lax; Secure`
-
-    if (refreshToken) {
-      document.cookie = `sb-refresh-token=${refreshToken}; path=/; max-age=86400; SameSite=Lax; Secure`
-    }
-
-    const redirectRes = await fetch('/api/auth/redirect-target', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
-    const redirectData = await redirectRes.json().catch(() => null)
-
-    if (redirectRes.ok && redirectData?.success && redirectData.redirectTo) {
-      router.push(redirectData.redirectTo)
-      return
-    }
-
-    router.push('/feed')
   }
 
   const loginWithPassword = async () => {

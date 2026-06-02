@@ -95,34 +95,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
-  if (user && (pathname === '/auth/login' || pathname === '/auth/cadastro')) {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (userData?.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
-
-    return NextResponse.redirect(new URL('/feed', request.url))
-  }
-
-  if (user && pathname === '/') {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (userData?.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
-
-    return NextResponse.redirect(new URL('/feed', request.url))
-  }
-
   return supabaseResponse
 }
 

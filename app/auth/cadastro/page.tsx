@@ -5,10 +5,10 @@
 import { createClient } from '@/lib/supabase/client'
 import { ReferralInput } from '@/components/ui/ReferralInput'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 
 function CadastroContent() {
-  const supabase      = createClient()
+  const [supabase]    = useState(() => createClient())
   const router        = useRouter()
   const searchParams  = useSearchParams()
 
@@ -19,6 +19,34 @@ function CadastroContent() {
 
   // Extrai código da URL (?ref=XXX-XXXXX)
   const refFromUrl = searchParams.get('ref')
+
+  const redirectExistingSession = useCallback(async (accessToken: string) => {
+    const redirectRes = await fetch('/api/auth/redirect-target', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const redirectData = await redirectRes.json().catch(() => null)
+
+    if (redirectRes.ok && redirectData?.success && redirectData.redirectTo) {
+      router.push(redirectData.redirectTo)
+      return
+    }
+
+    router.push('/feed')
+  }, [router])
+
+  useEffect(() => {
+    let cancelled = false
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session?.access_token) {
+        void redirectExistingSession(session.access_token)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [redirectExistingSession, supabase])
 
   // Salva imediatamente no localStorage sem esperar validação
   useEffect(() => {

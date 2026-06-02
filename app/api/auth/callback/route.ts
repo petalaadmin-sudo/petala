@@ -3,15 +3,10 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database'
+import { resolveAccountRedirectTarget } from '@/lib/auth/redirect-target'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-type UserRole = 'user' | 'creator' | 'admin'
-
-type UserRow = {
-  role: UserRole | null
-}
 
 type CookieToSet = {
   name: string
@@ -91,19 +86,19 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient() as any
-  const { data: userData, error: roleError } = await admin
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
 
-  if (roleError) {
-    console.error('[auth/callback] users.role', roleError)
+  let redirectTo = '/feed'
+
+  try {
+    const target = await resolveAccountRedirectTarget(admin, user.id, {
+      strict: true,
+      logPrefix: 'auth/callback',
+    })
+    redirectTo = target.redirectTo
+  } catch (err) {
+    console.error('[auth/callback] redirect target', err)
     return redirectToCallbackError(request)
   }
-
-  const publicUser = userData as UserRow | null
-  const redirectTo = publicUser?.role === 'admin' ? '/admin' : '/feed'
 
   return redirectWithCookies(request, redirectTo, cookiesToSet)
 }
