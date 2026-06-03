@@ -12,7 +12,7 @@ const PAID_PHOTO_UPLOAD_DISABLED = {
   error: 'Fotos pagas serão reativadas após o fluxo financeiro auditável.',
 }
 
-const FREE_PHOTO_PRICE_PLACEHOLDER = 50
+const FREE_PHOTO_PRICE = 0
 
 function logUploadError(stage: string, err: unknown) {
   if (err instanceof R2ConfigError) {
@@ -99,6 +99,7 @@ export async function POST(request: Request) {
     }
 
     // Gera chave única para a foto principal e para o blur
+    const photoId = crypto.randomUUID()
     const photoKey = generatePhotoKey(creator.id)
     const blurKey  = photoKey.replace('.jpg', '_blur.jpg')
 
@@ -126,11 +127,12 @@ export async function POST(request: Request) {
     const { data: photo, error: dbError } = await admin
       .from('album_photos')
       .insert({
+        id:           photoId,
         creator_id:   creator.id,
         r2_key:       photoKey,
         r2_key_blur:  blurKey,
         is_free:      true,
-        price_petals: FREE_PHOTO_PRICE_PLACEHOLDER,
+        price_petals: FREE_PHOTO_PRICE,
         sort_order:   Date.now(),
       })
       .select()
@@ -140,6 +142,8 @@ export async function POST(request: Request) {
       console.error('[/api/fotos/upload-url] erro ao criar registro da foto', {
         code: dbError?.code,
         message: dbError?.message,
+        details: dbError?.details,
+        hint: dbError?.hint,
       })
       return NextResponse.json(
         { code: 'PHOTO_UPLOAD_DB_ERROR', error: 'Não foi possível criar o registro da foto.' },
