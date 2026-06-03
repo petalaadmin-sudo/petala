@@ -1,11 +1,11 @@
-// app/criadora/dashboard/page.tsx
+// app/criadora/dashboard/DashboardClient.tsx
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCreatorSelfPresence } from '@/lib/hooks/useCreatorPresence'
 import { PhotoUploader } from '@/components/album/PhotoUploader'
-import { useRouter } from 'next/navigation'
 import { CreatorAreaNav, type CreatorAreaContext } from '@/components/criadora/CreatorAreaShell'
 
 interface DashStats {
@@ -38,6 +38,16 @@ type DashboardClientProps = {
   initialCreator: CreatorAreaContext
 }
 
+type QuickAction = {
+  title: string
+  eyebrow: string
+  description: string
+  href?: string
+  onClick?: () => void
+  disabled?: boolean
+  highlight?: boolean
+}
+
 function formatDateTime(value: string | null) {
   if (!value) return '-'
 
@@ -47,6 +57,16 @@ function formatDateTime(value: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatTodayLabel() {
+  const value = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 function requestTypeLabel(type: ChatRequest['type']) {
@@ -66,7 +86,6 @@ function userLabel(request: ChatRequest) {
 
 export function DashboardClient({ initialCreator }: DashboardClientProps) {
   const [supabase] = useState(() => createClient())
-  const router = useRouter()
 
   const creatorId = initialCreator.id
   const creatorName = initialCreator.name ?? ''
@@ -268,11 +287,22 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
   const requestCards = (items: ChatRequest[]) => {
     if (requestsLoading && items.length === 0) {
-      return <div className="py-6 text-center text-xs text-white/30">Carregando solicitacoes...</div>
+      return (
+        <div className="rounded-2xl bg-white/[0.03] px-4 py-8 text-center text-xs text-white/35">
+          Carregando solicitacoes...
+        </div>
+      )
     }
 
     if (items.length === 0) {
-      return <div className="py-6 text-center text-xs text-white/30">Nenhuma solicitacao pendente</div>
+      return (
+        <div className="rounded-2xl bg-white/[0.03] px-4 py-8 text-center">
+          <p className="text-sm font-medium text-white/70">Nenhum pedido pendente agora</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/35">
+            Quando houver novas solicitacoes, elas aparecerao aqui com prioridade para resposta.
+          </p>
+        </div>
+      )
     }
 
     return (
@@ -281,19 +311,19 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
           const actionBusy = requestActionId === request.id
 
           return (
-            <div key={request.id} className="rounded-2xl border border-white/8 bg-[#111] p-4">
+            <div key={request.id} className="rounded-[28px] bg-white/[0.04] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.18)] ring-1 ring-white/[0.07]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[#ff4d7d]/12 px-2.5 py-1 text-[10px] font-medium text-[#ff8aaa]">
+                    <span className="rounded-full bg-[#ff4d7d]/12 px-2.5 py-1 text-[10px] font-semibold text-[#ff8aaa]">
                       {requestTypeLabel(request.type)}
                     </span>
-                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-white/45">
+                    <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] text-white/50">
                       {requestStatusLabel(request.status)}
                     </span>
                   </div>
-                  <div className="mt-3 truncate text-sm font-medium text-white">{userLabel(request)}</div>
-                  <div className="mt-1 text-[11px] text-white/35">
+                  <div className="mt-3 truncate text-sm font-semibold text-white">{userLabel(request)}</div>
+                  <div className="mt-1 text-[11px] text-white/40">
                     Solicitado: {formatDateTime(request.requested_at ?? request.started_at)}
                   </div>
                   <div className="text-[11px] text-white/35">
@@ -305,14 +335,14 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                   <button
                     onClick={() => handleRequestAction(request.id, 'accept')}
                     disabled={Boolean(requestActionId)}
-                    className="rounded-xl bg-[#ff4d7d] px-4 py-2 text-[11px] font-medium text-white disabled:opacity-40"
+                    className="rounded-2xl bg-[#ff4d7d] px-4 py-2 text-[11px] font-semibold text-white shadow-[0_12px_30px_rgba(255,77,125,0.25)] transition disabled:opacity-40"
                   >
                     {actionBusy ? '...' : 'Aceitar'}
                   </button>
                   <button
                     onClick={() => handleRequestAction(request.id, 'decline')}
                     disabled={Boolean(requestActionId)}
-                    className="rounded-xl border border-white/10 px-4 py-2 text-[11px] font-medium text-white/60 disabled:opacity-40"
+                    className="rounded-2xl bg-white/[0.06] px-4 py-2 text-[11px] font-semibold text-white/60 ring-1 ring-white/[0.06] transition disabled:opacity-40"
                   >
                     Recusar
                   </button>
@@ -327,81 +357,189 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#ff4d7d]/30 border-t-[#ff4d7d]" />
+      <div className="flex h-screen items-center justify-center bg-[#09090b]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#ff4d7d]/25 border-t-[#ff4d7d]" />
       </div>
     )
   }
 
   const pendingCount = requests.length
-  const todayLabel = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
+  const todayLabel = formatTodayLabel()
+  const ratingValue = stats && stats.ratingCount > 0 ? stats.rating.toFixed(2) : 'Nova'
+
+  const quickActions: QuickAction[] = [
+    {
+      title: online ? 'Manter disponibilidade' : 'Ficar online',
+      eyebrow: online ? 'Presenca ativa' : 'Primeiro passo',
+      description: online
+        ? 'Voce ja esta visivel para receber novas solicitacoes.'
+        : 'Apareca no feed e abra janela para receber pedidos.',
+      onClick: online ? undefined : toggleOnline,
+      disabled: online || presenceSaving,
+      highlight: !online,
+    },
+    {
+      title: 'Ver oportunidades',
+      eyebrow: 'Prioridade',
+      description: 'Abra o feed da criadora e organize sinais de interesse.',
+      href: '/criadora/feed',
+      highlight: online,
+    },
+    {
+      title: 'Responder pedidos',
+      eyebrow: pendingCount > 0 ? `${pendingCount} pendente${pendingCount === 1 ? '' : 's'}` : 'Central limpa',
+      description: pendingCount > 0 ? 'Responda antes que a janela expire.' : 'Sem pedidos aguardando neste momento.',
+      onClick: () => setView('requests'),
+    },
+    {
+      title: 'Publicar conteudo',
+      eyebrow: 'Album',
+      description: 'Mantenha seu perfil vivo com novas fotos.',
+      onClick: () => setView('content'),
+    },
+    {
+      title: 'Melhorar perfil',
+      eyebrow: 'Vitrine',
+      description: 'Veja sua pagina publica e ajuste sua apresentacao.',
+      href: '/criadora/perfil',
+    },
+    {
+      title: 'Ganhos em validacao',
+      eyebrow: 'Ledger',
+      description: 'Painel financeiro sera exibido quando os dados elegiveis estiverem conectados.',
+      onClick: () => setView('earnings'),
+    },
+  ]
+
+  const metrics = stats
+    ? [
+      {
+        label: 'Pedidos pendentes',
+        value: pendingCount,
+        sub: pendingCount > 0 ? 'aguardando resposta' : 'central limpa',
+      },
+      {
+        label: 'Sessoes hoje',
+        value: stats.sessionsToday,
+        sub: 'atividade registrada',
+      },
+      {
+        label: 'Presentes',
+        value: stats.totalGifts,
+        sub: 'historico recebido',
+      },
+      {
+        label: 'Avaliacao',
+        value: ratingValue,
+        sub: `${stats.ratingCount} avaliacao${stats.ratingCount === 1 ? '' : 'es'}`,
+      },
+      {
+        label: 'Ganhos',
+        value: 'Em validacao',
+        sub: 'ledger financeiro em preparacao',
+      },
+    ]
+    : []
+
+  const shortcuts = [
+    { label: 'Feed de oportunidades', href: '/criadora/feed', helper: 'Priorize sinais de interesse.' },
+    { label: 'Mensagens', href: '/criadora/mensagens', helper: 'Veja pedidos e conversas.' },
+    { label: 'Chamadas', href: '/criadora/chamadas', helper: 'Politicas e preparacao.' },
+    { label: 'Ganhos', href: '/criadora/ganhos', helper: 'Acompanhamento em validacao.' },
+    { label: 'Perfil', href: '/criadora/perfil', helper: 'Cuide da sua vitrine.' },
+    { label: 'Configuracoes', href: '/criadora/configuracoes', helper: 'Conta e preferencias.' },
+  ]
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pb-24 text-white">
-      <header className="px-4 pb-3 pt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#ff8aaa]">Creator Bloom</p>
-            <h1 className="mt-2 truncate text-2xl font-semibold">Oi, {creatorName || 'criadora'}</h1>
-            <p className="mt-1 text-xs text-white/35">{todayLabel}</p>
+    <div className="min-h-screen bg-[#09090b] pb-24 text-white">
+      <header className="relative overflow-hidden px-4 pb-4 pt-5">
+        <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_20%_0%,rgba(255,77,125,0.28),transparent_34%),radial-gradient(circle_at_82%_8%,rgba(250,204,21,0.14),transparent_26%)]" />
+        <div className="relative mx-auto max-w-5xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#ff9db8]">Creator Bloom</p>
+              <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight sm:text-3xl">
+                Oi, {creatorName || 'criadora'}
+              </h1>
+              <p className="mt-1 text-xs text-white/45">{todayLabel}</p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <div className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${
+                creatorVerified
+                  ? 'bg-green-400/10 text-green-300 ring-green-400/20'
+                  : 'bg-yellow-400/10 text-yellow-300 ring-yellow-400/20'
+              }`}>
+                {creatorVerified ? 'Verificada' : 'Em verificacao'}
+              </div>
+              <div className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${
+                creatorActive
+                  ? 'bg-white/[0.06] text-white/60 ring-white/[0.08]'
+                  : 'bg-yellow-400/10 text-yellow-300 ring-yellow-400/20'
+              }`}>
+                {creatorActive ? 'Perfil ativo' : 'Perfil em analise'}
+              </div>
+            </div>
           </div>
-          <div className={`rounded-full border px-3 py-1.5 text-[11px] font-medium ${
-            creatorVerified
-              ? 'border-green-400/25 bg-green-400/10 text-green-300'
-              : 'border-yellow-400/25 bg-yellow-400/10 text-yellow-300'
-          }`}>
-            {creatorVerified ? 'Verificada' : 'Em verificacao'}
-          </div>
+
+          <CreatorAreaNav active="dashboard" className="mt-5" />
         </div>
       </header>
 
-      <main className="px-4">
-        <CreatorAreaNav active="dashboard" className="mb-4" />
-
-        <section className={`rounded-3xl border p-5 ${
+      <main className="mx-auto max-w-5xl px-4">
+        <section className={`relative overflow-hidden rounded-[32px] p-5 shadow-[0_22px_80px_rgba(0,0,0,0.28)] ring-1 ${
           online
-            ? 'border-green-400/25 bg-[#07150d]'
-            : 'border-white/8 bg-[#111]'
+            ? 'bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(17,17,17,0.94)_54%,rgba(255,77,125,0.12))] ring-green-400/20'
+            : 'bg-[linear-gradient(135deg,rgba(255,77,125,0.16),rgba(17,17,17,0.96)_48%,rgba(255,255,255,0.04))] ring-white/[0.08]'
         }`}>
-          <div className="flex items-start justify-between gap-4">
+          <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-white/[0.05] blur-2xl" />
+          <div className="relative grid gap-5 md:grid-cols-[1.35fr_0.65fr] md:items-end">
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${online ? 'bg-green-400' : 'bg-white/20'}`} />
-                <span className={`text-sm font-medium ${online ? 'text-green-300' : 'text-white/50'}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  online ? 'bg-green-400/12 text-green-300' : 'bg-white/[0.06] text-white/55'
+                }`}>
+                  <span className={`h-2 w-2 rounded-full ${online ? 'bg-green-300 shadow-[0_0_16px_rgba(74,222,128,0.8)]' : 'bg-white/25'}`} />
                   {online ? 'Online agora' : 'Offline'}
                 </span>
+                <span className="rounded-full bg-black/20 px-3 py-1.5 text-xs text-white/45">
+                  {pendingCount} pedido{pendingCount === 1 ? '' : 's'} pendente{pendingCount === 1 ? '' : 's'}
+                </span>
               </div>
-              <h2 className="mt-4 text-xl font-semibold leading-tight">
-                {online ? 'Voce esta disponivel para novas solicitacoes.' : 'Entre online quando estiver pronta para atender.'}
+
+              <h2 className="mt-5 max-w-2xl text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+                {online
+                  ? 'Voce esta disponivel para novas solicitacoes.'
+                  : 'Fique online para aparecer no feed e receber solicitacoes.'}
               </h2>
-              <p className="mt-2 max-w-xs text-xs leading-relaxed text-white/45">
-                O status controla a visibilidade no feed. O app nao vai religar sua presenca depois de um offline manual.
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/55">
+                Use esta tela para decidir o proximo movimento: abrir disponibilidade, responder pedidos,
+                cuidar do conteudo e acompanhar o painel financeiro quando o ledger estiver conectado.
+              </p>
+              <p className="mt-3 text-xs text-white/38">
+                Offline manual nao religa sozinho. Voce controla quando aparece disponivel.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-center">
-              <div className="text-lg font-semibold">{pendingCount}</div>
-              <div className="text-[10px] text-white/35">pendentes</div>
+
+            <div className="rounded-[28px] bg-black/18 p-4 ring-1 ring-white/[0.07]">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">Status</div>
+              <div className="mt-3 text-3xl font-semibold">{pendingCount}</div>
+              <div className="mt-1 text-xs text-white/45">solicitacoes aguardando</div>
+              <button
+                onClick={toggleOnline}
+                disabled={presenceSaving}
+                className={`mt-5 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:opacity-45 ${
+                  online
+                    ? 'bg-white/[0.08] text-white ring-1 ring-white/[0.1]'
+                    : 'bg-[#ff4d7d] text-white shadow-[0_16px_38px_rgba(255,77,125,0.28)]'
+                }`}
+              >
+                {presenceSaving ? 'Atualizando...' : online ? 'Ficar offline' : 'Ficar online'}
+              </button>
             </div>
           </div>
-
-          <button
-            onClick={toggleOnline}
-            disabled={presenceSaving}
-            className={`mt-5 w-full rounded-2xl py-3 text-sm font-semibold transition-colors disabled:opacity-45 ${
-              online
-                ? 'border border-white/12 bg-white/8 text-white'
-                : 'bg-[#ff4d7d] text-white'
-            }`}
-          >
-            {presenceSaving ? 'Atualizando...' : online ? 'Ficar offline' : 'Ficar online'}
-          </button>
         </section>
 
-        <nav className="mt-4 grid grid-cols-4 gap-2">
+        <nav className="mt-4 grid grid-cols-4 gap-2 rounded-[26px] bg-white/[0.035] p-1.5 ring-1 ring-white/[0.06]">
           {([
             ['home', 'Inicio'],
             ['requests', 'Pedidos'],
@@ -411,10 +549,10 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
             <button
               key={id}
               onClick={() => setView(id)}
-              className={`rounded-2xl py-2.5 text-[11px] font-medium transition-colors ${
+              className={`rounded-2xl py-2.5 text-[11px] font-semibold transition-colors ${
                 view === id
-                  ? 'bg-[#ff4d7d] text-white'
-                  : 'border border-white/8 bg-[#111] text-white/45'
+                  ? 'bg-white text-black'
+                  : 'text-white/45 hover:bg-white/[0.04] hover:text-white/70'
               }`}
             >
               {label}
@@ -423,107 +561,140 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         </nav>
 
         {requestNotice && (
-          <div className="mt-4 rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-xs text-green-300">
+          <div className="mt-4 rounded-2xl bg-green-500/10 px-4 py-3 text-xs text-green-300 ring-1 ring-green-500/20">
             {requestNotice}
           </div>
         )}
 
         {presenceError && (
-          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+          <div className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-xs text-red-300 ring-1 ring-red-500/20">
             {presenceError}
           </div>
         )}
 
         {requestsError && (
-          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+          <div className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-xs text-red-300 ring-1 ring-red-500/20">
             {requestsError}
           </div>
         )}
 
         {view === 'home' && stats && (
           <div className="mt-4 flex flex-col gap-4">
-            <section className="rounded-3xl border border-white/8 bg-[#111] p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
+            <section className="rounded-[32px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
+              <div className="flex items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold">Solicitacoes pendentes</h2>
-                  <p className="mt-1 text-[11px] text-white/35">
-                    Aceitar ainda nao inicia cobranca nem chamada completa.
-                  </p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ff9db8]">O que fazer agora</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight">Priorize a proxima acao</h2>
                 </div>
-                <button
-                  onClick={() => setView('requests')}
-                  className="rounded-xl border border-white/10 px-3 py-2 text-[11px] text-white/60"
-                >
-                  Ver todas
-                </button>
+                <span className="hidden rounded-full bg-white/[0.05] px-3 py-1 text-[11px] text-white/45 sm:block">
+                  rotina operacional
+                </span>
               </div>
-              {requestCards(requests.slice(0, 2))}
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {quickActions.map((action) => {
+                  const classes = `group rounded-[26px] p-4 text-left transition ${
+                    action.highlight
+                      ? 'bg-[#ff4d7d] text-white shadow-[0_18px_48px_rgba(255,77,125,0.24)]'
+                      : 'bg-black/18 text-white ring-1 ring-white/[0.06] hover:bg-white/[0.055]'
+                  } ${action.disabled ? 'cursor-default opacity-70' : ''}`
+
+                  const content = (
+                    <>
+                      <div className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                        action.highlight ? 'text-white/72' : 'text-white/35'
+                      }`}>
+                        {action.eyebrow}
+                      </div>
+                      <div className="mt-3 text-sm font-semibold">{action.title}</div>
+                      <p className={`mt-2 text-xs leading-relaxed ${
+                        action.highlight ? 'text-white/78' : 'text-white/42'
+                      }`}>
+                        {action.description}
+                      </p>
+                    </>
+                  )
+
+                  if (action.href) {
+                    return (
+                      <Link key={action.title} href={action.href} className={classes}>
+                        {content}
+                      </Link>
+                    )
+                  }
+
+                  return (
+                    <button
+                      key={action.title}
+                      type="button"
+                      onClick={action.onClick}
+                      disabled={action.disabled}
+                      className={classes}
+                    >
+                      {content}
+                    </button>
+                  )
+                })}
+              </div>
             </section>
 
-            <section className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Ganhos', value: 'Em validacao', sub: 'Ledger financeiro em preparacao', tone: 'text-yellow-300' },
-                { label: 'Sessoes hoje', value: stats.sessionsToday, sub: 'texto e video', tone: 'text-[#ff8aaa]' },
-                { label: 'Presentes', value: stats.totalGifts, sub: 'total recebido', tone: 'text-white' },
-                { label: 'Avaliacao', value: stats.rating.toFixed(2), sub: `${stats.ratingCount} avaliacoes`, tone: 'text-yellow-300' },
-              ].map(item => (
-                <div key={item.label} className="rounded-2xl border border-white/8 bg-[#111] p-4">
-                  <div className="text-[10px] uppercase tracking-[0.16em] text-white/30">{item.label}</div>
-                  <div className={`mt-2 text-xl font-semibold ${item.tone}`}>{item.value}</div>
-                  <div className="mt-1 text-[10px] text-white/30">{item.sub}</div>
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              {metrics.map(item => (
+                <div key={item.label} className="rounded-[26px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/32">{item.label}</div>
+                  <div className="mt-3 min-h-[2rem] text-xl font-semibold text-white">{item.value}</div>
+                  <div className="mt-1 text-[10px] leading-relaxed text-white/35">{item.sub}</div>
                 </div>
               ))}
             </section>
 
-            <section className="rounded-3xl border border-white/8 bg-[#111] p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Atalhos</h2>
-                <span className="text-[10px] text-white/25">operacao diaria</span>
+            <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-[32px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold">Solicitacoes pendentes</h2>
+                    <p className="mt-1 text-[11px] text-white/38">
+                      Aceitar ainda nao inicia cobranca nem chamada completa.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setView('requests')}
+                    className="rounded-2xl bg-white/[0.06] px-3 py-2 text-[11px] font-semibold text-white/60 ring-1 ring-white/[0.06]"
+                  >
+                    Ver todas
+                  </button>
+                </div>
+                {requestCards(requests.slice(0, 2))}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => creatorId && router.push(`/criadora/${creatorId}`)}
-                  className="rounded-2xl border border-white/8 bg-[#0d0d0d] px-3 py-3 text-left text-xs text-white/70"
-                >
-                  Perfil publico
-                  <span className="mt-1 block text-[10px] text-white/30">Veja como usuarios enxergam seu perfil</span>
-                </button>
-                <button
-                  onClick={() => setView('content')}
-                  className="rounded-2xl border border-white/8 bg-[#0d0d0d] px-3 py-3 text-left text-xs text-white/70"
-                >
-                  Conteudo
-                  <span className="mt-1 block text-[10px] text-white/30">Publique uma nova foto no album</span>
-                </button>
-                <button
-                  onClick={() => router.push('/criadora/verificacao')}
-                  className="rounded-2xl border border-white/8 bg-[#0d0d0d] px-3 py-3 text-left text-xs text-white/70"
-                >
-                  Verificacao
-                  <span className="mt-1 block text-[10px] text-white/30">
-                    {creatorActive ? 'Perfil ativo' : 'Acompanhe seu status'}
-                  </span>
-                </button>
-                <button
-                  disabled
-                  className="rounded-2xl border border-white/8 bg-[#0d0d0d] px-3 py-3 text-left text-xs text-white/35 disabled:opacity-70"
-                >
-                  Lives em preparacao
-                  <span className="mt-1 block text-[10px] text-white/25">Sem rota antiga ou canal livre</span>
-                </button>
-                <button
-                  disabled
-                  className="rounded-2xl border border-white/8 bg-[#0d0d0d] px-3 py-3 text-left text-xs text-white/35 disabled:opacity-70"
-                >
-                  Suporte e configuracoes
-                  <span className="mt-1 block text-[10px] text-white/25">Central dedicada em preparacao</span>
-                </button>
+
+              <div className="rounded-[32px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold">Atalhos da criadora</h2>
+                    <p className="mt-1 text-[11px] text-white/38">Rotas principais da area interna.</p>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  {shortcuts.map(shortcut => (
+                    <Link
+                      key={shortcut.href}
+                      href={shortcut.href}
+                      className="rounded-2xl bg-black/18 px-4 py-3 ring-1 ring-white/[0.06] transition hover:bg-white/[0.055]"
+                    >
+                      <div className="text-xs font-semibold text-white/78">{shortcut.label}</div>
+                      <div className="mt-1 text-[11px] text-white/35">{shortcut.helper}</div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/8 bg-[#111] p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Presentes recentes</h2>
+            <section className="rounded-[32px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold">Presentes recentes</h2>
+                  <p className="mt-1 text-[11px] text-white/38">Sinais de carinho recebidos no perfil.</p>
+                </div>
                 {stats.rankWeekly && (
                   <span className="rounded-full bg-yellow-400/10 px-2.5 py-1 text-[10px] text-yellow-300">
                     #{stats.rankWeekly} semana
@@ -531,20 +702,19 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                 )}
               </div>
               {stats.recentGifts.length === 0 ? (
-                <div className="py-5 text-center text-xs text-white/30">Nenhum presente ainda</div>
+                <div className="rounded-2xl bg-black/18 px-4 py-8 text-center text-xs text-white/35">
+                  Nenhum presente recente. Continue cuidando da presenca e do perfil.
+                </div>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {stats.recentGifts.map((gift, index) => (
-                    <div key={`${gift.created_at}-${index}`} className="flex items-center gap-3 rounded-2xl bg-[#0d0d0d] px-3 py-3">
+                    <div key={`${gift.created_at}-${index}`} className="flex items-center gap-3 rounded-2xl bg-black/18 px-3 py-3 ring-1 ring-white/[0.05]">
                       <span className="text-lg">{gift.gift_emoji}</span>
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs text-white/65">Presente recebido</div>
-                        <div className="mt-0.5 text-[10px] text-white/30">
+                        <div className="text-xs font-medium text-white/70">Presente recebido</div>
+                        <div className="mt-0.5 text-[10px] text-white/32">
                           {formatDateTime(gift.created_at)}
                         </div>
-                      </div>
-                      <div className="text-right text-[10px] text-white/35">
-                        {gift.petals_spent} petalas
                       </div>
                     </div>
                   ))}
@@ -555,18 +725,19 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         )}
 
         {view === 'requests' && (
-          <section className="mt-4 rounded-3xl border border-white/8 bg-[#111] p-4">
+          <section className="mt-4 rounded-[32px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold">Solicitacoes de chat</h2>
-                <p className="mt-1 text-xs leading-relaxed text-white/35">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Pedidos</p>
+                <h2 className="mt-2 text-xl font-semibold">Solicitacoes de chat</h2>
+                <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/40">
                   A etapa atual permite aceitar ou recusar. A ativacao completa sera conectada em bloco futuro.
                 </p>
               </div>
               <button
                 onClick={() => loadRequests()}
                 disabled={requestsLoading}
-                className="rounded-xl border border-white/10 px-3 py-2 text-[11px] text-white/60 disabled:opacity-40"
+                className="rounded-2xl bg-white/[0.06] px-3 py-2 text-[11px] font-semibold text-white/60 ring-1 ring-white/[0.06] disabled:opacity-40"
               >
                 Atualizar
               </button>
@@ -577,10 +748,12 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
         {view === 'content' && (
           <section className="mt-4">
-            <div className="mb-4 rounded-3xl border border-white/8 bg-[#111] p-4">
-              <h2 className="text-base font-semibold">Conteudo e album</h2>
-              <p className="mt-2 text-xs leading-relaxed text-white/40">
-                Publique fotos gratuitas ou bloqueadas por petalas. Ganhos sacaveis so serao exibidos quando o ledger financeiro estiver conectado.
+            <div className="mb-4 rounded-[32px] bg-white/[0.04] p-5 ring-1 ring-white/[0.07]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Conteudo</p>
+              <h2 className="mt-2 text-xl font-semibold">Album e vitrine</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
+                Publique fotos gratuitas ou bloqueadas por petalas. Valores financeiros so devem aparecer quando o
+                ledger validado estiver conectado ao painel.
               </p>
             </div>
             <PhotoUploader onUploaded={(photo) => { console.log('Foto publicada:', photo.photo_id) }} />
@@ -588,27 +761,29 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         )}
 
         {view === 'earnings' && (
-          <section className="mt-4 flex flex-col gap-4">
-            <div className="rounded-3xl border border-white/8 bg-[#111] p-5">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-white/30">Ganhos</div>
-              <h2 className="mt-3 text-2xl font-semibold text-yellow-300">Em validacao</h2>
+          <section className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+            <div className="rounded-[32px] bg-white/[0.04] p-5 ring-1 ring-white/[0.07]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300/80">Ganhos</p>
+              <h2 className="mt-3 text-2xl font-semibold">Ledger financeiro em preparacao</h2>
               <p className="mt-3 text-sm leading-relaxed text-white/45">
-                O saldo sacavel sera exibido apenas quando o painel financeiro estiver conectado ao ledger de ganhos elegiveis.
+                Esta area nao exibe saldo, valores sacaveis ou estimativas ate que os ganhos reais estejam conectados
+                ao ledger financeiro auditado.
               </p>
             </div>
 
-            <div className="rounded-3xl border border-green-500/20 bg-[#0d1a10] p-4">
-              <p className="text-xs leading-relaxed text-green-300/75">
-                Pagamentos serao processados semanalmente as segundas-feiras, as 15:00 no horario oficial da plataforma (America/Sao_Paulo). Para criadoras fora do Brasil, o horario local podera variar conforme o pais.
+            <div className="rounded-[32px] bg-yellow-400/[0.07] p-5 ring-1 ring-yellow-400/15">
+              <h3 className="text-sm font-semibold text-yellow-200">Acompanhamento seguro</h3>
+              <p className="mt-3 text-xs leading-relaxed text-yellow-100/65">
+                Use este espaco como marcador operacional. Quando o painel financeiro estiver pronto, os valores
+                aparecerao com origem, elegibilidade e auditoria.
               </p>
+              <Link
+                href="/criadora/ganhos"
+                className="mt-4 inline-flex rounded-2xl bg-white/[0.08] px-4 py-2 text-xs font-semibold text-white/70 ring-1 ring-white/[0.08]"
+              >
+                Abrir pagina de ganhos
+              </Link>
             </div>
-
-            <button
-              disabled
-              className="w-full rounded-2xl bg-[#ff4d7d] py-4 text-sm font-semibold text-white opacity-40"
-            >
-              Solicitar saque indisponivel
-            </button>
           </section>
         )}
       </main>
