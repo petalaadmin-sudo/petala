@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const FINANCIAL_ACTION_BLOCKED_MESSAGE =
+  'Ajustes manuais de pétalas estão temporariamente bloqueados. Um fluxo auditável com lote, ledger, motivo obrigatório e idempotência será implementado em bloco financeiro próprio.'
+
 export default function AdminPetalasPage() {
   const supabase = createClient()
   const [dados, setDados] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [bonus, setBonus] = useState({ email: '', amount: '' })
-  const [enviando, setEnviando] = useState(false)
-  const [mensagem, setMensagem] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -28,50 +28,16 @@ export default function AdminPetalasPage() {
     load()
   }, [])
 
-  async function darBonus() {
-    if (!bonus.email || !bonus.amount) return
-    setEnviando(true)
-    setMensagem('')
-
-    const { data: userData } = await supabase.from('users').select('id, balance_petals').eq('email', bonus.email).single()
-
-    if (!userData) {
-      setMensagem('❌ Usuário não encontrado')
-      setEnviando(false)
-      return
-    }
-
-    const novoSaldo = (userData.balance_petals || 0) + Number(bonus.amount)
-    const { error } = await supabase.from('users').update({ balance_petals: novoSaldo }).eq('id', userData.id)
-
-    if (error) {
-      setMensagem('❌ Erro ao dar bônus')
-    } else {
-      await supabase.from('transactions').insert({
-        user_id: userData.id,
-        type: 'bonus',
-        petals_delta: Number(bonus.amount),
-        balance_after: novoSaldo,
-        amount_brl: 0,
-        status: 'completed',
-        metadata: { reason: 'admin_bonus' },
-      })
-      setMensagem(`✅ ${bonus.amount} pétalas adicionadas para ${bonus.email}`)
-      setBonus({ email: '', amount: '' })
-    }
-    setEnviando(false)
-  }
-
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-white/30 text-sm">Carregando...</div></div>
 
   return (
     <div>
-      <h1 className="text-white text-xl font-medium mb-6">Sistema de Pétalas</h1>
+      <h1 className="text-white text-xl font-medium mb-6">Sistema de Petalas</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         {[
-          { label: 'Total pétalas vendidas', value: dados.totalPetalasVendidas.toLocaleString('pt-BR'), icon: '🌸', color: 'text-[#ff4d7d]' },
-          { label: 'Pacotes disponíveis', value: dados.pacotes?.length ?? 0, icon: '📦', color: 'text-white' },
+          { label: 'Total petalas vendidas', value: dados.totalPetalasVendidas.toLocaleString('pt-BR'), icon: 'P', color: 'text-[#ff4d7d]' },
+          { label: 'Pacotes disponiveis', value: dados.pacotes?.length ?? 0, icon: '#', color: 'text-white' },
         ].map(s => (
           <div key={s.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
             <div className="text-2xl mb-2">{s.icon}</div>
@@ -82,38 +48,37 @@ export default function AdminPetalasPage() {
       </div>
 
       <div className="bg-[#111] rounded-xl p-5 border border-white/5 mb-8">
-        <h2 className="text-white text-sm font-medium mb-4">🎁 Dar bônus de pétalas</h2>
+        <h2 className="text-white text-sm font-medium mb-4">Dar bonus de petalas</h2>
+        <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3 text-yellow-100 text-xs leading-relaxed">
+          {FINANCIAL_ACTION_BLOCKED_MESSAGE}
+        </div>
         <div className="flex gap-3">
           <input
             type="email"
-            placeholder="Email do usuário"
-            value={bonus.email}
-            onChange={e => setBonus(b => ({ ...b, email: e.target.value }))}
-            className="flex-1 bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 outline-none focus:border-[#ff4d7d]/50"
+            placeholder="Email do usuario"
+            disabled
+            className="flex-1 bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 outline-none disabled:cursor-not-allowed disabled:opacity-45"
           />
           <input
             type="number"
-            placeholder="Pétalas"
-            value={bonus.amount}
-            onChange={e => setBonus(b => ({ ...b, amount: e.target.value }))}
-            className="w-32 bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 outline-none focus:border-[#ff4d7d]/50"
+            placeholder="Petalas"
+            disabled
+            className="w-32 bg-[#0d0d0d] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 outline-none disabled:cursor-not-allowed disabled:opacity-45"
           />
           <button
-            onClick={darBonus}
-            disabled={enviando}
-            className="bg-[#ff4d7d] text-white rounded-xl px-5 py-2.5 text-sm font-medium disabled:opacity-50"
+            disabled
+            className="bg-[#ff4d7d] text-white rounded-xl px-5 py-2.5 text-sm font-medium opacity-40 cursor-not-allowed"
           >
-            {enviando ? '...' : 'Dar bônus'}
+            Bloqueado
           </button>
         </div>
-        {mensagem && <div className="mt-3 text-sm text-white/60">{mensagem}</div>}
       </div>
 
-      <h2 className="text-white/50 text-sm mb-4">Pacotes de pétalas</h2>
+      <h2 className="text-white/50 text-sm mb-4">Pacotes de petalas</h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {dados.pacotes?.map((p: any) => (
           <div key={p.id} className="bg-[#111] rounded-xl p-4 border border-white/5">
-            <div className="text-[#ff4d7d] text-lg font-medium">{p.petals?.toLocaleString('pt-BR')} 🌸</div>
+            <div className="text-[#ff4d7d] text-lg font-medium">{p.petals?.toLocaleString('pt-BR')} petalas</div>
             <div className="text-white/50 text-sm mt-1">{p.name}</div>
             <div className="text-yellow-400 text-sm font-medium mt-2">
               R$ {Number(p.price_brl).toFixed(2)}
@@ -122,7 +87,7 @@ export default function AdminPetalasPage() {
         ))}
       </div>
 
-      <h2 className="text-white/50 text-sm mb-4">Top usuários por saldo</h2>
+      <h2 className="text-white/50 text-sm mb-4">Top usuarios por saldo</h2>
       <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden">
         <table className="w-full">
           <thead>
@@ -138,9 +103,9 @@ export default function AdminPetalasPage() {
               <tr key={u.id} className="border-b border-white/5 hover:bg-white/2 transition-all">
                 <td className="px-4 py-3 text-white/20 text-sm">{i + 1}</td>
                 <td className="px-4 py-3 text-white/50 text-xs">{u.email}</td>
-                <td className="px-4 py-3 text-white/40 text-xs">{u.username || '—'}</td>
+                <td className="px-4 py-3 text-white/40 text-xs">{u.username || '-'}</td>
                 <td className="px-4 py-3 text-[#ff4d7d] text-sm font-medium">
-                  {u.balance_petals?.toLocaleString('pt-BR')} 🌸
+                  {u.balance_petals?.toLocaleString('pt-BR')} petalas
                 </td>
               </tr>
             ))}
