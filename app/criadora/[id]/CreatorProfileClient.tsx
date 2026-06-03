@@ -164,11 +164,11 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
           <div className="bg-[#1a1000] border border-yellow-400/20 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
             <span className="text-xl">👑</span>
             <div className="flex-1">
-              <div className="text-yellow-400 text-xs font-medium">VIP — acesso a todas as fotos</div>
-              <div className="text-white/30 text-[10px]">desbloqueio completo + desconto em chats</div>
+              <div className="text-yellow-400 text-xs font-medium">VIP em revisão</div>
+              <div className="text-white/30 text-[10px]">será reativado com fluxo financeiro auditável</div>
             </div>
-            <button className="bg-yellow-400 text-[#1a0800] rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap">
-              R$ 49,90
+            <button disabled className="bg-yellow-400/30 text-yellow-100 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap cursor-not-allowed">
+              Em preparação
             </button>
           </div>
         )}
@@ -253,7 +253,7 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
                 { label: 'Chat de texto', value: `${creator.price_text_petals} 🌸 / min` },
                 { label: 'Chat de vídeo', value: `${creator.price_video_petals} 🌸 / min` },
                 { label: 'Foto exclusiva', value: 'a partir de 50 🌸' },
-                { label: 'VIP mensal', value: 'R$ 49,90' },
+                { label: 'VIP mensal', value: 'em manutenção' },
               ].map(row => (
                 <div key={row.label} className="flex justify-between py-2 border-b border-white/5 last:border-0">
                   <span className="text-white/40 text-xs">{row.label}</span>
@@ -279,13 +279,13 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
         <div className="fixed inset-0 bg-black/75 z-50 flex items-end justify-center">
           <div className="bg-[#161616] rounded-t-2xl w-full max-w-sm px-5 pb-8 pt-4 border-t border-white/8">
             <div className="w-8 h-1 bg-white/15 rounded-full mx-auto mb-4" />
-            <h3 className="text-white font-medium text-center mb-2">Pétalas insuficientes</h3>
-            <p className="text-white/40 text-xs text-center mb-4">Compre mais pétalas para desbloquear esta foto</p>
+            <h3 className="text-white font-medium text-center mb-2">Desbloqueio pago em manutenção</h3>
+            <p className="text-white/40 text-xs text-center mb-4">Fotos gratuitas continuam disponíveis enquanto o fluxo financeiro auditável é implementado.</p>
             <button
               onClick={() => setShowBuyModal(false)}
               className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium mb-2"
             >
-              Comprar pétalas 🌸
+              Entendi
             </button>
             <button onClick={() => setShowBuyModal(false)} className="w-full text-white/25 text-xs py-1">
               agora não

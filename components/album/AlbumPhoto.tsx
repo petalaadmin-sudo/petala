@@ -27,6 +27,9 @@ interface Props {
   onInsufficientBalance: () => void  // abre modal de compra de pétalas
 }
 
+const PAID_UNLOCK_DISABLED_MESSAGE =
+  'Desbloqueio pago em manutenção financeira. Fotos gratuitas continuam disponíveis.'
+
 // ── Renderiza blur hash em canvas e converte para data URL ──
 function blurHashToDataUrl(hash: string, width = 32, height = 32): string {
   try {
@@ -48,15 +51,9 @@ export function AlbumPhoto({
   photo,
   isUnlocked,
   isVip = false,
-  userBalance,
-  onUnlock,
-  onInsufficientBalance,
 }: Props) {
-  const [imgUrl, setImgUrl]       = useState<string | null>(null)
   const [blurDataUrl, setBlurDataUrl] = useState<string>('')
-  const [unlocking, setUnlocking] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [floatGifts, setFloatGifts] = useState(false)
   const canAccess = photo.is_free || isUnlocked || isVip
 
   // Gera blur hash como data URL (só no browser)
@@ -65,26 +62,6 @@ export function AlbumPhoto({
       setBlurDataUrl(blurHashToDataUrl(photo.blur_hash))
     }
   }, [photo.blur_hash])
-
-  const handleUnlock = async () => {
-    if (userBalance < photo.price_petals) {
-      onInsufficientBalance()
-      setShowModal(false)
-      return
-    }
-
-    setUnlocking(true)
-    const result = await onUnlock(photo.id)
-    setUnlocking(false)
-
-    if (result?.url) {
-      setImgUrl(result.url)
-      setShowModal(false)
-      // Animação de confete ao desbloquear
-      setFloatGifts(true)
-      setTimeout(() => setFloatGifts(false), 2500)
-    }
-  }
 
   return (
     <>
@@ -95,7 +72,7 @@ export function AlbumPhoto({
         {/* Foto real (desbloqueada) */}
         {canAccess && (
           <img
-            src={imgUrl ?? `/api/fotos/url?key=${photo.r2_key}`}
+            src={`/api/fotos/url?key=${photo.r2_key}`}
             alt=""
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
@@ -120,8 +97,8 @@ export function AlbumPhoto({
             {/* Overlay escuro com cadeado */}
             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1">
               <div className="text-xl">🔒</div>
-              <div className="text-yellow-400 text-[10px] font-medium bg-black/50 rounded-md px-2 py-0.5">
-                {photo.price_petals} 🌸
+              <div className="text-yellow-400 text-[10px] font-medium bg-black/50 rounded-md px-2 py-0.5 text-center">
+                Indisponível
               </div>
             </div>
           </>
@@ -139,12 +116,6 @@ export function AlbumPhoto({
           <div className="absolute top-1.5 right-1.5 text-sm">🔥</div>
         )}
 
-        {/* Animação de desbloqueio */}
-        {floatGifts && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="text-4xl animate-ping">✨</div>
-          </div>
-        )}
       </div>
 
       {/* Modal de desbloqueio */}
@@ -164,58 +135,41 @@ export function AlbumPhoto({
             )}
 
             <h3 className="text-white text-sm font-medium text-center mb-1">
-              Desbloquear foto exclusiva
+              Foto paga indisponível
             </h3>
             <p className="text-white/35 text-xs text-center mb-5">
-              {photo.unlock_count > 0
-                ? `🔥 ${photo.unlock_count} pessoas já desbloquearam esta foto`
-                : 'Acesso permanente após desbloqueio'}
+              {PAID_UNLOCK_DISABLED_MESSAGE}
             </p>
 
             {/* Opções */}
             <div className="flex flex-col gap-3 mb-4">
-              {/* Pagar com pétalas */}
+              {/* Pagamento bloqueado até existir fluxo financeiro auditável */}
               <button
-                onClick={handleUnlock}
-                disabled={unlocking}
-                className="flex items-center justify-between bg-[#0d0d0d] border border-white/8 rounded-xl px-4 py-3 active:border-[#ff4d7d]/40 transition-colors disabled:opacity-50"
+                disabled
+                className="flex items-center justify-between bg-[#0d0d0d] border border-white/8 rounded-xl px-4 py-3 opacity-55 cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-base">🌸</span>
                   <div className="text-left">
-                    <div className="text-white text-xs font-medium">Pagar com pétalas</div>
-                    <div className="text-white/30 text-[10px]">acesso permanente</div>
+                    <div className="text-white text-xs font-medium">Em manutenção financeira</div>
+                    <div className="text-white/30 text-[10px]">sem débito, sem saldo simulado</div>
                   </div>
                 </div>
-                <div className="text-yellow-400 text-sm font-medium">
-                  {unlocking ? (
-                    <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
-                  ) : `${photo.price_petals} 🌸`}
-                </div>
+                <div className="text-yellow-400 text-xs font-medium">Bloqueado</div>
               </button>
 
               {/* VIP — acesso a tudo */}
-              <button className="flex items-center justify-between bg-[#1a1000] border border-yellow-400/20 rounded-xl px-4 py-3">
+              <button disabled className="flex items-center justify-between bg-[#1a1000] border border-yellow-400/20 rounded-xl px-4 py-3 opacity-55 cursor-not-allowed">
                 <div className="flex items-center gap-3">
                   <span className="text-base">👑</span>
                   <div className="text-left">
-                    <div className="text-yellow-400 text-xs font-medium">VIP — todas as fotos</div>
-                    <div className="text-white/30 text-[10px]">acesso ilimitado + desconto</div>
+                    <div className="text-yellow-400 text-xs font-medium">VIP em revisão</div>
+                    <div className="text-white/30 text-[10px]">sem nova cobrança por aqui</div>
                   </div>
                 </div>
-                <div className="text-yellow-400 text-xs font-medium">R$ 49,90</div>
+                <div className="text-yellow-400 text-xs font-medium">Em breve</div>
               </button>
             </div>
-
-            {/* Saldo atual */}
-            <p className="text-white/25 text-xs text-center mb-3">
-              Saldo: <span className="text-yellow-400 font-medium">{userBalance} 🌸</span>
-              {userBalance < photo.price_petals && (
-                <span className="text-red-400 ml-2">
-                  · faltam {photo.price_petals - userBalance} 🌸
-                </span>
-              )}
-            </p>
 
             <button
               onClick={() => setShowModal(false)}

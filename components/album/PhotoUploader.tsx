@@ -9,18 +9,10 @@ interface Props {
   onUploaded?: (photo: { photo_id: string; blur_hash: string; public_url: string }) => void
 }
 
-const PRICE_OPTIONS = [
-  { label: '50 🌸',  value: 50  },
-  { label: '100 🌸', value: 100 },
-  { label: '150 🌸', value: 150 },
-]
-
 export function PhotoUploader({ onUploaded }: Props) {
   const { status, progress, error, result, upload, reset } = usePhotoUpload()
 
   const [preview, setPreview]     = useState<string | null>(null)
-  const [isFree, setIsFree]       = useState(false)
-  const [price, setPrice]         = useState(50)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -37,7 +29,7 @@ export function PhotoUploader({ onUploaded }: Props) {
     const file = inputRef.current?.files?.[0]
     if (!file) return
 
-    const uploaded = await upload(file, { is_free: isFree, price_petals: isFree ? 0 : price })
+    const uploaded = await upload(file, { is_free: true, price_petals: 0 })
     if (uploaded) onUploaded?.(uploaded)
   }
 
@@ -122,41 +114,23 @@ export function PhotoUploader({ onUploaded }: Props) {
 
       {/* Configurações de preço */}
       <div className="bg-[#111] rounded-xl p-4 border border-white/5">
-        {/* Toggle grátis */}
+        {/* Foto paga bloqueada até existir fluxo financeiro auditável */}
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-white text-xs font-medium">Foto gratuita</div>
-            <div className="text-white/30 text-[10px]">aparece para todos sem custo</div>
+            <div className="text-white/30 text-[10px]">publicação paga temporariamente bloqueada</div>
           </div>
           <button
-            onClick={() => setIsFree(v => !v)}
-            className={`w-10 h-6 rounded-full transition-colors relative ${isFree ? 'bg-[#ff4d7d]' : 'bg-white/10'}`}
+            disabled
+            className="w-10 h-6 rounded-full transition-colors relative bg-[#ff4d7d] opacity-80 cursor-not-allowed"
           >
-            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isFree ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            <div className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow translate-x-4" />
           </button>
         </div>
 
-        {/* Seletor de preço (só se não for grátis) */}
-        {!isFree && (
-          <div>
-            <div className="text-white/40 text-[10px] mb-2 uppercase tracking-wider">Preço para desbloquear</div>
-            <div className="flex gap-2">
-              {PRICE_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setPrice(opt.value)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    price === opt.value
-                      ? 'bg-[#ff4d7d] text-white'
-                      : 'bg-[#1a1a1a] text-white/50 border border-white/8'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-3 py-2 text-yellow-100 text-[10px] leading-relaxed">
+          Fotos pagas serão reativadas após o fluxo financeiro auditável.
+        </div>
       </div>
 
       {/* Progresso */}
@@ -195,7 +169,7 @@ export function PhotoUploader({ onUploaded }: Props) {
         {status !== 'idle' ? (
           <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Publicando…</>
         ) : (
-          `Publicar foto${!isFree ? ` · ${price} 🌸` : ' · gratuita'}`
+          'Publicar foto · gratuita'
         )}
       </button>
 

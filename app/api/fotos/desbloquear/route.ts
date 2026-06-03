@@ -1,10 +1,15 @@
 // app/api/fotos/desbloquear/route.ts
-// Usuário pagante chama esse endpoint para desbloquear uma foto.
-// Débita pétalas, registra o desbloqueio, retorna URL assinada (1h).
+// Retorna URL assinada para fotos gratuitas, já desbloqueadas ou acessíveis por VIP.
+// Desbloqueio pago está temporariamente bloqueado até existir fluxo financeiro auditável.
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { createPrivateUrl } from '@/lib/r2'
 import { NextResponse } from 'next/server'
+
+const PAID_PHOTO_UNLOCK_DISABLED = {
+  code: 'PHOTO_UNLOCK_PAID_DISABLED',
+  error: 'Desbloqueio pago de fotos temporariamente indisponível enquanto o fluxo financeiro auditável é implementado.',
+}
 
 export async function POST(request: Request) {
   try {
@@ -58,67 +63,25 @@ export async function POST(request: Request) {
 
     if (vip) {
       // VIP — acesso sem débito, mas registra o acesso
-      await admin.from('photo_unlocks').insert({
+      const { error: unlockError } = await admin.from('photo_unlocks').insert({
         user_id:      user.id,
         photo_id:     photo.id,
         petals_spent: 0,
-      }).onConflict(['user_id', 'photo_id']).ignore()
+      })
+
+      if (unlockError && unlockError.code !== '23505') {
+        console.error('[/api/fotos/desbloquear] erro ao registrar acesso VIP', {
+          code: unlockError.code,
+          message: unlockError.message,
+        })
+        return NextResponse.json({ error: 'Não foi possível registrar acesso VIP' }, { status: 500 })
+      }
 
       const url = await createPrivateUrl(photo.r2_key, 3600)
       return NextResponse.json({ url, vip_access: true })
     }
 
-    // Débita pétalas atomicamente
-    const { data: spendResult } = await admin.rpc('spend_petals', {
-      p_user_id: user.id,
-      p_amount:  photo.price_petals,
-      p_type:    'spend',
-      p_ref_id:  photo.id,
-    })
-
-    if (!spendResult?.success) {
-      return NextResponse.json({
-        error:    'Saldo insuficiente',
-        required: photo.price_petals,
-        code:     'INSUFFICIENT_BALANCE',
-      }, { status: 402 })
-    }
-
-    // BUG 3 CORRIGIDO: insert do unlock e increment atômico via RPC
-    await admin.from('photo_unlocks').insert({
-      user_id:      user.id,
-      photo_id:     photo.id,
-      petals_spent: photo.price_petals,
-    })
-
-    // increment via SQL direto — evita race condition
-    await admin.rpc('increment_photo_unlock', { p_photo_id: photo.id })
-
-    // Credita 70% para a criadora
-    const { data: creatorData } = await admin
-      .from('creators')
-      .select('user_id')
-      .eq('id', photo.creator_id)
-      .single()
-
-    if (creatorData) {
-      const creatorEarn = Math.floor(photo.price_petals * 0.7)
-      await admin.rpc('credit_petals', {
-        p_user_id: creatorData.user_id,
-        p_amount:  creatorEarn,
-        p_type:    'gift_received',
-        p_ref_id:  photo.id,
-      })
-    }
-
-    // Retorna URL assinada (expira em 1h — não pode ser compartilhada)
-    const url = await createPrivateUrl(photo.r2_key, 3600)
-
-    return NextResponse.json({
-      url,
-      new_balance:  spendResult.new_balance,
-      petals_spent: photo.price_petals,
-    })
+    return NextResponse.json(PAID_PHOTO_UNLOCK_DISABLED, { status: 423 })
 
   } catch (err) {
     console.error('[/api/fotos/desbloquear]', err)

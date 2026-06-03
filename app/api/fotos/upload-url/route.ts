@@ -7,13 +7,22 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { createUploadUrl, generatePhotoKey, isValidImageType, MAX_FILE_SIZE_BYTES } from '@/lib/r2'
 import { NextResponse } from 'next/server'
 
+const PAID_PHOTO_UPLOAD_DISABLED = {
+  code: 'PAID_PHOTO_UPLOAD_DISABLED',
+  error: 'Fotos pagas serão reativadas após o fluxo financeiro auditável.',
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-    const { content_type, file_size, is_free = false, price_petals = 50 } = await request.json()
+    const { content_type, file_size, is_free = false } = await request.json()
+
+    if (is_free !== true) {
+      return NextResponse.json(PAID_PHOTO_UPLOAD_DISABLED, { status: 423 })
+    }
 
     // Valida tipo
     if (!isValidImageType(content_type)) {
@@ -64,8 +73,8 @@ export async function POST(request: Request) {
         creator_id:   creator.id,
         r2_key:       photoKey,
         r2_key_blur:  blurKey,
-        is_free:      is_free,
-        price_petals: is_free ? 0 : price_petals,
+        is_free:      true,
+        price_petals: 0,
         sort_order:   Date.now(),
       })
       .select()
