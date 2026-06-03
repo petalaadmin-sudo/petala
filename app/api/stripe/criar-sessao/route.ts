@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/pix/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/perfil?checkout=stripe`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/perfil`,
       metadata: {
         user_id: auth.user.id,
