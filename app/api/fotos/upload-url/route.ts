@@ -133,7 +133,7 @@ export async function POST(request: Request) {
         r2_key_blur:  blurKey,
         is_free:      true,
         price_petals: FREE_PHOTO_PRICE,
-        sort_order:   Date.now(),
+        sort_order:   Math.floor(Date.now() / 1000),
       })
       .select()
       .single()
