@@ -752,8 +752,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Conteudo</p>
               <h2 className="mt-2 text-xl font-semibold">Album e vitrine</h2>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
-                Publique fotos gratuitas ou bloqueadas por petalas. Valores financeiros so devem aparecer quando o
-                ledger validado estiver conectado ao painel.
+                Publique fotos gratuitas. Fotos pagas serao reativadas apos o fluxo financeiro auditavel.
               </p>
             </div>
             <PhotoUploader onUploaded={(photo) => { console.log('Foto publicada:', photo.photo_id) }} />

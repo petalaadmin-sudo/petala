@@ -252,7 +252,7 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
               {[
                 { label: 'Chat de texto', value: `${creator.price_text_petals} 🌸 / min` },
                 { label: 'Chat de vídeo', value: `${creator.price_video_petals} 🌸 / min` },
-                { label: 'Foto exclusiva', value: 'a partir de 50 🌸' },
+                { label: 'Fotos pagas', value: 'em manutencao financeira' },
                 { label: 'VIP mensal', value: 'em manutenção' },
               ].map(row => (
                 <div key={row.label} className="flex justify-between py-2 border-b border-white/5 last:border-0">

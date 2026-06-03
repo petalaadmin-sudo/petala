@@ -23,7 +23,6 @@ interface UsePhotoUploadReturn {
 
 interface UploadOptions {
   is_free?: boolean
-  price_petals?: number
 }
 
 export function usePhotoUpload(): UsePhotoUploadReturn {
@@ -52,7 +51,6 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
           content_type: file.type || 'image/jpeg',
           file_size:    file.size,
           is_free:      options.is_free ?? false,
-          price_petals: options.price_petals ?? 50,
         }),
       })
 

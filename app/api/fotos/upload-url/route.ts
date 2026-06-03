@@ -12,6 +12,8 @@ const PAID_PHOTO_UPLOAD_DISABLED = {
   error: 'Fotos pagas serão reativadas após o fluxo financeiro auditável.',
 }
 
+const FREE_PHOTO_PRICE_PLACEHOLDER = 50
+
 export async function POST(request: Request) {
   try {
     const supabase = createClient()
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
         r2_key:       photoKey,
         r2_key_blur:  blurKey,
         is_free:      true,
-        price_petals: 0,
+        price_petals: FREE_PHOTO_PRICE_PLACEHOLDER,
         sort_order:   Date.now(),
       })
       .select()

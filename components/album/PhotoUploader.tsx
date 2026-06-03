@@ -15,6 +15,7 @@ export function PhotoUploader({ onUploaded }: Props) {
   const [preview, setPreview]     = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const isBusy = status === 'processing' || status === 'uploading' || status === 'confirming'
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) return
@@ -29,7 +30,7 @@ export function PhotoUploader({ onUploaded }: Props) {
     const file = inputRef.current?.files?.[0]
     if (!file) return
 
-    const uploaded = await upload(file, { is_free: true, price_petals: 0 })
+    const uploaded = await upload(file, { is_free: true })
     if (uploaded) onUploaded?.(uploaded)
   }
 
@@ -163,11 +164,13 @@ export function PhotoUploader({ onUploaded }: Props) {
       {/* Botão de envio */}
       <button
         onClick={handleUpload}
-        disabled={!preview || status !== 'idle'}
+        disabled={!preview || isBusy}
         className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2"
       >
-        {status !== 'idle' ? (
+        {isBusy ? (
           <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Publicando…</>
+        ) : error ? (
+          'Tentar novamente · gratuita'
         ) : (
           'Publicar foto · gratuita'
         )}
