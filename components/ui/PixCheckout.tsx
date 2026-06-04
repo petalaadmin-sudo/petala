@@ -110,7 +110,7 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ packageName: selectedPkg.name }),
+        body: JSON.stringify({ package_id: selectedPkg.id }),
       })
 
       const { url, error } = await res.json()
