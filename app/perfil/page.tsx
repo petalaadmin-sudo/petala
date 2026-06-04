@@ -31,6 +31,8 @@ interface Package {
   price_brl: number
 }
 
+type CheckoutStatus = 'stripe' | 'cancelled' | null
+
 export default function PerfilPage() {
   const supabase = createClient()
   const router   = useRouter()
@@ -39,11 +41,16 @@ export default function PerfilPage() {
   const [transactions, setTxs]    = useState<Transaction[]>([])
   const [packages, setPackages]   = useState<Package[]>([])
   const [tab, setTab]             = useState<'saldo' | 'historico' | 'conta'>('saldo')
+  const [checkoutStatus, setCheckoutStatus] = useState<CheckoutStatus>(null)
+  const [refreshingProfile, setRefreshingProfile] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
   const [loading, setLoading]     = useState(true)
 
-  useEffect(() => {
-    const load = async () => {
+  const loadPerfilData = async (options: { refresh?: boolean } = {}) => {
+    const refresh = options.refresh ?? false
+    if (refresh) setRefreshingProfile(true)
+
+    try {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) { router.push('/auth/login'); return }
 
@@ -56,9 +63,16 @@ export default function PerfilPage() {
       if (userRes.data)  setUser(userRes.data)
       if (txRes.data)    setTxs(txRes.data)
       if (pkgRes.data)   setPackages(pkgRes.data)
-      setLoading(false)
+      if (!refresh) setLoading(false)
+    } finally {
+      if (refresh) setRefreshingProfile(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    const checkout = new URLSearchParams(window.location.search).get('checkout')
+    setCheckoutStatus(checkout === 'stripe' || checkout === 'cancelled' ? checkout : null)
+    loadPerfilData()
   }, [])
 
   const handleLogout = async () => {
@@ -94,6 +108,43 @@ export default function PerfilPage() {
         </div>
         <div className="w-10 h-10 rounded-full bg-[#1e1e1e] flex items-center justify-center text-xl">👤</div>
       </div>
+
+      {checkoutStatus && (
+        <div className="mx-4 mb-4 rounded-2xl border border-white/8 bg-[#111] p-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 h-8 w-8 rounded-full bg-[#ff4d7d]/10 text-[#ff4d7d] flex items-center justify-center text-sm">
+              {checkoutStatus === 'stripe' ? '💳' : '↩'}
+            </div>
+            <div className="flex-1">
+              <div className="text-white text-sm font-medium">
+                {checkoutStatus === 'stripe' ? 'Pagamento em verificação' : 'Checkout interrompido'}
+              </div>
+              <p className="text-white/45 text-xs leading-relaxed mt-1">
+                {checkoutStatus === 'stripe'
+                  ? 'Recebemos seu retorno do checkout. A confirmação do cartão pode levar alguns instantes; assim que o pagamento for confirmado, seu saldo e histórico aparecerão atualizados aqui.'
+                  : 'Não recebemos confirmação de pagamento por aqui. Você pode escolher um pacote e tentar novamente quando quiser.'}
+              </p>
+              {checkoutStatus === 'stripe' && (
+                <>
+                  <p className="text-white/25 text-[11px] leading-relaxed mt-2">
+                    Se acabou de pagar, a atualização costuma aparecer em poucos instantes.
+                  </p>
+                  <button
+                    onClick={() => loadPerfilData({ refresh: true })}
+                    disabled={refreshingProfile}
+                    className="mt-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/70 active:scale-95 transition-transform disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {refreshingProfile && (
+                      <span className="h-3 w-3 rounded-full border border-white/20 border-t-white/70 animate-spin" />
+                    )}
+                    {refreshingProfile ? 'Verificando...' : 'Verificar agora'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Saldo em destaque */}
       <div className="mx-4 mb-4 bg-gradient-to-br from-[#1a0d14] to-[#0d0a14] border border-[#ff4d7d]/20 rounded-2xl p-5 text-center">
