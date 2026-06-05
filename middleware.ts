@@ -1,5 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import {
+  getPrelaunchConfig,
+  getPrelaunchCookieName,
+  isPrelaunchLockEnabled,
+  verifyPrelaunchCookie,
+} from '@/lib/prelaunch'
 
 const PUBLIC_ROUTES = [
   '/',
@@ -33,7 +39,70 @@ function withNoStore(response: NextResponse) {
   return response
 }
 
+function withPrelaunchHeaders(response: NextResponse) {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
+  return withNoStore(response)
+}
+
+function isPrelaunchBypass(pathname: string) {
+  return (
+    pathname === '/prelancamento' ||
+    pathname === '/robots.txt' ||
+    pathname === '/api/prelaunch/unlock' ||
+    pathname === '/api/auth/callback' ||
+    pathname === '/api/stripe/webhook' ||
+    pathname === '/api/pix/webhook' ||
+    pathname === '/api/cron/expire-chat-sessions' ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/icons/') ||
+    pathname.startsWith('/screenshots/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
+    /^\/workbox-.*\.js$/.test(pathname)
+  )
+}
+
+function prelaunchApiBlocked(status: number, error: string) {
+  return withPrelaunchHeaders(NextResponse.json({ ok: false, error }, { status }))
+}
+
+async function handlePrelaunchLock(request: NextRequest) {
+  if (!isPrelaunchLockEnabled()) return null
+
+  const { pathname } = request.nextUrl
+
+  if (isPrelaunchBypass(pathname)) {
+    return withPrelaunchHeaders(NextResponse.next({ request }))
+  }
+
+  const prelaunchConfig = getPrelaunchConfig()
+
+  if (!prelaunchConfig.configured) {
+    if (pathname.startsWith('/api/')) {
+      return prelaunchApiBlocked(503, 'PRELAUNCH_LOCK_NOT_CONFIGURED')
+    }
+
+    return withPrelaunchHeaders(NextResponse.redirect(new URL('/prelancamento', request.url)))
+  }
+
+  const hasAccess = await verifyPrelaunchCookie(
+    request.cookies.get(getPrelaunchCookieName())?.value
+  )
+
+  if (hasAccess) return null
+
+  if (pathname.startsWith('/api/')) {
+    return prelaunchApiBlocked(423, 'PRELAUNCH_LOCKED')
+  }
+
+  return withPrelaunchHeaders(NextResponse.redirect(new URL('/prelancamento', request.url)))
+}
+
 export async function middleware(request: NextRequest) {
+  const prelaunchResponse = await handlePrelaunchLock(request)
+  if (prelaunchResponse) return prelaunchResponse
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -75,7 +144,8 @@ export async function middleware(request: NextRequest) {
 
   if (isAdminRoute) {
     if (!user) {
-      return withNoStore(NextResponse.redirect(new URL('/auth/login', request.url)))
+      const response = withNoStore(NextResponse.redirect(new URL('/auth/login', request.url)))
+      return isPrelaunchLockEnabled() ? withPrelaunchHeaders(response) : response
     }
 
     const { data: userData, error: roleError } = await supabase
@@ -85,21 +155,24 @@ export async function middleware(request: NextRequest) {
       .maybeSingle()
 
     if (roleError || userData?.role !== 'admin') {
-      return withNoStore(NextResponse.redirect(new URL('/feed', request.url)))
+      const response = withNoStore(NextResponse.redirect(new URL('/feed', request.url)))
+      return isPrelaunchLockEnabled() ? withPrelaunchHeaders(response) : response
     }
 
-    return withNoStore(supabaseResponse)
+    const response = withNoStore(supabaseResponse)
+    return isPrelaunchLockEnabled() ? withPrelaunchHeaders(response) : response
   }
 
   if (!user && !isPublicRoute) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+    const response = NextResponse.redirect(new URL('/auth/login', request.url))
+    return isPrelaunchLockEnabled() ? withPrelaunchHeaders(response) : response
   }
 
-  return supabaseResponse
+  return isPrelaunchLockEnabled() ? withPrelaunchHeaders(supabaseResponse) : supabaseResponse
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|screenshots|sw.js|workbox-.*\\.js|api).*)',
+    '/((?!_next/|favicon.ico|manifest.json|icons|screenshots|sw.js|workbox-.*\\.js).*)',
   ],
 }

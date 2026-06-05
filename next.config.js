@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
+const prelaunchLockEnabled = process.env.PRELAUNCH_LOCK_ENABLED?.trim().toLowerCase() === 'true'
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
+  disable: process.env.NODE_ENV === 'development' || prelaunchLockEnabled,
   runtimeCaching: [
     {
       urlPattern: /^https?:\/\/[^/]+\/admin(?:\/.*)?$/,
