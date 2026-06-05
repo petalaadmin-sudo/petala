@@ -14,13 +14,18 @@ Tambem orienta como registrar tecnicamente cada aceite para preservar prova, ver
 
 ## 2. Principio central
 
-Todo termo relevante deve seguir quatro pilares:
+Todo termo relevante deve seguir pilares claros:
 
 - Clareza: linguagem compreensivel, direta e sem ambiguidade enganosa.
 - Aceite destacado: temas sensiveis devem ser aceitos separadamente, e nao escondidos em texto longo.
+- Aceite objetivo: checkboxes e caixas de aceite devem usar linguagem curta, neutra e discreta.
 - Registro versionado: cada aceite deve guardar versao, data, usuario, origem, hash do texto e contexto tecnico.
 - Prova tecnica de aceite: a plataforma deve conseguir demonstrar qual texto foi aceito, por quem, quando e em qual contexto.
 - Respeito aos limites legais: nenhum termo deve tentar eliminar direitos obrigatorios, afastar responsabilidade ilegalmente ou impor renuncia absoluta.
+
+O checkbox nao deve ensinar fraude, golpe, abuso ou comportamento proibido. Detalhes completos devem ficar no corpo dos Termos, politicas e documentos aplicaveis.
+
+O objetivo do aceite destacado e informar e provar aceite, sem estimular conduta oportunista, sem transformar risco juridico em manual de abuso e sem esconder clausula sensivel.
 
 ## 3. Estrutura minima de qualquer termo
 
@@ -50,57 +55,59 @@ O aceite geral deve cobrir o uso da plataforma, conta, regras basicas de conduta
 
 O aceite geral nao deve ser usado para esconder temas sensiveis. Conteudo 18+, chamadas, cobranca, petalas, repasses, agencias, bloqueios financeiros, arbitragem e regras de alto impacto devem ter aceite destacado quando aplicavel.
 
+O aceite geral continua obrigatorio. Temas sensiveis devem ter destaque, mas preferencialmente por categoria curta, neutra e compreensivel, e nao por frases longas demais dentro do checkbox.
+
 O usuario deve conseguir entender que esta aderindo aos Termos vigentes e que certas funcionalidades dependem de aceites adicionais.
 
 ## 5. Aceites destacados obrigatorios para usuarios
 
-Usuarios devem aceitar de forma destacada, quando aplicavel:
+Usuarios devem aceitar de forma destacada, quando aplicavel, grupos curtos e neutros como:
 
-- Declaracao de maioridade e responsabilidade por informacoes de idade.
-- Politica 18+ e regras de conteudo.
-- Consentimento e limites de interacoes privadas.
-- Proibicao de gravacao, captura, redistribuicao ou compartilhamento externo nao autorizado.
-- Proibicao de contato externo para burlar pagamento, moderacao ou seguranca.
-- Petalas como credito interno fechado, sem natureza de moeda, investimento, deposito bancario ou saldo sacavel pelo usuario.
-- Regras de compra, uso, expiracao, bloqueio, estorno, disputa, chargeback e reembolso.
-- Regras de chamadas, incluindo aceite previo quando houver cobranca.
-- Regras de mensagens e comportamento.
-- Consequencias de fraude, abuso, assedio, coacao, violacao de direitos ou tentativa de burla.
-- Possibilidade de bloqueio de conta, bloqueio financeiro e revisao de compliance dentro dos limites legais.
-- Resolucao de disputas e foro/arbitragem quando legalmente aplicavel.
+- Declaro que tenho 18 anos ou mais.
+- Li e aceito as regras de conteudo, consentimento, limites de interacao, denuncia, bloqueio e banimento.
+- Li e aceito as regras de compra, uso de petalas, reembolso, contestacao de pagamento, revisao financeira e bloqueio de conta.
+- Entendo que petalas sao creditos internos de uso fechado, conforme os Termos.
+- Aceito as regras de resolucao de disputas, quando legalmente aplicaveis.
+
+Os detalhes sobre gravacao nao autorizada, redistribuicao, contato externo, fraude, abuso, assedio, coacao, chamadas, mensagens, petalas, chargebacks, reembolsos e bloqueios devem estar no corpo dos Termos e politicas aplicaveis.
 
 ## 6. Aceites destacados obrigatorios para criadoras
 
-Criadoras devem aceitar de forma destacada, quando aplicavel:
+Criadoras devem aceitar de forma destacada, quando aplicavel, grupos curtos e neutros como:
 
-- Declaracao de maioridade, identidade propria e responsabilidade pelas informacoes enviadas.
-- Politica 18+ e regras de conteudo.
-- Regras de consentimento, privacidade, conteudo proprio e proibicao de terceiros nao verificados.
-- Proibicao de conteudo nao consensual, menoridade, exploracao, coacao, burla de pagamento e contato externo indevido.
-- Regras de fotos, chamadas, mensagens, presentes e presenca online.
-- Regras financeiras de elegibilidade, repasse, bloqueio, retencao, estorno, chargeback e revisao de compliance.
-- Reconhecimento de que petalas e valores internos dependem de ledger, regras de elegibilidade e Termos financeiros aplicaveis.
-- Obrigacao de nao prometer servico presencial, encontro presencial, servico sexual presencial ou pagamento por fora.
-- Consequencias de fraude, violacao de direitos autorais, uso de identidade de terceiros, manipulacao de conta ou violacao de regras.
-- Regras de agencia, se vinculada a agente ou agencia.
-- Resolucao de disputas e arbitragem quando legalmente aplicavel.
+- Declaro que tenho 18 anos ou mais e aceito verificacao de identidade.
+- Li e aceito as regras de conteudo, consentimento, limites, denuncia, bloqueio e banimento.
+- Li e aceito as regras de remuneracao, elegibilidade, payout, chargeback, revisao financeira e bloqueio de ganhos.
+- Declaro que minha participacao e voluntaria e que mantenho controle sobre meus documentos, conta, senha, Pix e acesso.
+- Aceito as regras de resolucao de disputas, quando legalmente aplicaveis.
+
+Os detalhes sobre conteudo proprio, terceiros nao verificados, conteudo nao consensual, menoridade, exploracao, coacao, burla de pagamento, contato externo indevido, fotos, chamadas, mensagens, presentes, presenca online, agencia, direitos autorais e manipulacao de conta devem ficar no corpo dos Termos e politicas aplicaveis.
 
 ## 7. Aceites destacados obrigatorios para agentes e agencias
 
-Agentes e agencias devem aceitar de forma destacada, quando aplicavel:
+Agentes e agencias devem aceitar de forma destacada, quando aplicavel, grupos curtos e neutros como:
 
-- Regras de atuacao como parceiro operacional.
-- Proibicao de coacao, exploracao, aliciamento, trafico, retencao de documentos, controle abusivo de conta, Pix, celular, senha ou conta bancaria.
-- Proibicao de obrigar criadora a conteudo adulto.
-- Obrigacao de respeitar consentimento, privacidade e autonomia da criadora.
-- Regras de convite, representacao, acompanhamento e suporte.
-- Regras de comissao, elegibilidade, repasse, bloqueio financeiro, chargeback e revisao.
-- Responsabilidade por fraude, informacao falsa, violacao de direitos, burla de pagamento, abuso operacional ou manipulacao de contas.
-- Regras de confidencialidade e uso de dados.
-- Consequencias de violacao, incluindo suspensao, banimento, perda de elegibilidade financeira e comunicacao a autoridades quando aplicavel.
-- Resolucao de disputas e arbitragem quando legalmente aplicavel.
+- Li e aceito as regras de atuacao, indicacao, suporte e responsabilidade da agencia.
+- Li e aceito as regras contra coacao, exploracao, retencao de documentos, controle abusivo e violacao de autonomia da criadora.
+- Li e aceito as regras de comissao, elegibilidade, chargeback, revisao financeira e bloqueio.
+- Aceito as regras de auditoria, denuncia, banimento e encerramento de vinculo.
+- Aceito as regras de resolucao de disputas, quando legalmente aplicaveis.
 
-## 8. Registro tecnico obrigatorio do aceite
+Os detalhes sobre trafico, aliciamento, obrigacao de conteudo adulto, convite, representacao, confidencialidade, uso de dados, informacao falsa, violacao de direitos, burla de pagamento, abuso operacional, manipulacao de contas e comunicacao a autoridades devem ficar no corpo dos Termos e politicas aplicaveis.
+
+## 8. Formato recomendado dos checkboxes
+
+Checkbox deve ser curto, claro e vinculado ao termo completo.
+
+O texto do checkbox deve resumir a categoria de aceite, enquanto detalhes especificos devem ficar no corpo do Termo, politica ou documento relacionado.
+
+Nao usar checkbox que explique passo a passo uma fraude, golpe, abuso, burla, coacao ou qualquer comportamento proibido.
+
+Nao esconder clausula sensivel em texto generico demais. O equilibrio desejado e: visivel o suficiente para validade e consciencia do aceite, discreto o suficiente para nao incentivar abuso.
+
+Checkboxes multiplos e detalhados so devem ser usados quando forem estritamente necessarios por risco juridico, compliance, gateway, KYC, arbitragem, maioridade ou financeiro sensivel.
+
+## 9. Registro tecnico obrigatorio do aceite
 
 Cada aceite relevante deve gerar registro tecnico auditavel contendo, no minimo:
 
@@ -120,7 +127,7 @@ Cada aceite relevante deve gerar registro tecnico auditavel contendo, no minimo:
 
 O registro deve ser imutavel ou auditavel. Correcoes administrativas devem preservar historico.
 
-## 9. Hash do texto aceito
+## 10. Hash do texto aceito
 
 Todo documento relevante deve possuir hash do texto aceito.
 
@@ -130,7 +137,7 @@ O objetivo e permitir prova tecnica de que determinada pessoa aceitou exatamente
 
 O hash deve ser armazenado junto ao registro de aceite e, idealmente, tambem ligado a um repositario interno de versoes dos Termos.
 
-## 10. Reaceite obrigatorio
+## 11. Reaceite obrigatorio
 
 Reaceite deve ser exigido quando houver mudanca material em:
 
@@ -146,7 +153,7 @@ Reaceite deve ser exigido quando houver mudanca material em:
 
 Mudancas editoriais ou correcoes sem impacto podem ser registradas sem exigir reaceite, desde que o criterio seja documentado.
 
-## 11. Resolucao de disputas
+## 12. Resolucao de disputas
 
 Os Termos devem prever processo claro para suporte, reclamacao, disputa, revisao de decisao, reembolso, chargeback, bloqueio financeiro, banimento e contestacao.
 
@@ -154,7 +161,7 @@ Sempre que possivel, deve haver tentativa de solucao amigavel antes de medida fo
 
 A linguagem deve deixar claro que disputas serao tratadas conforme os Termos aplicaveis, politicas financeiras, regras de gateway, antifraude, compliance e legislacao aplicavel.
 
-## 12. Arbitragem quando legalmente aplicavel
+## 13. Arbitragem quando legalmente aplicavel
 
 Clausula arbitral pode ser prevista quando legalmente aplicavel e adequada ao tipo de relacao.
 
@@ -162,7 +169,7 @@ A arbitragem nao deve ser apresentada como obrigatoria para tudo, sem excecao. A
 
 Linguagem recomendada: "quando legalmente aplicavel", "sem prejuizo de direitos obrigatorios" e "dentro dos limites permitidos pela lei".
 
-## 13. Limitacao de responsabilidade dentro da lei
+## 14. Limitacao de responsabilidade dentro da lei
 
 Os Termos podem limitar responsabilidade da plataforma dentro dos limites permitidos pela lei.
 
@@ -170,7 +177,7 @@ Nao deve haver promessa de irresponsabilidade absoluta. A plataforma nao deve af
 
 As limitacoes devem ser proporcionais, especificas, coerentes com o produto, compativeis com normas obrigatorias e revisadas juridicamente.
 
-## 14. Chargeback, reembolso e bloqueio financeiro
+## 15. Chargeback, reembolso e bloqueio financeiro
 
 Os Termos devem explicar como serao tratados chargebacks, reembolsos, cancelamentos, estornos, contestacoes, fraude, abuso, uso indevido, presentes, compras de petalas, chamadas, fotos pagas e repasses.
 
@@ -178,7 +185,7 @@ Deve ficar claro que a plataforma pode bloquear temporariamente valores internos
 
 Todo bloqueio financeiro deve ter motivo interno registrado e estar sujeito a revisao de compliance. A linguagem nao deve dizer que a plataforma pode bloquear qualquer valor sem motivo.
 
-## 15. Banimento e bloqueio de conta
+## 16. Banimento e bloqueio de conta
 
 Os Termos devem prever advertencia, restricao, suspensao, bloqueio e banimento em caso de violacao.
 
@@ -186,7 +193,7 @@ Banimento imediato pode ser previsto para casos graves, como menoridade, conteud
 
 Bloqueios devem preservar registro interno de motivo e, quando aplicavel, canal de suporte ou revisao.
 
-## 16. Indenizacao a plataforma
+## 17. Indenizacao a plataforma
 
 Os Termos devem prever que usuarios, criadoras, agentes ou agencias podem ter dever de indenizar a plataforma, dentro dos limites permitidos pela lei, por danos, perdas, custos, chargebacks, reclamacoes, multas, despesas, honorarios ou prejuizos causados por:
 
@@ -208,7 +215,7 @@ Os Termos devem prever que usuarios, criadoras, agentes ou agencias podem ter de
 
 A clausula deve ser proporcional, juridicamente revisada e redigida sem abuso.
 
-## 17. Linguagem proibida nos termos
+## 18. Linguagem proibida nos termos
 
 Nao usar:
 
@@ -220,7 +227,7 @@ Nao usar:
 
 Essas frases criam risco juridico, reduzem confianca e podem ser invalidas ou abusivas conforme o contexto.
 
-## 18. Linguagem recomendada
+## 19. Linguagem recomendada
 
 Usar linguagem juridicamente mais segura e proporcional, como:
 
@@ -232,7 +239,7 @@ Usar linguagem juridicamente mais segura e proporcional, como:
 
 Tambem recomendar linguagem clara, especifica e compreensivel, evitando termos absolutos, vagos ou excessivamente defensivos.
 
-## 19. Politica de alteracoes
+## 20. Politica de alteracoes
 
 Os Termos devem explicar como alteracoes serao comunicadas, quando passam a valer e quando exigem reaceite.
 
@@ -240,7 +247,7 @@ Alteracoes materiais devem exigir novo aceite destacado quando afetarem direitos
 
 Versoes antigas devem permanecer arquivadas internamente com data, hash e escopo.
 
-## 20. Status interno
+## 21. Status interno
 
 Este Item 7A - Estrutura Mestre dos Termos e Aceites Destacados e um documento interno v1.
 
