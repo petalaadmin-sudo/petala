@@ -4,6 +4,8 @@ Versão: v1
 
 Esta Política explica como funcionam as pétalas no Pétala/Bloom, incluindo compra, uso, bônus, reembolsos, contestação de pagamento, revisão financeira, bloqueios de segurança e situações relacionadas.
 
+O Pétala/Bloom é uma plataforma 18+ destinada exclusivamente a pessoas maiores de 18 anos.
+
 Ao comprar, receber ou usar pétalas, você declara que leu, entendeu e aceita esta Política, os Termos aplicáveis e as regras exibidas na plataforma.
 
 ## 1. O que são pétalas

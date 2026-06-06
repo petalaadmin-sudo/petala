@@ -119,7 +119,7 @@ A agência pode atuar, quando autorizada, em atividades operacionais compatívei
 
 Exemplos de atuação permitida:
 
-- apresentar a plataforma a potenciais criadoras adultas;
+- apresentar a plataforma a potenciais criadoras maiores de 18 anos;
 - orientar sobre cadastro;
 - apoiar uso básico da área da criadora;
 - explicar regras de segurança;
