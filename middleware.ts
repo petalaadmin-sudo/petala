@@ -32,6 +32,17 @@ const PUBLIC_ROUTES = [
   '/favoritos',
 ]
 
+// Keep this exact list in sync with lib/legal/public-documents.ts.
+const PUBLIC_LEGAL_ROUTES = [
+  '/termos',
+  '/termos/usuario',
+  '/termos/criadora',
+  '/termos/agencia',
+  '/privacidade',
+  '/politicas/conteudo',
+  '/politicas/petalas-reembolso',
+]
+
 function withNoStore(response: NextResponse) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
   response.headers.set('CDN-Cache-Control', 'no-store')
@@ -46,6 +57,7 @@ function withPrelaunchHeaders(response: NextResponse) {
 
 function isPrelaunchBypass(pathname: string) {
   return (
+    PUBLIC_LEGAL_ROUTES.includes(pathname) ||
     pathname === '/prelancamento' ||
     pathname === '/robots.txt' ||
     pathname === '/api/prelaunch/unlock' ||
@@ -140,7 +152,7 @@ export async function middleware(request: NextRequest) {
 
   const isPublicRoute = PUBLIC_ROUTES.some(
     r => pathname === r || pathname.startsWith(r + '/')
-  )
+  ) || PUBLIC_LEGAL_ROUTES.includes(pathname)
 
   if (isAdminRoute) {
     if (!user) {
