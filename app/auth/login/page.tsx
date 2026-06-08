@@ -10,6 +10,7 @@ function LoginContent() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loginMode, setLoginMode] = useState<'password' | 'email'>('password')
   const [loading, setLoading] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -179,27 +180,74 @@ function LoginContent() {
         <div className="flex-1 h-px bg-white/8" />
       </div>
 
-      <div className="w-full max-w-xs flex flex-col gap-2 relative z-10">
-        <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && loginWithEmail()} placeholder="seu@email.com"
-          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
-        <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="senha"
-          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
-        {authError && (
-          <p className="text-red-300/80 text-xs leading-relaxed">{authError}</p>
+      <div className="w-full max-w-xs flex flex-col gap-3 relative z-10">
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#111] border border-white/8 p-1">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode('password')
+              setAuthError('')
+            }}
+            className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+              loginMode === 'password'
+                ? 'bg-white/10 text-white'
+                : 'text-white/35 hover:text-white/60'
+            }`}
+          >
+            Senha
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode('email')
+              setAuthError('')
+            }}
+            className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+              loginMode === 'email'
+                ? 'bg-white/10 text-white'
+                : 'text-white/35 hover:text-white/60'
+            }`}
+          >
+            Link por e-mail
+          </button>
+        </div>
+
+        {loginMode === 'password' ? (
+          <>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="seu@email.com"
+              className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="senha"
+              className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+            {authError && (
+              <p className="text-red-300/80 text-xs leading-relaxed">{authError}</p>
+            )}
+            <button onClick={loginWithPassword} disabled={!email || !password || !!loading}
+              className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50">
+              {loading === 'password' ? 'Entrando...' : 'Entrar com senha'}
+            </button>
+            <a href="/auth/recuperar-senha" className="text-center text-white/35 hover:text-white/60 text-xs mt-1">
+              Esqueci minha senha
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="text-white/35 text-xs leading-relaxed">
+              Receba um link seguro no seu e-mail para entrar sem usar senha.
+            </p>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && loginWithEmail()} placeholder="seu@email.com"
+              className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+            {authError && (
+              <p className="text-red-300/80 text-xs leading-relaxed">{authError}</p>
+            )}
+            <button onClick={loginWithEmail} disabled={!email || !!loading}
+              className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50">
+              {loading === 'email' ? 'Enviando...' : 'Enviar link por e-mail'}
+            </button>
+          </>
         )}
-        <button onClick={loginWithPassword} disabled={!email || !password || !!loading}
-          className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50">
-          {loading === 'password' ? 'Entrando...' : 'Entrar com senha'}
-        </button>
-        <button onClick={loginWithEmail} disabled={!email || !!loading}
-          className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50">
-          {loading === 'email' ? 'Enviando…' : 'Entrar com e-mail'}
-        </button>
-        <a href="/auth/recuperar-senha" className="text-center text-white/35 hover:text-white/60 text-xs mt-1">
-          Esqueci minha senha
-        </a>
       </div>
 
       <p className="text-white/20 text-xs text-center mt-6 leading-relaxed max-w-xs relative z-10">

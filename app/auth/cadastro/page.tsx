@@ -7,14 +7,19 @@ import { ReferralInput } from '@/components/ui/ReferralInput'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect, Suspense, useCallback } from 'react'
 
+const MIN_PASSWORD_LENGTH = 8
+
 function CadastroContent() {
   const [supabase]    = useState(() => createClient())
   const router        = useRouter()
   const searchParams  = useSearchParams()
 
   const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading]         = useState<string | null>(null)
   const [sent, setSent]               = useState(false)
+  const [authError, setAuthError]     = useState('')
   const [referralCode, setReferralCode] = useState<string | null>(null)
 
   // Extrai código da URL (?ref=XXX-XXXXX)
@@ -69,18 +74,49 @@ function CadastroContent() {
     })
   }
 
-  const loginWithEmail = async () => {
-    if (!email) return
-    setLoading('email')
+  const createAccountWithPassword = async () => {
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!normalizedEmail) return
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setAuthError('A senha deve ter pelo menos 8 caracteres.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setAuthError('As senhas nao conferem.')
+      return
+    }
+
+    setLoading('signup')
+    setAuthError('')
+
     if (referralCode) localStorage.setItem('pending_referral_code', referralCode)
     else if (refFromUrl) localStorage.setItem('pending_referral_code', refFromUrl.toUpperCase())
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
       options: { emailRedirectTo: `${location.origin}/api/auth/callback` },
     })
+
     setLoading(null)
-    if (!error) setSent(true)
+
+    if (error) {
+      setAuthError('Nao foi possivel criar sua conta com senha. Tente novamente ou use outro e-mail.')
+      return
+    }
+
+    if (session?.access_token) {
+      await redirectExistingSession(session.access_token)
+      return
+    }
+
+    setSent(true)
   }
 
   if (sent) {
@@ -90,7 +126,8 @@ function CadastroContent() {
           <div className="text-4xl mb-4">📩</div>
           <h2 className="text-white text-lg font-medium mb-2">Verifique seu e-mail</h2>
           <p className="text-white/40 text-sm leading-relaxed">
-            Link enviado para <span className="text-white/70">{email}</span>
+            Enviamos um link de confirmacao para <span className="text-white/70">{email}</span>.
+            Depois de confirmar, voce podera entrar com sua senha.
           </p>
           {referralCode && (
             <p className="text-green-400/70 text-xs mt-3">
@@ -155,8 +192,26 @@ function CadastroContent() {
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && loginWithEmail()}
+          onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
           placeholder="seu@email.com"
+          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
+        />
+
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
+          placeholder="senha"
+          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
+        />
+
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
+          placeholder="confirmar senha"
           className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
         />
 
@@ -167,12 +222,18 @@ function CadastroContent() {
           onClear={() => setReferralCode(null)}
         />
 
+        {authError && (
+          <p className="bg-red-400/10 border border-red-400/15 rounded-xl px-4 py-3 text-red-300 text-xs leading-relaxed">
+            {authError}
+          </p>
+        )}
+
         <button
-          onClick={loginWithEmail}
-          disabled={!email || !!loading}
+          onClick={createAccountWithPassword}
+          disabled={!email || !password || !confirmPassword || !!loading}
           className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium active:scale-95 transition-all disabled:opacity-50"
         >
-          {loading === 'email' ? 'Enviando…' : 'Criar conta'}
+          {loading === 'signup' ? 'Criando...' : 'Criar conta com senha'}
         </button>
       </div>
 
