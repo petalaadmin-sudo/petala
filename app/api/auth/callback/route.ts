@@ -24,17 +24,36 @@ function redirectWithCookies(request: NextRequest, path: string, cookiesToSet: C
   return response
 }
 
-function redirectToCallbackError(request: NextRequest) {
-  return NextResponse.redirect(new URL('/auth/login?error=callback_error', request.url))
+function redirectToLogin(request: NextRequest, params: Record<string, string>) {
+  const target = new URL('/auth/login', request.url)
+
+  Object.entries(params).forEach(([key, value]) => {
+    target.searchParams.set(key, value)
+  })
+
+  return NextResponse.redirect(target)
+}
+
+function redirectAfterExchangeFailure(request: NextRequest, flow: string | null) {
+  if (flow === 'signup') {
+    return redirectToLogin(request, { notice: 'email_confirmed_login' })
+  }
+
+  if (flow === 'email') {
+    return redirectToLogin(request, { error: 'email_link_session' })
+  }
+
+  return redirectToLogin(request, { error: 'session_error' })
 }
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
+  const flow = url.searchParams.get('flow')
 
   if (!code) {
     if (url.searchParams.get('error') || url.searchParams.get('error_description')) {
-      return redirectToCallbackError(request)
+      return redirectToLogin(request, { error: 'auth_link_invalid' })
     }
 
     return NextResponse.redirect(new URL(`/auth/confirmar${url.search}`, request.url))
@@ -72,7 +91,7 @@ export async function GET(request: NextRequest) {
 
   if (error || !data.session?.access_token) {
     console.error('[auth/callback] exchangeCodeForSession', error)
-    return redirectToCallbackError(request)
+    return redirectAfterExchangeFailure(request, flow)
   }
 
   const {
@@ -82,7 +101,7 @@ export async function GET(request: NextRequest) {
 
   if (userError || !user) {
     console.error('[auth/callback] getUser', userError)
-    return redirectToCallbackError(request)
+    return redirectToLogin(request, { error: 'session_error' })
   }
 
   const admin = createAdminClient() as any
@@ -97,7 +116,7 @@ export async function GET(request: NextRequest) {
     redirectTo = target.redirectTo
   } catch (err) {
     console.error('[auth/callback] redirect target', err)
-    return redirectToCallbackError(request)
+    return redirectToLogin(request, { error: 'session_error' })
   }
 
   return redirectWithCookies(request, redirectTo, cookiesToSet)

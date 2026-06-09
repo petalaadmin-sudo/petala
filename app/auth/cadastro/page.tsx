@@ -9,6 +9,35 @@ import { useState, useEffect, Suspense, useCallback } from 'react'
 
 const MIN_PASSWORD_LENGTH = 8
 
+function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      {visible ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+          <path d="M9.88 4.24A9.5 9.5 0 0 1 12 4c5 0 8.5 4 10 8a13.4 13.4 0 0 1-3.17 4.68" />
+          <path d="M6.61 6.61A13.15 13.15 0 0 0 2 12c1.5 4 5 8 10 8a9.4 9.4 0 0 0 4.06-.9" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  )
+}
+
 function CadastroContent() {
   const [supabase]    = useState(() => createClient())
   const router        = useRouter()
@@ -17,6 +46,8 @@ function CadastroContent() {
   const [email, setEmail]             = useState('')
   const [password, setPassword]       = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading]         = useState<string | null>(null)
   const [sent, setSent]               = useState(false)
   const [authError, setAuthError]     = useState('')
@@ -85,7 +116,7 @@ function CadastroContent() {
     }
 
     if (password !== confirmPassword) {
-      setAuthError('As senhas nao conferem.')
+      setAuthError('As senhas não conferem.')
       return
     }
 
@@ -101,13 +132,13 @@ function CadastroContent() {
     } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
-      options: { emailRedirectTo: `${location.origin}/api/auth/callback` },
+      options: { emailRedirectTo: `${location.origin}/api/auth/callback?flow=signup` },
     })
 
     setLoading(null)
 
     if (error) {
-      setAuthError('Nao foi possivel criar sua conta com senha. Tente novamente ou use outro e-mail.')
+      setAuthError('Não foi possível criar sua conta agora. Tente novamente em instantes ou use outro e-mail.')
       return
     }
 
@@ -126,8 +157,8 @@ function CadastroContent() {
           <div className="text-4xl mb-4">📩</div>
           <h2 className="text-white text-lg font-medium mb-2">Verifique seu e-mail</h2>
           <p className="text-white/40 text-sm leading-relaxed">
-            Enviamos um link de confirmacao para <span className="text-white/70">{email}</span>.
-            Depois de confirmar, voce podera entrar com sua senha.
+            Enviamos um link de confirmação para <span className="text-white/70">{email}</span>.
+            Depois de confirmar, você poderá entrar com sua senha.
           </p>
           {referralCode && (
             <p className="text-green-400/70 text-xs mt-3">
@@ -197,23 +228,43 @@ function CadastroContent() {
           className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
         />
 
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
-          placeholder="senha"
-          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
+            placeholder="senha"
+            className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 pr-12 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(value => !value)}
+            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-white/35 transition hover:bg-white/5 hover:text-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d7d]/40"
+          >
+            <PasswordVisibilityIcon visible={showPassword} />
+          </button>
+        </div>
 
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={e => setConfirmPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
-          placeholder="confirmar senha"
-          className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
-        />
+        <div className="relative">
+          <input
+            type={showConfirmPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && createAccountWithPassword()}
+            placeholder="confirmar senha"
+            className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 pr-12 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(value => !value)}
+            aria-label={showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-white/35 transition hover:bg-white/5 hover:text-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d7d]/40"
+          >
+            <PasswordVisibilityIcon visible={showConfirmPassword} />
+          </button>
+        </div>
 
         {/* Campo de indicação */}
         <ReferralInput

@@ -4,16 +4,47 @@ import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect, Suspense, useCallback } from 'react'
 
+function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      {visible ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+          <path d="M9.88 4.24A9.5 9.5 0 0 1 12 4c5 0 8.5 4 10 8a13.4 13.4 0 0 1-3.17 4.68" />
+          <path d="M6.61 6.61A13.15 13.15 0 0 0 2 12c1.5 4 5 8 10 8a9.4 9.4 0 0 0 4.06-.9" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  )
+}
+
 function LoginContent() {
   const [supabase] = useState(() => createClient())
   const params = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loginMode, setLoginMode] = useState<'password' | 'email'>('password')
   const [loading, setLoading] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [routeMessage, setRouteMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
   const [refInfo, setRefInfo] = useState<{ name: string } | null>(null)
 
   const redirectAfterPasswordLogin = useCallback(async (accessToken: string, refreshToken?: string) => {
@@ -57,6 +88,50 @@ function LoginContent() {
     void redirectExistingSession().then((didRedirect) => {
       if (cancelled || didRedirect || window.location.hash.includes('access_token')) return
 
+      const notice = params.get('notice')
+      const error = params.get('error')
+      const clearAuthQuery = () => {
+        const cleanUrl = new URL(window.location.href)
+
+        cleanUrl.searchParams.delete('notice')
+        cleanUrl.searchParams.delete('error')
+        window.history.replaceState(
+          null,
+          '',
+          `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`,
+        )
+      }
+
+      if (notice === 'email_confirmed_login') {
+        setLoginMode('password')
+        setRouteMessage({
+          tone: 'info',
+          text: 'E-mail confirmado com sucesso. Entre com sua senha para continuar.',
+        })
+        clearAuthQuery()
+      } else if (error === 'email_link_session') {
+        setLoginMode('email')
+        setRouteMessage({
+          tone: 'error',
+          text: 'Não conseguimos abrir uma sessão com este link. Solicite um novo link ou entre com sua senha.',
+        })
+        clearAuthQuery()
+      } else if (error === 'auth_link_invalid') {
+        setRouteMessage({
+          tone: 'error',
+          text: 'Este link expirou ou não é mais válido. Tente entrar novamente.',
+        })
+        clearAuthQuery()
+      } else if (error === 'session_error' || error === 'callback_error') {
+        setRouteMessage({
+          tone: 'error',
+          text: 'Não conseguimos concluir sua entrada automaticamente. Entre novamente para continuar.',
+        })
+        clearAuthQuery()
+      } else {
+        setRouteMessage(null)
+      }
+
       const ref = params.get('ref')
       if (!ref) return
       const code = ref.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
@@ -91,13 +166,14 @@ function LoginContent() {
     if (!email) return
     setLoading('email')
     setAuthError('')
+    setRouteMessage(null)
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: `${location.origin}/api/auth/callback` },
+      options: { emailRedirectTo: `${location.origin}/api/auth/callback?flow=email` },
     })
     setLoading(null)
     if (error) {
-      setAuthError('Nao foi possivel enviar o link. Tente novamente.')
+      setAuthError('Não foi possível enviar o link agora. Tente novamente em instantes.')
       return
     }
 
@@ -109,6 +185,7 @@ function LoginContent() {
 
     setLoading('password')
     setAuthError('')
+    setRouteMessage(null)
 
     try {
       const {
@@ -120,7 +197,7 @@ function LoginContent() {
       })
 
       if (error || !session?.access_token) {
-        setAuthError('Email ou senha invalidos.')
+        setAuthError('E-mail ou senha inválidos.')
         setLoading(null)
         return
       }
@@ -128,7 +205,7 @@ function LoginContent() {
       await redirectAfterPasswordLogin(session.access_token, session.refresh_token)
     } catch (error) {
       console.error('[auth/login] password login', error)
-      setAuthError('Nao foi possivel entrar. Tente novamente.')
+      setAuthError('Não foi possível entrar agora. Tente novamente em instantes.')
       setLoading(null)
     }
   }
@@ -180,6 +257,16 @@ function LoginContent() {
         <div className="flex-1 h-px bg-white/8" />
       </div>
 
+      {routeMessage && (
+        <div className={`w-full max-w-xs mb-5 rounded-xl border px-4 py-3 text-xs leading-relaxed relative z-10 ${
+          routeMessage.tone === 'info'
+            ? 'bg-green-400/10 border-green-400/20 text-green-200'
+            : 'bg-red-400/10 border-red-400/20 text-red-200'
+        }`}>
+          {routeMessage.text}
+        </div>
+      )}
+
       <div className="w-full max-w-xs flex flex-col gap-3 relative z-10">
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#111] border border-white/8 p-1">
           <button
@@ -187,6 +274,7 @@ function LoginContent() {
             onClick={() => {
               setLoginMode('password')
               setAuthError('')
+              setRouteMessage(null)
             }}
             className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
               loginMode === 'password'
@@ -201,6 +289,7 @@ function LoginContent() {
             onClick={() => {
               setLoginMode('email')
               setAuthError('')
+              setRouteMessage(null)
             }}
             className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
               loginMode === 'email'
@@ -217,9 +306,19 @@ function LoginContent() {
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="seu@email.com"
               className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="senha"
-              className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && loginWithPassword()} placeholder="senha"
+                className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 pr-12 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#ff4d7d]/40" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(value => !value)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-white/35 transition hover:bg-white/5 hover:text-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d7d]/40"
+              >
+                <PasswordVisibilityIcon visible={showPassword} />
+              </button>
+            </div>
             {authError && (
               <p className="text-red-300/80 text-xs leading-relaxed">{authError}</p>
             )}

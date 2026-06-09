@@ -14,11 +14,25 @@ export function AuthConfirmClient() {
     let active = true
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null
 
-    const failLogin = () => {
+    const loginPathForFailure = (reason: 'link' | 'session' = 'session') => {
+      const flow = new URLSearchParams(window.location.search).get('flow')
+
+      if (flow === 'signup') {
+        return '/auth/login?notice=email_confirmed_login'
+      }
+
+      if (flow === 'email' || reason === 'link') {
+        return '/auth/login?error=email_link_session'
+      }
+
+      return '/auth/login?error=session_error'
+    }
+
+    const failLogin = (reason: 'link' | 'session' = 'session') => {
       if (!active || handledRef.current) return
 
       handledRef.current = true
-      router.replace('/auth/login?error=session_error')
+      router.replace(loginPathForFailure(reason))
     }
 
     const finishLogin = async (session: Session) => {
@@ -87,7 +101,7 @@ export function AuthConfirmClient() {
       const hashError = hash.get('error_description') || hash.get('error')
 
       if (hashError) {
-        failLogin()
+        failLogin('link')
         return
       }
 
@@ -97,8 +111,8 @@ export function AuthConfirmClient() {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (error) {
-          console.error('[auth/confirmar] erro ao trocar code por sessao:', error)
-          failLogin()
+          console.error('[auth/confirmar] erro ao trocar code por sessão:', error)
+          failLogin('session')
           return
         }
       }
