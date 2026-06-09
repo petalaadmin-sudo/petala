@@ -11,11 +11,12 @@ type AgencyInviteStatus = 'onboarding_started' | 'pending_verification'
 type AuthStatus = 'checking' | 'authenticated' | 'anonymous'
 type AuthMode = 'signup' | 'login'
 type AuthAction = 'signup' | 'login' | 'email'
-type CreatorVerificationStatus = 'pending' | 'approved' | 'rejected'
 
-type CreatorVerificationSummary = {
-  id: string
-  status: CreatorVerificationStatus | null
+type OnboardingSubmitResponse = {
+  success?: boolean
+  creator_id?: string
+  error?: string
+  code?: string
 }
 
 const PENDING_AGENCY_INVITE_CODE_KEY = 'pending_agency_invite_code'
@@ -26,6 +27,51 @@ const FIXED_VIDEO_PRICE_PETALS = 120
 const CPF_DIGIT_LIMIT = 11
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '')
+
+function getAuthParam(
+  searchParams: URLSearchParams,
+  hashParams: URLSearchParams,
+  key: string,
+) {
+  return searchParams.get(key) ?? hashParams.get(key)
+}
+
+function isExpiredAuthLinkError(error: string | null, errorCode: string | null, errorDescription: string | null) {
+  const combined = `${error ?? ''} ${errorCode ?? ''} ${errorDescription ?? ''}`.toLowerCase()
+
+  return (
+    errorCode === 'otp_expired' ||
+    combined.includes('otp_expired') ||
+    combined.includes('email link is invalid') ||
+    combined.includes('expired') ||
+    combined.includes('invalid') ||
+    combined.includes('expirou') ||
+    combined.includes('inválido') ||
+    combined.includes('invalido')
+  )
+}
+
+function getOnboardingAuthUrlMessage() {
+  if (typeof window === 'undefined') return null
+
+  const searchParams = new URLSearchParams(window.location.search)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const error = getAuthParam(searchParams, hashParams, 'error')
+  const errorCode = getAuthParam(searchParams, hashParams, 'error_code')
+  const errorDescription = getAuthParam(searchParams, hashParams, 'error_description')
+
+  if (!error && !errorCode && !errorDescription) return null
+
+  return isExpiredAuthLinkError(error, errorCode, errorDescription)
+    ? 'Este link expirou ou já foi usado. Entre com a conta correta para continuar o onboarding.'
+    : 'Não conseguimos concluir sua entrada automaticamente. Entre novamente para continuar o onboarding.'
+}
+
+function clearOnboardingAuthUrl() {
+  if (typeof window === 'undefined') return
+
+  window.history.replaceState(null, '', window.location.pathname)
+}
 
 function formatCpf(value: string) {
   const digits = onlyDigits(value).slice(0, CPF_DIGIT_LIMIT)
@@ -98,6 +144,7 @@ export default function CreatorOnboardingPage() {
 
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking')
   const [authUserId, setAuthUserId] = useState<string | null>(null)
+  const [authUserEmail, setAuthUserEmail] = useState<string | null>(null)
   const [authMode, setAuthMode] = useState<AuthMode>('signup')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -131,7 +178,26 @@ export default function CreatorOnboardingPage() {
     const setAnonymous = () => {
       if (!mounted) return
       setAuthUserId(null)
+      setAuthUserEmail(null)
       setAuthStatus('anonymous')
+    }
+
+    const authUrlMessage = getOnboardingAuthUrlMessage()
+
+    if (authUrlMessage) {
+      setAuthError(null)
+      setAuthMessage(authUrlMessage)
+      clearOnboardingAuthUrl()
+
+      supabase.auth.signOut()
+        .catch(err => {
+          console.warn('[creator onboarding] auth url sign out error', err)
+        })
+        .finally(setAnonymous)
+
+      return () => {
+        mounted = false
+      }
     }
 
     const verifySession = async (session?: { access_token?: string } | null) => {
@@ -158,6 +224,7 @@ export default function CreatorOnboardingPage() {
         }
 
         setAuthUserId(user.id)
+        setAuthUserEmail(user.email ?? null)
         setAuthStatus('authenticated')
       } catch (err) {
         console.warn('[creator onboarding] auth user validation error', err)
@@ -181,6 +248,7 @@ export default function CreatorOnboardingPage() {
       if (session?.user) {
         setAuthError(null)
         setAuthMessage(null)
+        setAuthUserEmail(session.user.email ?? null)
       }
     })
 
@@ -212,47 +280,6 @@ export default function CreatorOnboardingPage() {
 
     setPixCpf(digits)
     setPixCpfError(null)
-  }
-
-  const ensurePendingVerification = async (creatorId: string, userId: string) => {
-    const { data: existing, error: lookupError } = await supabase
-      .from('creator_verifications')
-      .select('id, status')
-      .eq('creator_id', creatorId)
-      .maybeSingle()
-
-    if (lookupError) {
-      throw new Error('Nao foi possivel verificar a solicitacao de aprovacao.')
-    }
-
-    const verification = existing as CreatorVerificationSummary | null
-
-    if (verification?.id) {
-      return verification
-    }
-
-    const { data: inserted, error: insertError } = await supabase
-      .from('creator_verifications')
-      .insert({
-        creator_id: creatorId,
-        user_id: userId,
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-      })
-      .select('id, status')
-      .single()
-
-    if (insertError) {
-      const duplicateCode = (insertError as { code?: string }).code
-
-      if (duplicateCode === '23505') {
-        return null
-      }
-
-      throw new Error('Nao foi possivel enviar seu perfil para aprovacao.')
-    }
-
-    return inserted as CreatorVerificationSummary
   }
 
   const registerAgencyInvite = useCallback(async (
@@ -377,10 +404,12 @@ export default function CreatorOnboardingPage() {
             setAuthError('Nao foi possivel confirmar sua sessao. Tente entrar novamente.')
             setAuthStatus('anonymous')
             setAuthUserId(null)
+            setAuthUserEmail(null)
             return
           }
 
           setAuthUserId(user.id)
+          setAuthUserEmail(user.email ?? null)
           setAuthStatus('authenticated')
           return
         }
@@ -411,10 +440,12 @@ export default function CreatorOnboardingPage() {
         setAuthError('Nao foi possivel confirmar sua sessao. Tente entrar novamente.')
         setAuthStatus('anonymous')
         setAuthUserId(null)
+        setAuthUserEmail(null)
         return
       }
 
       setAuthUserId(user.id)
+      setAuthUserEmail(user.email ?? null)
       setAuthStatus('authenticated')
     } catch (err) {
       console.warn('[creator onboarding] auth submit error', err)
@@ -467,64 +498,61 @@ export default function CreatorOnboardingPage() {
         throw new Error('Informe um CPF Pix com 11 numeros. E-mail, telefone, chave aleatoria e CNPJ nao sao aceitos.')
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.access_token) {
+        throw new Error('Entre novamente para enviar seu perfil com segurança.')
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Não autenticado')
 
-      // 1. Cria o registro de criadora
-      const { data: creator, error: createErr } = await supabase
-        .from('creators')
-        .insert({
-          user_id:            user.id,
-          name:               name.trim(),
-          bio:                bio.trim() || null,
-          price_text_petals:  FIXED_TEXT_PRICE_PETALS,
-          price_video_petals: FIXED_VIDEO_PRICE_PETALS,
-          pix_key:            pixCpf,
-          active:             false, // só ativa após verificação
-        })
-        .select()
-        .single()
+      if (!user || user.id !== authUserId) {
+        setAuthStatus('anonymous')
+        setAuthUserId(null)
+        setAuthUserEmail(null)
+        throw new Error('Não foi possível confirmar sua sessão. Entre novamente para continuar.')
+      }
 
-      if (createErr) throw new Error(createErr.message)
+      if (!authUserEmail) {
+        throw new Error('Não foi possível confirmar o e-mail da sessão. Entre novamente para continuar.')
+      }
 
-      // 2. Atualiza role do usuário
-      await supabase
-        .from('users')
-        .update({ role: 'creator' })
-        .eq('id', user.id)
+      const formData = new FormData()
+      formData.append('name', name.trim())
+      formData.append('bio', bio.trim())
+      formData.append('pix_cpf', pixCpf)
+      formData.append('price_text_petals', String(FIXED_TEXT_PRICE_PETALS))
+      formData.append('price_video_petals', String(FIXED_VIDEO_PRICE_PETALS))
 
-      const createdCreatorId = (creator as { id?: string } | null)?.id
-      if (!createdCreatorId) throw new Error('Nao foi possivel confirmar o perfil criado.')
+      if (photoFile) {
+        formData.append('photo', photoFile)
+      }
 
-      await ensurePendingVerification(createdCreatorId, user.id)
+      const response = await fetch('/api/criadora/onboarding', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      })
 
-      const inviteRegistered = createdCreatorId
-        ? await registerAgencyInvite('pending_verification', createdCreatorId)
-        : false
+      const result = await response.json().catch(() => null) as OnboardingSubmitResponse | null
+
+      if (!response.ok || !result?.success || !result.creator_id) {
+        throw new Error(result?.error ?? 'Não foi possível enviar seu perfil para aprovação.')
+      }
+
+      const inviteRegistered = await registerAgencyInvite('pending_verification', result.creator_id)
 
       if (inviteRegistered) {
         clearPendingAgencyInviteCode()
       }
 
-      // 3. Upload da foto de perfil se selecionada
-      if (photoFile && creator) {
-        const urlRes = await fetch('/api/fotos/upload-url', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ content_type: photoFile.type, file_size: photoFile.size, is_free: true, price_petals: 0 }),
-        })
-        const { upload_url, photo_key } = await urlRes.json()
-
-        await fetch(upload_url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: photoFile })
-
-        // Usa a foto como foto de perfil
-        await supabase
-          .from('creators')
-          .update({ photo_url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${photo_key}` })
-          .eq('id', creator.id)
-      }
-
       router.push('/criadora/verificacao')
+      return
+
     } catch (err: any) {
       setError(err.message)
       setSaving(false)
@@ -655,6 +683,10 @@ export default function CreatorOnboardingPage() {
         </div>
         <div className="h-1 bg-white/8 rounded-full overflow-hidden">
           <div className="h-full bg-[#ff4d7d] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="mt-4 rounded-xl border border-white/8 bg-[#111] px-4 py-3">
+          <div className="text-white/30 text-[11px] uppercase tracking-wide">Conta conectada</div>
+          <div className="mt-1 text-white/70 text-sm break-all">{authUserEmail ?? 'Sessão autenticada'}</div>
         </div>
       </div>
 

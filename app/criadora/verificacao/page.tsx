@@ -12,7 +12,19 @@ type CreatorStatus = {
   created_at: string | null
 }
 
-type PageState = 'loading' | 'unauthenticated' | 'missing_creator' | 'pending' | 'approved' | 'error'
+type VerificationStatus = {
+  id: string
+  status: 'pending' | 'approved' | 'rejected' | null
+}
+
+type PageState =
+  | 'loading'
+  | 'unauthenticated'
+  | 'missing_creator'
+  | 'missing_verification'
+  | 'pending'
+  | 'approved'
+  | 'error'
 
 export default function CreatorVerificationPage() {
   const supabase = useMemo(() => createClient(), [])
@@ -58,8 +70,38 @@ export default function CreatorVerificationPage() {
         }
 
         const creatorStatus = data as CreatorStatus
+
+        const { data: verification, error: verificationError } = await (supabase as any)
+          .from('creator_verifications')
+          .select('id, status')
+          .eq('creator_id', creatorStatus.id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (!mounted) return
+
+        if (verificationError) {
+          console.error('[criadora/verificacao] creator_verifications', verificationError)
+          setState('error')
+          return
+        }
+
+        const verificationStatus = (verification as VerificationStatus | null)?.status
+        const hasSubmittedVerification =
+          verificationStatus === 'pending' || verificationStatus === 'approved'
+
+        if (!hasSubmittedVerification) {
+          setCreator(creatorStatus)
+          setState('missing_verification')
+          return
+        }
+
         setCreator(creatorStatus)
-        setState(creatorStatus.verified || creatorStatus.active ? 'approved' : 'pending')
+        setState(
+          creatorStatus.verified || creatorStatus.active || verificationStatus === 'approved'
+            ? 'approved'
+            : 'pending'
+        )
       } catch (err) {
         console.error('[criadora/verificacao]', err)
         if (mounted) setState('error')
@@ -84,9 +126,9 @@ export default function CreatorVerificationPage() {
   if (state === 'unauthenticated') {
     return (
       <VerificationShell
-        eyebrow="Sessao necessaria"
+        eyebrow="Sessão necessária"
         title="Entre para acompanhar seu perfil"
-        body="Nao encontramos uma sessao ativa neste navegador. Entre novamente para continuar o onboarding de creator."
+        body="Não encontramos uma sessão ativa neste navegador. Entre novamente para continuar o onboarding de criadora."
         actionHref="/criadora/onboarding"
         actionLabel="Entrar e continuar"
       />
@@ -96,11 +138,24 @@ export default function CreatorVerificationPage() {
   if (state === 'missing_creator') {
     return (
       <VerificationShell
-        eyebrow="Perfil nao encontrado"
-        title="Crie seu perfil de creator"
-        body="Ainda nao encontramos um perfil de creator para esta conta. Volte ao onboarding para criar e enviar seu perfil."
+        eyebrow="Perfil não encontrado"
+        title="Crie seu perfil de criadora"
+        body="Ainda não encontramos um perfil de criadora para esta conta. Volte ao onboarding para criar e enviar seu perfil."
         actionHref="/criadora/onboarding"
         actionLabel="Voltar ao onboarding"
+      />
+    )
+  }
+
+  if (state === 'missing_verification') {
+    return (
+      <VerificationShell
+        eyebrow="Envio não confirmado"
+        title="Finalize o envio do perfil"
+        body="Encontramos seu perfil, mas não encontramos uma solicitação de aprovação vinculada a esta conta. Volte ao onboarding para reenviar com segurança."
+        actionHref="/criadora/onboarding"
+        actionLabel="Voltar ao onboarding"
+        creatorName={creator?.name}
       />
     )
   }
@@ -109,8 +164,8 @@ export default function CreatorVerificationPage() {
     return (
       <VerificationShell
         eyebrow="Perfil aprovado"
-        title="Seu perfil ja esta ativo"
-        body="Sua conta de creator ja foi aprovada. Voce pode acessar seu painel e acompanhar sua atividade."
+        title="Seu perfil já está ativo"
+        body="Sua conta de criadora já foi aprovada. Você pode acessar seu painel e acompanhar sua atividade."
         actionHref="/criadora/dashboard"
         actionLabel="Ir para o painel"
         creatorName={creator?.name}
@@ -122,8 +177,8 @@ export default function CreatorVerificationPage() {
     return (
       <VerificationShell
         eyebrow="Erro ao carregar"
-        title="Nao foi possivel carregar seu status"
-        body="Tente atualizar a pagina. Se o problema continuar, volte ao onboarding para confirmar se seu perfil foi criado."
+        title="Não foi possível carregar seu status"
+        body="Tente atualizar a página. Se o problema continuar, volte ao onboarding para confirmar se seu perfil foi criado."
         actionHref="/criadora/onboarding"
         actionLabel="Voltar ao onboarding"
       />
@@ -133,10 +188,10 @@ export default function CreatorVerificationPage() {
   return (
     <VerificationShell
       eyebrow="Perfil enviado"
-      title="Perfil enviado para aprovacao"
-      body="Recebemos seu perfil de creator. Nossa equipe vai revisar os dados antes de liberar sua conta na plataforma."
+      title="Perfil enviado para aprovação"
+      body="Recebemos seu perfil de criadora. Nossa equipe vai revisar os dados antes de liberar sua conta na plataforma."
       actionHref="/feed"
-      actionLabel="Voltar ao inicio"
+      actionLabel="Voltar ao início"
       creatorName={creator?.name}
     />
   )
@@ -174,9 +229,9 @@ function VerificationShell({
         </div>
 
         <div className="mt-6 rounded-xl border border-white/8 bg-[#0d0d0d] p-4">
-          <div className="text-white/30 text-[11px] uppercase tracking-wide">Proximo passo</div>
+          <div className="text-white/30 text-[11px] uppercase tracking-wide">Próximo passo</div>
           <p className="mt-2 text-white/55 text-sm leading-relaxed">
-            Aguarde a revisao. Quando o perfil for aprovado, o painel de creator sera liberado automaticamente.
+            Aguarde a revisão. Quando o perfil for aprovado, o painel de criadora será liberado automaticamente.
           </p>
         </div>
 

@@ -76,6 +76,23 @@ export async function createUploadUrl(params: {
   return { uploadUrl, key: params.key }
 }
 
+export async function uploadObject(params: {
+  key: string
+  body: Uint8Array
+  contentType: string
+}): Promise<void> {
+  const r2 = createR2Client()
+  await r2.send(new PutObjectCommand({
+    Bucket:      R2_BUCKET,
+    Key:         params.key,
+    Body:        params.body,
+    ContentType: params.contentType,
+    Metadata: {
+      'uploaded-at': new Date().toISOString(),
+    },
+  }))
+}
+
 export async function createPrivateUrl(
   key: string,
   expiresInSeconds = 3600
