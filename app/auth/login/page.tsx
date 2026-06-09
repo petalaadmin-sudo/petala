@@ -90,11 +90,25 @@ function LoginContent() {
 
       const notice = params.get('notice')
       const error = params.get('error')
+      const errorCode = params.get('error_code')
+      const errorDescription = params.get('error_description')
+      const authErrorText = `${error ?? ''} ${errorCode ?? ''} ${errorDescription ?? ''}`.toLowerCase()
+      const isExpiredAuthLinkError = (
+        error === 'auth_link_expired' ||
+        error === 'auth_link_invalid' ||
+        errorCode === 'otp_expired' ||
+        authErrorText.includes('otp_expired') ||
+        authErrorText.includes('email link is invalid') ||
+        authErrorText.includes('expired') ||
+        authErrorText.includes('invalid')
+      )
       const clearAuthQuery = () => {
         const cleanUrl = new URL(window.location.href)
 
         cleanUrl.searchParams.delete('notice')
         cleanUrl.searchParams.delete('error')
+        cleanUrl.searchParams.delete('error_code')
+        cleanUrl.searchParams.delete('error_description')
         window.history.replaceState(
           null,
           '',
@@ -116,13 +130,14 @@ function LoginContent() {
           text: 'Não conseguimos abrir uma sessão com este link. Solicite um novo link ou entre com sua senha.',
         })
         clearAuthQuery()
-      } else if (error === 'auth_link_invalid') {
+      } else if (isExpiredAuthLinkError) {
+        setLoginMode('password')
         setRouteMessage({
           tone: 'error',
-          text: 'Este link expirou ou não é mais válido. Tente entrar novamente.',
+          text: 'Este link expirou ou já foi usado. Entre com sua senha ou solicite um novo link.',
         })
         clearAuthQuery()
-      } else if (error === 'session_error' || error === 'callback_error') {
+      } else if (error === 'session_error' || error === 'callback_error' || error || errorCode || errorDescription) {
         setRouteMessage({
           tone: 'error',
           text: 'Não conseguimos concluir sua entrada automaticamente. Entre novamente para continuar.',

@@ -1,10 +1,55 @@
 // app/page.tsx
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { AuthUrlErrorRedirect } from './AuthUrlErrorRedirect'
+
+type SplashPageProps = {
+  searchParams?: Record<string, string | string[] | undefined>
+}
+
+function getSearchParam(searchParams: SplashPageProps['searchParams'], key: string) {
+  const value = searchParams?.[key]
+
+  return Array.isArray(value) ? value[0] : value
+}
+
+function isExpiredAuthLinkError(error?: string, errorCode?: string, errorDescription?: string) {
+  const combined = `${error ?? ''} ${errorCode ?? ''} ${errorDescription ?? ''}`.toLowerCase()
+
+  return (
+    errorCode === 'otp_expired' ||
+    combined.includes('otp_expired') ||
+    combined.includes('email link is invalid') ||
+    combined.includes('expired') ||
+    combined.includes('invalid')
+  )
+}
+
+function getAuthErrorRedirect(searchParams: SplashPageProps['searchParams']) {
+  const error = getSearchParam(searchParams, 'error')
+  const errorCode = getSearchParam(searchParams, 'error_code')
+  const errorDescription = getSearchParam(searchParams, 'error_description')
+
+  if (!error && !errorCode && !errorDescription) return null
+
+  if (isExpiredAuthLinkError(error, errorCode, errorDescription)) {
+    return '/auth/login?error=auth_link_expired'
+  }
+
+  return '/auth/login?error=session_error'
+}
 
 // Esta é uma Server Component — sem 'use client'
-export default function SplashPage() {
+export default function SplashPage({ searchParams }: SplashPageProps) {
+  const authErrorRedirect = getAuthErrorRedirect(searchParams)
+
+  if (authErrorRedirect) {
+    redirect(authErrorRedirect)
+  }
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 py-10 relative overflow-hidden">
+      <AuthUrlErrorRedirect />
 
       {/* Círculos decorativos de fundo */}
       <div className="absolute top-[-60px] right-[-80px] w-72 h-72 rounded-full bg-[#ff4d7d] opacity-[0.06]" />
