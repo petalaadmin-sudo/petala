@@ -2,7 +2,13 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect, Suspense, useCallback } from 'react'
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react'
+
+type RouteMessage = { tone: 'info' | 'error'; text: string }
+type AuthSearchParams = { get(name: string): string | null }
+
+const AUTH_LINK_EXPIRED_MESSAGE = 'Este link expirou ou já foi usado. Entre com sua senha ou solicite um novo link.'
+const AUTH_SESSION_ERROR_MESSAGE = 'Não conseguimos concluir sua entrada automaticamente. Entre novamente para continuar.'
 
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
   return (
@@ -37,6 +43,7 @@ function LoginContent() {
   const [supabase] = useState(() => createClient())
   const params = useSearchParams()
   const router = useRouter()
+  const authQueryHandledRef = useRef(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -44,8 +51,86 @@ function LoginContent() {
   const [loading, setLoading] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [authError, setAuthError] = useState('')
-  const [routeMessage, setRouteMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
+  const [routeMessage, setRouteMessage] = useState<RouteMessage | null>(null)
   const [refInfo, setRefInfo] = useState<{ name: string } | null>(null)
+
+  const getAuthRouteMessage = useCallback((searchParams: AuthSearchParams): {
+    mode?: 'password' | 'email'
+    message: RouteMessage
+  } | null => {
+    const notice = searchParams.get('notice')
+    const error = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    const errorDescription = searchParams.get('error_description')
+    const authErrorText = `${error ?? ''} ${errorCode ?? ''} ${errorDescription ?? ''}`.toLowerCase()
+    const isExpiredAuthLinkError = (
+      error === 'auth_link_expired' ||
+      error === 'auth_link_invalid' ||
+      errorCode === 'otp_expired' ||
+      authErrorText.includes('otp_expired') ||
+      authErrorText.includes('email link is invalid') ||
+      authErrorText.includes('expired') ||
+      authErrorText.includes('invalid') ||
+      authErrorText.includes('expirou') ||
+      authErrorText.includes('inválido') ||
+      authErrorText.includes('invalido')
+    )
+
+    if (notice === 'email_confirmed_login') {
+      return {
+        mode: 'password',
+        message: {
+          tone: 'info',
+          text: 'E-mail confirmado com sucesso. Entre com sua senha para continuar.',
+        },
+      }
+    }
+
+    if (error === 'email_link_session') {
+      return {
+        mode: 'email',
+        message: {
+          tone: 'error',
+          text: 'Não conseguimos abrir uma sessão com este link. Solicite um novo link ou entre com sua senha.',
+        },
+      }
+    }
+
+    if (isExpiredAuthLinkError) {
+      return {
+        mode: 'password',
+        message: {
+          tone: 'error',
+          text: AUTH_LINK_EXPIRED_MESSAGE,
+        },
+      }
+    }
+
+    if (error === 'session_error' || error === 'callback_error' || error || errorCode || errorDescription) {
+      return {
+        message: {
+          tone: 'error',
+          text: AUTH_SESSION_ERROR_MESSAGE,
+        },
+      }
+    }
+
+    return null
+  }, [])
+
+  const clearAuthQuery = useCallback(() => {
+    const cleanUrl = new URL(window.location.href)
+
+    cleanUrl.searchParams.delete('notice')
+    cleanUrl.searchParams.delete('error')
+    cleanUrl.searchParams.delete('error_code')
+    cleanUrl.searchParams.delete('error_description')
+    window.history.replaceState(
+      null,
+      '',
+      `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`,
+    )
+  }, [])
 
   const redirectAfterPasswordLogin = useCallback(async (accessToken: string, refreshToken?: string) => {
     document.cookie = `sb-access-token=${accessToken}; path=/; max-age=3600; SameSite=Lax; Secure`
@@ -88,63 +173,19 @@ function LoginContent() {
     void redirectExistingSession().then((didRedirect) => {
       if (cancelled || didRedirect || window.location.hash.includes('access_token')) return
 
-      const notice = params.get('notice')
-      const error = params.get('error')
-      const errorCode = params.get('error_code')
-      const errorDescription = params.get('error_description')
-      const authErrorText = `${error ?? ''} ${errorCode ?? ''} ${errorDescription ?? ''}`.toLowerCase()
-      const isExpiredAuthLinkError = (
-        error === 'auth_link_expired' ||
-        error === 'auth_link_invalid' ||
-        errorCode === 'otp_expired' ||
-        authErrorText.includes('otp_expired') ||
-        authErrorText.includes('email link is invalid') ||
-        authErrorText.includes('expired') ||
-        authErrorText.includes('invalid')
-      )
-      const clearAuthQuery = () => {
-        const cleanUrl = new URL(window.location.href)
+      if (!authQueryHandledRef.current) {
+        const authRouteMessage = getAuthRouteMessage(params)
 
-        cleanUrl.searchParams.delete('notice')
-        cleanUrl.searchParams.delete('error')
-        cleanUrl.searchParams.delete('error_code')
-        cleanUrl.searchParams.delete('error_description')
-        window.history.replaceState(
-          null,
-          '',
-          `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`,
-        )
-      }
+        if (authRouteMessage) {
+          authQueryHandledRef.current = true
 
-      if (notice === 'email_confirmed_login') {
-        setLoginMode('password')
-        setRouteMessage({
-          tone: 'info',
-          text: 'E-mail confirmado com sucesso. Entre com sua senha para continuar.',
-        })
-        clearAuthQuery()
-      } else if (error === 'email_link_session') {
-        setLoginMode('email')
-        setRouteMessage({
-          tone: 'error',
-          text: 'Não conseguimos abrir uma sessão com este link. Solicite um novo link ou entre com sua senha.',
-        })
-        clearAuthQuery()
-      } else if (isExpiredAuthLinkError) {
-        setLoginMode('password')
-        setRouteMessage({
-          tone: 'error',
-          text: 'Este link expirou ou já foi usado. Entre com sua senha ou solicite um novo link.',
-        })
-        clearAuthQuery()
-      } else if (error === 'session_error' || error === 'callback_error' || error || errorCode || errorDescription) {
-        setRouteMessage({
-          tone: 'error',
-          text: 'Não conseguimos concluir sua entrada automaticamente. Entre novamente para continuar.',
-        })
-        clearAuthQuery()
-      } else {
-        setRouteMessage(null)
+          if (authRouteMessage.mode) {
+            setLoginMode(authRouteMessage.mode)
+          }
+
+          setRouteMessage(authRouteMessage.message)
+          clearAuthQuery()
+        }
       }
 
       const ref = params.get('ref')
@@ -160,7 +201,7 @@ function LoginContent() {
     return () => {
       cancelled = true
     }
-  }, [params, redirectAfterPasswordLogin, supabase])
+  }, [clearAuthQuery, getAuthRouteMessage, params, redirectAfterPasswordLogin, supabase])
 
   const loginWith = async (provider: 'google' | 'apple') => {
     setLoading(provider)
