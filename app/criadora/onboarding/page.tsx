@@ -13,6 +13,16 @@ type AuthMode = 'signup' | 'login'
 type AuthAction = 'signup' | 'login' | 'email'
 type OperationalChannel = 'user' | 'creator' | 'agency' | 'admin'
 
+type ExistingCreatorStatus = {
+  id: string
+  verified: boolean | null
+  active: boolean | null
+}
+
+type ExistingVerificationStatus = {
+  status: 'pending' | 'approved' | 'rejected' | null
+}
+
 type OnboardingSubmitResponse = {
   success?: boolean
   creator_id?: string
@@ -138,6 +148,57 @@ function getPendingAgencyInviteCode() {
   return code
 }
 
+async function getExistingCreatorOnboardingTarget(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const { data: creatorData, error: creatorError } = await (supabase as any)
+    .from('creators')
+    .select('id, verified, active, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (creatorError) {
+    throw creatorError
+  }
+
+  const creator = creatorData as ExistingCreatorStatus | null
+
+  if (!creator) {
+    return null
+  }
+
+  if (creator.verified === true && creator.active === true) {
+    return '/criadora/dashboard' as const
+  }
+
+  const { data: verificationData, error: verificationError } = await (supabase as any)
+    .from('creator_verifications')
+    .select('status')
+    .eq('creator_id', creator.id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (verificationError) {
+    throw verificationError
+  }
+
+  const verification = verificationData as ExistingVerificationStatus | null
+  const verificationStatus = verification?.status
+
+  if (verificationStatus === 'pending') {
+    return '/criadora/verificacao' as const
+  }
+
+  if (verificationStatus === 'approved') {
+    return '/criadora/verificacao' as const
+  }
+
+  return null
+}
+
 export default function CreatorOnboardingPage() {
   const supabase = useMemo(() => createClient(), [])
   const router   = useRouter()
@@ -171,6 +232,15 @@ export default function CreatorOnboardingPage() {
   const stepIndex = STEPS.indexOf(step)
   const progress  = ((stepIndex + 1) / STEPS.length) * 100
   const pixCpfIsValid = pixCpf.length === CPF_DIGIT_LIMIT && !pixCpfError
+
+  const redirectExistingCreatorIfNeeded = useCallback(async (userId: string) => {
+    const target = await getExistingCreatorOnboardingTarget(supabase, userId)
+
+    if (!target) return false
+
+    router.replace(target)
+    return true
+  }, [router, supabase])
 
   useEffect(() => {
     let mounted = true
@@ -264,6 +334,12 @@ export default function CreatorOnboardingPage() {
           return
         }
 
+        const redirected = await redirectExistingCreatorIfNeeded(user.id)
+
+        if (!mounted) return
+
+        if (redirected) return
+
         setAuthStatus('authenticated')
       } catch (err) {
         console.warn('[creator onboarding] auth user validation error', err)
@@ -295,7 +371,7 @@ export default function CreatorOnboardingPage() {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [redirectExistingCreatorIfNeeded, supabase])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -478,6 +554,10 @@ export default function CreatorOnboardingPage() {
             return
           }
 
+          if (await redirectExistingCreatorIfNeeded(user.id)) {
+            return
+          }
+
           setAuthStatus('authenticated')
           return
         }
@@ -537,6 +617,10 @@ export default function CreatorOnboardingPage() {
 
       if (profileRow?.role === 'admin' || channel !== 'creator') {
         setAuthStatus('channel_blocked')
+        return
+      }
+
+      if (await redirectExistingCreatorIfNeeded(user.id)) {
         return
       }
 
