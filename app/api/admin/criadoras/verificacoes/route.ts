@@ -30,6 +30,15 @@ type CreatorRecord = {
   agency_id: string | null
 }
 
+type CreatorUserAccount = {
+  id: string
+  email: string | null
+  role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
+  role_locked_reason: string | null
+}
+
 type AgencyCreatorInvite = {
   id: string
   agency_id: string
@@ -131,6 +140,108 @@ async function linkAgencyOnApproval(admin: any, creator: CreatorRecord, now: str
     agency_id: invite.agency_id,
     invite_id: invite.id,
   }
+}
+
+async function validateCreatorApprovalChannel(
+  admin: any,
+  creator: CreatorRecord,
+  verification: CreatorVerification
+) {
+  if (creator.user_id !== verification.user_id) {
+    return NextResponse.json(
+      { success: false, error: 'Verificacao nao pertence a creator informada.' },
+      { status: 409 }
+    )
+  }
+
+  const { data: userData, error: userError } = await admin
+    .from('users')
+    .select('id, email, role, operational_channel, signup_channel, role_locked_reason')
+    .eq('id', creator.user_id)
+    .maybeSingle()
+
+  if (userError) {
+    console.error('[admin/criadoras/verificacoes] users channel lookup', userError)
+
+    return NextResponse.json(
+      { success: false, error: 'Falha ao validar canal da conta.' },
+      { status: 500 }
+    )
+  }
+
+  const user = userData as CreatorUserAccount | null
+  const channel = user?.operational_channel ?? user?.signup_channel ?? null
+
+  if (!user || user.role === 'admin' || channel !== 'creator') {
+    return NextResponse.json(
+      { success: false, error: 'Esta conta nao esta vinculada ao canal de criadora.' },
+      { status: 409 }
+    )
+  }
+
+  if (
+    user.role_locked_reason === 'backfill_creator_pending_review' &&
+    creator.verified !== true &&
+    creator.active !== true
+  ) {
+    return NextResponse.json(
+      { success: false, error: 'Esta pendencia precisa de revisao manual de canal antes da aprovacao.' },
+      { status: 409 }
+    )
+  }
+
+  const { data: agencyUser, error: agencyUserError } = await admin
+    .from('agency_users')
+    .select('id')
+    .eq('user_id', creator.user_id)
+    .eq('active', true)
+    .limit(1)
+    .maybeSingle()
+
+  if (agencyUserError) {
+    console.error('[admin/criadoras/verificacoes] agency_users channel lookup', agencyUserError)
+
+    return NextResponse.json(
+      { success: false, error: 'Falha ao validar vinculos da conta.' },
+      { status: 500 }
+    )
+  }
+
+  if (agencyUser) {
+    return NextResponse.json(
+      { success: false, error: 'Esta conta possui vinculo ativo de agencia.' },
+      { status: 409 }
+    )
+  }
+
+  const normalizedEmail = user.email?.trim().toLowerCase()
+
+  if (normalizedEmail) {
+    const { data: agencyEmail, error: agencyEmailError } = await admin
+      .from('agencies')
+      .select('id')
+      .ilike('email', normalizedEmail.replace(/([%_\\])/g, '\\$1'))
+      .limit(1)
+      .maybeSingle()
+
+    if (agencyEmailError) {
+      console.error('[admin/criadoras/verificacoes] agencies email lookup', agencyEmailError)
+
+      return NextResponse.json(
+        { success: false, error: 'Falha ao validar e-mail da conta.' },
+        { status: 500 }
+      )
+    }
+
+    if (agencyEmail) {
+      return NextResponse.json(
+        { success: false, error: 'Este e-mail ja esta vinculado a uma agencia.' },
+        { status: 409 }
+      )
+    }
+  }
+
+  return null
 }
 
 async function rejectPendingInvites(admin: any, creator: CreatorRecord, now: string) {
@@ -260,6 +371,12 @@ export async function POST(request: NextRequest) {
           { success: false, error: 'Verificacao ja rejeitada.' },
           { status: 409 }
         )
+      }
+
+      const channelError = await validateCreatorApprovalChannel(admin, creator, verification)
+
+      if (channelError) {
+        return channelError
       }
 
       const { error: creatorUpdateError } = await admin

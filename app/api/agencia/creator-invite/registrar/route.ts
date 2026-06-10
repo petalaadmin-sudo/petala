@@ -29,6 +29,12 @@ type ExistingInvite = {
   accepted_at: string | null
 }
 
+type AccountChannelRow = {
+  role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
+}
+
 const INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const ACTIVE_STATUSES = ['signed_up', 'onboarding_started', 'pending_verification', 'verified']
@@ -175,6 +181,53 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient() as any
+
+    const { data: accountData, error: accountError } = await admin
+      .from('users')
+      .select('role, operational_channel, signup_channel')
+      .eq('id', auth.user.id)
+      .maybeSingle()
+
+    if (accountError) {
+      console.error('[agencia/creator-invite/registrar] users channel lookup', accountError)
+      return NextResponse.json(
+        { success: false, error: 'Erro ao validar conta conectada.' },
+        { status: 500 }
+      )
+    }
+
+    const account = accountData as AccountChannelRow | null
+    const accountChannel = account?.operational_channel ?? account?.signup_channel ?? null
+
+    if (!account || account.role === 'admin' || accountChannel !== 'creator') {
+      return NextResponse.json(
+        { success: false, error: 'Esta conta nao pode aceitar convite de criadora.' },
+        { status: 403 }
+      )
+    }
+
+    const { data: agencyUser, error: agencyUserError } = await admin
+      .from('agency_users')
+      .select('id')
+      .eq('user_id', auth.user.id)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle()
+
+    if (agencyUserError) {
+      console.error('[agencia/creator-invite/registrar] agency_users channel lookup', agencyUserError)
+      return NextResponse.json(
+        { success: false, error: 'Erro ao validar vinculos da conta.' },
+        { status: 500 }
+      )
+    }
+
+    if (agencyUser) {
+      return NextResponse.json(
+        { success: false, error: 'Esta conta ja possui vinculo ativo de agencia.' },
+        { status: 409 }
+      )
+    }
 
     const { data: agency, error: agencyError } = await admin
       .from('agencies')

@@ -44,7 +44,7 @@ export async function resolveAccountRedirectTarget(
 ): Promise<ResolveRedirectResult> {
   const { data: userData, error: userError } = await client
     .from('users')
-    .select('role')
+    .select('role, operational_channel, signup_channel')
     .eq('id', userId)
     .maybeSingle()
 
@@ -52,11 +52,13 @@ export async function resolveAccountRedirectTarget(
     handleLookupError(options, 'users', userError)
   }
 
+  const operationalChannel = userData?.operational_channel ?? userData?.signup_channel ?? null
+
   if (userData?.role === 'admin') {
     return { redirectTo: '/admin', reason: 'admin_role' }
   }
 
-  if (userData?.role === 'creator') {
+  if (userData?.role === 'creator' && operationalChannel === 'creator') {
     const { data: creator, error: creatorError } = await client
       .from('creators')
       .select('id, verified, active, created_at')
@@ -80,21 +82,27 @@ export async function resolveAccountRedirectTarget(
     return { redirectTo: '/criadora/onboarding', reason: 'creator_role_without_creator_profile' }
   }
 
-  const { data: agencyUser, error: agencyError } = await client
-    .from('agency_users')
-    .select('id, agencies!inner(active)')
-    .eq('user_id', userId)
-    .eq('active', true)
-    .eq('agencies.active', true)
-    .limit(1)
-    .maybeSingle()
-
-  if (agencyError) {
-    handleLookupError(options, 'agency_users', agencyError)
+  if (userData?.role === 'creator') {
+    return { redirectTo: '/feed', reason: 'creator_role_channel_mismatch' }
   }
 
-  if (agencyUser) {
-    return { redirectTo: '/agencia', reason: 'active_agency_user_and_agency' }
+  if (operationalChannel === 'agency') {
+    const { data: agencyUser, error: agencyError } = await client
+      .from('agency_users')
+      .select('id, agencies!inner(active)')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .eq('agencies.active', true)
+      .limit(1)
+      .maybeSingle()
+
+    if (agencyError) {
+      handleLookupError(options, 'agency_users', agencyError)
+    }
+
+    if (agencyUser) {
+      return { redirectTo: '/agencia', reason: 'active_agency_user_and_agency_channel' }
+    }
   }
 
   return { redirectTo: '/feed', reason: 'default_user' }

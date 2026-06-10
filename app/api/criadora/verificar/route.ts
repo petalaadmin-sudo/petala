@@ -5,6 +5,13 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+type AccountChannelRow = {
+  role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
+  role_locked_reason: string | null
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = createClient()
@@ -27,6 +34,54 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient()
+
+    const { data: accountData, error: accountError } = await admin
+      .from('users')
+      .select('role, operational_channel, signup_channel, role_locked_reason')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (accountError) {
+      console.error('[/api/criadora/verificar] users channel lookup', accountError)
+      return NextResponse.json({ error: 'Não foi possível validar a conta conectada' }, { status: 500 })
+    }
+
+    const account = accountData as AccountChannelRow | null
+    const accountChannel = account?.operational_channel ?? account?.signup_channel ?? null
+
+    if (!account || account.role === 'admin' || accountChannel !== 'creator') {
+      return NextResponse.json(
+        { error: 'Esta conta não está vinculada ao canal de criadora' },
+        { status: 409 }
+      )
+    }
+
+    if (account.role_locked_reason === 'backfill_creator_pending_review') {
+      return NextResponse.json(
+        { error: 'Esta conta precisa de revisão antes de continuar como criadora' },
+        { status: 409 }
+      )
+    }
+
+    const { data: agencyUser, error: agencyUserError } = await admin
+      .from('agency_users')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle()
+
+    if (agencyUserError) {
+      console.error('[/api/criadora/verificar] agency_users channel lookup', agencyUserError)
+      return NextResponse.json({ error: 'Não foi possível validar vínculos da conta' }, { status: 500 })
+    }
+
+    if (agencyUser) {
+      return NextResponse.json(
+        { error: 'Esta conta possui vínculo ativo de agência' },
+        { status: 409 }
+      )
+    }
 
     // Busca criadora
     const { data: creator } = await admin

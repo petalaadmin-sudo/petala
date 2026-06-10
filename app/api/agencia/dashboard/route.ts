@@ -12,6 +12,12 @@ type AgencyUser = {
   active: boolean | null
 }
 
+type AccountChannelRow = {
+  role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
+}
+
 type AgencyInfo = {
   id: string
   name: string | null
@@ -27,6 +33,30 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient() as any
+
+  const { data: accountData, error: accountError } = await admin
+    .from('users')
+    .select('role, operational_channel, signup_channel')
+    .eq('id', auth.user.id)
+    .maybeSingle()
+
+  if (accountError) {
+    console.error('[agencia/dashboard] users channel lookup', accountError)
+    return NextResponse.json(
+      { success: false, error: 'Erro ao validar conta da agencia' },
+      { status: 500 }
+    )
+  }
+
+  const account = accountData as AccountChannelRow | null
+  const accountChannel = account?.operational_channel ?? account?.signup_channel ?? null
+
+  if (!account || account.role === 'admin' || account.role === 'creator' || accountChannel !== 'agency') {
+    return NextResponse.json(
+      { success: false, error: 'Acesso nao autorizado' },
+      { status: 403 }
+    )
+  }
 
   const { data: agencyUser, error: agencyUserError } = await admin
     .from('agency_users')

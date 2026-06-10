@@ -17,9 +17,17 @@ type VerificationStatus = {
   status: 'pending' | 'approved' | 'rejected' | null
 }
 
+type AccountChannelStatus = {
+  role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
+  role_locked_reason: string | null
+}
+
 type PageState =
   | 'loading'
   | 'unauthenticated'
+  | 'channel_conflict'
   | 'missing_creator'
   | 'missing_verification'
   | 'pending'
@@ -48,6 +56,28 @@ export default function CreatorVerificationPage() {
           return
         }
 
+        const { data: accountData, error: accountError } = await (supabase as any)
+          .from('users')
+          .select('role, operational_channel, signup_channel, role_locked_reason')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!mounted) return
+
+        if (accountError) {
+          console.error('[criadora/verificacao] users', accountError)
+          setState('error')
+          return
+        }
+
+        const account = accountData as AccountChannelStatus | null
+        const accountChannel = account?.operational_channel ?? account?.signup_channel ?? null
+
+        if (!account || account.role === 'admin' || accountChannel !== 'creator') {
+          setState('channel_conflict')
+          return
+        }
+
         const { data, error } = await (supabase as any)
           .from('creators')
           .select('id, name, verified, active, created_at')
@@ -70,6 +100,15 @@ export default function CreatorVerificationPage() {
         }
 
         const creatorStatus = data as CreatorStatus
+
+        if (
+          account.role_locked_reason === 'backfill_creator_pending_review' &&
+          creatorStatus.verified !== true &&
+          creatorStatus.active !== true
+        ) {
+          setState('channel_conflict')
+          return
+        }
 
         const { data: verification, error: verificationError } = await (supabase as any)
           .from('creator_verifications')
@@ -131,6 +170,18 @@ export default function CreatorVerificationPage() {
         body="Não encontramos uma sessão ativa neste navegador. Entre novamente para continuar o onboarding de criadora."
         actionHref="/criadora/onboarding"
         actionLabel="Entrar e continuar"
+      />
+    )
+  }
+
+  if (state === 'channel_conflict') {
+    return (
+      <VerificationShell
+        eyebrow="Conta em outro canal"
+        title="Use uma conta própria de criadora"
+        body="Esta conta não está vinculada ao canal de criadora. Volte ao onboarding com uma conta própria de criadora para enviar o perfil com segurança."
+        actionHref="/criadora/onboarding"
+        actionLabel="Voltar ao onboarding"
       />
     )
   }

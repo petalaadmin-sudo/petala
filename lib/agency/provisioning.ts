@@ -17,6 +17,8 @@ type PublicUser = {
   id: string
   email: string | null
   role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
 }
 
 type Agency = {
@@ -57,9 +59,39 @@ const agencyNotes = (application: AgencyApplicationForProvisioning) =>
     .join('\n\n') || null
 
 const assertUserRoleIsAllowed = (user: PublicUser) => {
-  if (user.role === 'admin' || user.role === 'creator') {
+  const channel = user.operational_channel ?? user.signup_channel
+
+  if (user.role === 'admin' || channel === 'admin') {
     throw new AgencyProvisioningError(
-      `Este email ja pertence a um usuario ${user.role}. A candidatura permanece pendente para revisao manual.`,
+      'Este email ja pertence a uma conta administrativa. A candidatura permanece pendente para revisao manual.',
+      409
+    )
+  }
+
+  if (user.role === 'creator' || channel === 'creator') {
+    throw new AgencyProvisioningError(
+      'Este email ja pertence a uma conta de criadora. A candidatura permanece pendente para revisao manual.',
+      409
+    )
+  }
+
+  if (channel === 'user') {
+    throw new AgencyProvisioningError(
+      'Este email ja pertence a uma conta de usuario. Use uma conta propria de agencia.',
+      409
+    )
+  }
+
+  if (!channel) {
+    throw new AgencyProvisioningError(
+      'Este email pertence a uma conta sem canal operacional definido. Resolva manualmente antes de aprovar.',
+      409
+    )
+  }
+
+  if (channel !== 'agency') {
+    throw new AgencyProvisioningError(
+      'Este email ja pertence a uma conta com canal nao permitido para agencia.',
       409
     )
   }
@@ -75,7 +107,7 @@ const assertUserRoleIsAllowed = (user: PublicUser) => {
 async function getPublicUserByEmail(admin: SupabaseAdmin, email: string): Promise<PublicUser | null> {
   const { data, error } = await admin
     .from('users')
-    .select('id, email, role')
+    .select('id, email, role, operational_channel, signup_channel')
     .eq('email', email)
     .limit(2)
 
@@ -98,7 +130,7 @@ async function getPublicUserByEmail(admin: SupabaseAdmin, email: string): Promis
 async function getPublicUserById(admin: SupabaseAdmin, userId: string): Promise<PublicUser | null> {
   const { data, error } = await admin
     .from('users')
-    .select('id, email, role')
+    .select('id, email, role, operational_channel, signup_channel')
     .eq('id', userId)
     .maybeSingle()
 
@@ -138,6 +170,7 @@ async function createAuthUser(admin: SupabaseAdmin, application: AgencyApplicati
     name: application.responsible_name ?? application.agency_name ?? null,
     agency_name: application.agency_name ?? null,
     source: 'agency_application',
+    signup_channel: 'agency',
   }
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -201,7 +234,7 @@ async function resolveAuthUser(
   return createAuthUser(admin, application, email, redirectTo)
 }
 
-async function ensurePublicUser(admin: SupabaseAdmin, authUser: User, email: string): Promise<PublicUser> {
+async function ensurePublicUser(admin: SupabaseAdmin, authUser: User, email: string, now: string): Promise<PublicUser> {
   const existing = await getPublicUserById(admin, authUser.id)
 
   if (existing) {
@@ -212,7 +245,7 @@ async function ensurePublicUser(admin: SupabaseAdmin, authUser: User, email: str
         .from('users')
         .update({ email })
         .eq('id', authUser.id)
-        .select('id, email, role')
+        .select('id, email, role, operational_channel, signup_channel')
         .maybeSingle()
 
       if (error || !data) {
@@ -231,8 +264,12 @@ async function ensurePublicUser(admin: SupabaseAdmin, authUser: User, email: str
       id: authUser.id,
       email,
       role: 'user',
+      signup_channel: 'agency',
+      operational_channel: 'agency',
+      role_locked_at: now,
+      role_locked_reason: 'agency_provisioning',
     })
-    .select('id, email, role')
+    .select('id, email, role, operational_channel, signup_channel')
     .maybeSingle()
 
   if (!error && data) return data as PublicUser
@@ -382,7 +419,7 @@ export async function provisionAgencyApplication({
   if (publicUserByEmail) assertUserRoleIsAllowed(publicUserByEmail)
 
   const authUser = await resolveAuthUser(admin, application, email, publicUserByEmail, redirectTo)
-  const publicUser = await ensurePublicUser(admin, authUser.user, email)
+  const publicUser = await ensurePublicUser(admin, authUser.user, email, now)
   const agency = await saveAgency(admin, application, email, now)
 
   await ensureAgencyUser(admin, agency.id, publicUser.id, now)

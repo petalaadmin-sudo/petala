@@ -8,9 +8,10 @@ import { useRouter } from 'next/navigation'
 type Step = 'bio' | 'foto' | 'precos' | 'publicar'
 const STEPS: Step[] = ['bio', 'foto', 'precos', 'publicar']
 type AgencyInviteStatus = 'onboarding_started' | 'pending_verification'
-type AuthStatus = 'checking' | 'authenticated' | 'anonymous'
+type AuthStatus = 'checking' | 'authenticated' | 'anonymous' | 'channel_blocked' | 'channel_review_required'
 type AuthMode = 'signup' | 'login'
 type AuthAction = 'signup' | 'login' | 'email'
+type OperationalChannel = 'user' | 'creator' | 'agency' | 'admin'
 
 type OnboardingSubmitResponse = {
   success?: boolean
@@ -145,6 +146,7 @@ export default function CreatorOnboardingPage() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking')
   const [authUserId, setAuthUserId] = useState<string | null>(null)
   const [authUserEmail, setAuthUserEmail] = useState<string | null>(null)
+  const [accountChannel, setAccountChannel] = useState<OperationalChannel | null>(null)
   const [authMode, setAuthMode] = useState<AuthMode>('signup')
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -179,6 +181,7 @@ export default function CreatorOnboardingPage() {
       if (!mounted) return
       setAuthUserId(null)
       setAuthUserEmail(null)
+      setAccountChannel(null)
       setAuthStatus('anonymous')
     }
 
@@ -223,8 +226,44 @@ export default function CreatorOnboardingPage() {
           return
         }
 
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('role, operational_channel, signup_channel, role_locked_reason')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!mounted) return
+
+        if (profileError) {
+          console.warn('[creator onboarding] profile channel validation error', profileError)
+          setAnonymous()
+          return
+        }
+
+        const userMetadata = user.user_metadata as { signup_channel?: string } | null
+        const metadataChannel = userMetadata?.signup_channel === 'creator' ? 'creator' : null
+        const profileRow = profile as {
+          role?: string | null
+          operational_channel?: OperationalChannel | null
+          signup_channel?: OperationalChannel | null
+          role_locked_reason?: string | null
+        } | null
+        const channel = profileRow?.operational_channel ?? profileRow?.signup_channel ?? metadataChannel
+
         setAuthUserId(user.id)
         setAuthUserEmail(user.email ?? null)
+        setAccountChannel(channel ?? null)
+
+        if (profileRow?.role_locked_reason === 'backfill_creator_pending_review') {
+          setAuthStatus('channel_review_required')
+          return
+        }
+
+        if (profileRow?.role === 'admin' || (channel && channel !== 'creator') || (!channel && profileRow)) {
+          setAuthStatus('channel_blocked')
+          return
+        }
+
         setAuthStatus('authenticated')
       } catch (err) {
         console.warn('[creator onboarding] auth user validation error', err)
@@ -386,6 +425,9 @@ export default function CreatorOnboardingPage() {
           password,
           options: {
             emailRedirectTo: authRedirectTo(),
+            data: {
+              signup_channel: 'creator',
+            },
           },
         })
 
@@ -405,11 +447,37 @@ export default function CreatorOnboardingPage() {
             setAuthStatus('anonymous')
             setAuthUserId(null)
             setAuthUserEmail(null)
+            setAccountChannel(null)
             return
           }
 
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role, operational_channel, signup_channel, role_locked_reason')
+            .eq('id', user.id)
+            .maybeSingle()
+          const profileRow = profile as {
+            role?: string | null
+            operational_channel?: OperationalChannel | null
+            signup_channel?: OperationalChannel | null
+            role_locked_reason?: string | null
+          } | null
+          const channel = profileRow?.operational_channel ?? profileRow?.signup_channel ?? 'creator'
+
           setAuthUserId(user.id)
           setAuthUserEmail(user.email ?? null)
+          setAccountChannel(channel)
+
+          if (profileRow?.role_locked_reason === 'backfill_creator_pending_review') {
+            setAuthStatus('channel_review_required')
+            return
+          }
+
+          if (profileRow?.role === 'admin' || channel !== 'creator') {
+            setAuthStatus('channel_blocked')
+            return
+          }
+
           setAuthStatus('authenticated')
           return
         }
@@ -441,11 +509,37 @@ export default function CreatorOnboardingPage() {
         setAuthStatus('anonymous')
         setAuthUserId(null)
         setAuthUserEmail(null)
+        setAccountChannel(null)
         return
       }
 
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role, operational_channel, signup_channel, role_locked_reason')
+        .eq('id', user.id)
+        .maybeSingle()
+      const profileRow = profile as {
+        role?: string | null
+        operational_channel?: OperationalChannel | null
+        signup_channel?: OperationalChannel | null
+        role_locked_reason?: string | null
+      } | null
+      const channel = profileRow?.operational_channel ?? profileRow?.signup_channel ?? null
+
       setAuthUserId(user.id)
       setAuthUserEmail(user.email ?? null)
+      setAccountChannel(channel)
+
+      if (profileRow?.role_locked_reason === 'backfill_creator_pending_review') {
+        setAuthStatus('channel_review_required')
+        return
+      }
+
+      if (profileRow?.role === 'admin' || channel !== 'creator') {
+        setAuthStatus('channel_blocked')
+        return
+      }
+
       setAuthStatus('authenticated')
     } catch (err) {
       console.warn('[creator onboarding] auth submit error', err)
@@ -472,6 +566,9 @@ export default function CreatorOnboardingPage() {
         email,
         options: {
           emailRedirectTo: authRedirectTo(),
+          data: {
+            signup_channel: 'creator',
+          },
         },
       })
 
@@ -489,11 +586,34 @@ export default function CreatorOnboardingPage() {
     }
   }
 
+  const handleUseAnotherAccount = async () => {
+    setAuthAction('login')
+    setAuthError(null)
+    setAuthMessage(null)
+
+    try {
+      await supabase.auth.signOut()
+    } catch (err) {
+      console.warn('[creator onboarding] sign out for channel switch', err)
+    } finally {
+      setAuthUserId(null)
+      setAuthUserEmail(null)
+      setAccountChannel(null)
+      setAuthPassword('')
+      setAuthStatus('anonymous')
+      setAuthAction(null)
+    }
+  }
+
   const handlePublish = async () => {
     setSaving(true)
     setError(null)
 
     try {
+      if (authStatus !== 'authenticated' || accountChannel !== 'creator') {
+        throw new Error('Esta conta não está liberada para criar perfil de criadora. Entre com uma conta própria de criadora.')
+      }
+
       if (!pixCpfIsValid) {
         throw new Error('Informe um CPF Pix com 11 numeros. E-mail, telefone, chave aleatoria e CNPJ nao sao aceitos.')
       }
@@ -512,6 +632,7 @@ export default function CreatorOnboardingPage() {
         setAuthStatus('anonymous')
         setAuthUserId(null)
         setAuthUserEmail(null)
+        setAccountChannel(null)
         throw new Error('Não foi possível confirmar sua sessão. Entre novamente para continuar.')
       }
 
@@ -563,6 +684,82 @@ export default function CreatorOnboardingPage() {
     return (
       <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#ff4d7d]/30 border-t-[#ff4d7d] rounded-full animate-spin" />
+      </main>
+    )
+  }
+
+  if (authStatus === 'channel_review_required') {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-5 py-8">
+        <section className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#111] p-6 text-center shadow-2xl shadow-black/30">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-[#ff4d7d]/25 bg-[#ff4d7d]/10 text-[#ff8aaa]">
+            B
+          </div>
+          <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Revisão necessária</p>
+          <h1 className="mt-3 text-2xl font-medium leading-tight">Confirme sua conta de criadora</h1>
+          <p className="mt-4 text-white/50 text-sm leading-relaxed">
+            A conta {authUserEmail ? <span className="text-white/75">{authUserEmail}</span> : 'conectada'} possui um perfil de criadora antigo que precisa de revisão antes de continuar. Para criar um novo perfil, use uma conta própria de criadora.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleUseAnotherAccount}
+            disabled={!!authAction}
+            className="mt-6 w-full rounded-xl bg-[#ff4d7d] px-4 py-3 text-sm font-medium text-white disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            {authAction ? 'Saindo...' : 'Usar outra conta'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push('/feed')}
+            disabled={!!authAction}
+            className="mt-3 w-full rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/55 disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            Voltar ao app
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  if (authStatus === 'channel_blocked') {
+    const channelLabel = accountChannel === 'agency'
+      ? 'agência'
+      : accountChannel === 'admin'
+        ? 'admin'
+        : 'usuário'
+
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-5 py-8">
+        <section className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#111] p-6 text-center shadow-2xl shadow-black/30">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-[#ff4d7d]/25 bg-[#ff4d7d]/10 text-[#ff8aaa]">
+            B
+          </div>
+          <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Conta em outro canal</p>
+          <h1 className="mt-3 text-2xl font-medium leading-tight">Use uma conta própria de criadora</h1>
+          <p className="mt-4 text-white/50 text-sm leading-relaxed">
+            A conta {authUserEmail ? <span className="text-white/75">{authUserEmail}</span> : 'conectada'} já está vinculada ao canal de {channelLabel}. Para criar perfil de criadora, entre com uma conta separada para esse uso.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleUseAnotherAccount}
+            disabled={!!authAction}
+            className="mt-6 w-full rounded-xl bg-[#ff4d7d] px-4 py-3 text-sm font-medium text-white disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            {authAction ? 'Saindo...' : 'Usar outra conta'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push('/feed')}
+            disabled={!!authAction}
+            className="mt-3 w-full rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/55 disabled:opacity-50 active:scale-95 transition-transform"
+          >
+            Voltar ao app
+          </button>
+        </section>
       </main>
     )
   }

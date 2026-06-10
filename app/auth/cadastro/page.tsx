@@ -132,7 +132,12 @@ function CadastroContent() {
     } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
-      options: { emailRedirectTo: `${location.origin}/api/auth/callback?flow=signup` },
+      options: {
+        emailRedirectTo: `${location.origin}/api/auth/callback?flow=signup`,
+        data: {
+          signup_channel: 'user',
+        },
+      },
     })
 
     setLoading(null)

@@ -28,11 +28,21 @@ type SubmitCreatorOnboardingResult = {
   creator_id?: string
   user_id?: string
   role?: string
+  operational_channel?: string
   verified?: boolean
   active?: boolean
   photo_url?: string | null
   verification_id?: string
   verification_status?: string
+}
+
+type AccountChannelRow = {
+  id: string
+  email: string | null
+  role: string | null
+  operational_channel: string | null
+  signup_channel: string | null
+  role_locked_reason: string | null
 }
 
 function asTrimmedText(value: FormDataEntryValue | null) {
@@ -160,6 +170,113 @@ async function uploadProfilePhoto(userId: string, value: FormDataEntryValue | nu
   }
 }
 
+async function validateCreatorAccountChannel(admin: any, userId: string, email: string | null) {
+  const { data: userData, error: userError } = await admin
+    .from('users')
+    .select('id, email, role, operational_channel, signup_channel, role_locked_reason')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (userError) {
+    console.error('[criadora/onboarding] users channel lookup', userError)
+    return errorResponse(
+      'ACCOUNT_CHANNEL_LOOKUP_ERROR',
+      'Não foi possível validar a conta conectada.',
+      500
+    )
+  }
+
+  const account = userData as AccountChannelRow | null
+  const channel = account?.operational_channel ?? account?.signup_channel ?? null
+
+  if (!account) {
+    return errorResponse(
+      'ACCOUNT_CHANNEL_MISSING',
+      'Não foi possível confirmar o canal desta conta. Entre novamente pelo fluxo de criadora.',
+      403
+    )
+  }
+
+  if (account.role === 'admin' || channel === 'admin') {
+    return errorResponse(
+      'ACCOUNT_ADMIN_NOT_ALLOWED',
+      'Esta conta não pode criar perfil de criadora pelo fluxo público.',
+      403
+    )
+  }
+
+  if (channel !== 'creator') {
+    return errorResponse(
+      'ACCOUNT_CHANNEL_MISMATCH',
+      'Esta conta já está vinculada a outro tipo de uso. Entre com uma conta própria de criadora.',
+      409
+    )
+  }
+
+  if (account.role_locked_reason === 'backfill_creator_pending_review') {
+    return errorResponse(
+      'ACCOUNT_CHANNEL_REVIEW_REQUIRED',
+      'Esta conta precisa de revisão antes de continuar como criadora.',
+      409
+    )
+  }
+
+  const { data: agencyUser, error: agencyUserError } = await admin
+    .from('agency_users')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('active', true)
+    .limit(1)
+    .maybeSingle()
+
+  if (agencyUserError) {
+    console.error('[criadora/onboarding] agency_users channel lookup', agencyUserError)
+    return errorResponse(
+      'ACCOUNT_AGENCY_LOOKUP_ERROR',
+      'Não foi possível validar vínculos desta conta.',
+      500
+    )
+  }
+
+  if (agencyUser) {
+    return errorResponse(
+      'ACCOUNT_AGENCY_CONFLICT',
+      'Esta conta já possui vínculo de agência e não pode criar perfil de criadora.',
+      409
+    )
+  }
+
+  const normalizedEmail = email?.trim().toLowerCase() || account.email?.trim().toLowerCase() || null
+
+  if (normalizedEmail) {
+    const { data: agencyEmail, error: agencyEmailError } = await admin
+      .from('agencies')
+      .select('id')
+      .ilike('email', normalizedEmail.replace(/([%_\\])/g, '\\$1'))
+      .limit(1)
+      .maybeSingle()
+
+    if (agencyEmailError) {
+      console.error('[criadora/onboarding] agencies email lookup', agencyEmailError)
+      return errorResponse(
+        'ACCOUNT_AGENCY_EMAIL_LOOKUP_ERROR',
+        'Não foi possível validar o e-mail desta conta.',
+        500
+      )
+    }
+
+    if (agencyEmail) {
+      return errorResponse(
+        'ACCOUNT_AGENCY_CONFLICT',
+        'Este e-mail já está vinculado a uma agência e não pode criar perfil de criadora.',
+        409
+      )
+    }
+  }
+
+  return null
+}
+
 export async function POST(request: NextRequest) {
   let uploadedPhoto: UploadedPhoto | null = null
 
@@ -205,6 +322,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const admin = createAdminClient() as any
+    const accountError = await validateCreatorAccountChannel(admin, userId, auth.user.email ?? null)
+
+    if (accountError) {
+      return accountError
+    }
+
     const photoResult = await uploadProfilePhoto(userId, form.get('photo'))
 
     if (!photoResult.ok) {
@@ -213,7 +337,6 @@ export async function POST(request: NextRequest) {
 
     uploadedPhoto = photoResult.photo
 
-    const admin = createAdminClient() as any
     const { data: rpcData, error: rpcError } = await admin.rpc('submit_creator_onboarding', {
       p_user_id: userId,
       p_email: auth.user.email ?? null,
@@ -245,7 +368,7 @@ export async function POST(request: NextRequest) {
 
     const { data: confirmedUser, error: confirmedUserError } = await admin
       .from('users')
-      .select('id, role')
+      .select('id, role, operational_channel')
       .eq('id', userId)
       .maybeSingle()
 
@@ -266,6 +389,7 @@ export async function POST(request: NextRequest) {
       !confirmedCreator ||
       confirmedCreator.user_id !== userId ||
       confirmedUser?.role !== 'creator' ||
+      confirmedUser?.operational_channel !== 'creator' ||
       !confirmedVerification ||
       !hasValidVerification
     ) {
@@ -275,6 +399,7 @@ export async function POST(request: NextRequest) {
         verification_error: confirmedVerificationError,
         has_creator: Boolean(confirmedCreator),
         user_role: confirmedUser?.role,
+        operational_channel: confirmedUser?.operational_channel,
         verification_status: verificationStatus,
       })
 
@@ -290,6 +415,7 @@ export async function POST(request: NextRequest) {
       creator_id: confirmedCreator.id,
       user_id: userId,
       role: confirmedUser.role,
+      operational_channel: confirmedUser.operational_channel,
       verified: Boolean(confirmedCreator.verified),
       active: Boolean(confirmedCreator.active),
       photo_url: confirmedCreator.photo_url,
