@@ -1,9 +1,7 @@
 // app/api/fotos/confirmar/route.ts
-// Chamado pelo frontend APÓS o upload direto no R2 ser concluído.
-// Baixa a imagem, processa (resize + remoção EXIF), gera blur hash,
-// sobe versão processada + blur, atualiza banco.
+// Chamado pelo frontend depois do upload direto no R2.
+// Baixa a imagem, processa, gera blur hash, sobe versao processada e atualiza o banco.
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { createPrivateUrl, createUploadUrl, getPublicUrl } from '@/lib/r2'
 import {
   generateBlurHash,
@@ -11,11 +9,16 @@ import {
   processImageForUpload,
 } from '@/lib/blurhash'
 import { NextResponse } from 'next/server'
+import { requireCreatorAreaApi } from '@/lib/auth/require-creator-area-api'
 
 const UPLOAD_FETCH_ATTEMPTS = 3
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function isCreatorPhotoKey(key: string | null | undefined, creatorId: string) {
+  return typeof key === 'string' && key.startsWith(`creators/${creatorId}/`) && !key.includes('..')
 }
 
 async function fetchUploadedObject(key: string): Promise<{ buffer: Buffer | null; status: number | null }> {
@@ -41,20 +44,24 @@ async function fetchUploadedObject(key: string): Promise<{ buffer: Buffer | null
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const creatorAuth = await requireCreatorAreaApi(request)
 
+    if (!creatorAuth.ok) {
+      return creatorAuth.response
+    }
+
+    const { admin, creator } = creatorAuth
     const { photo_id } = await request.json()
-    if (!photo_id) return NextResponse.json({ error: 'photo_id obrigatório' }, { status: 400 })
 
-    const admin = createAdminClient()
+    if (!photo_id) {
+      return NextResponse.json({ error: 'photo_id obrigatorio' }, { status: 400 })
+    }
 
-    // Busca a foto e valida que pertence à criadora autenticada
     const { data: photo, error: photoError } = await admin
       .from('album_photos')
-      .select('*, creators!inner(user_id)')
+      .select('id, creator_id, r2_key, r2_key_blur, is_free, price_petals')
       .eq('id', photo_id)
+      .eq('creator_id', creator.id)
       .maybeSingle()
 
     if (photoError) {
@@ -65,20 +72,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao buscar foto' }, { status: 500 })
     }
 
-    if (!photo) return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 })
-
-    if (photo.creators.user_id !== user.id) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    if (!photo) {
+      return NextResponse.json({ error: 'Foto nao encontrada' }, { status: 404 })
     }
 
-    if (!photo.r2_key_blur) {
+    if (photo.is_free !== true || Number(photo.price_petals) !== 0) {
+      return NextResponse.json(
+        {
+          code: 'PAID_PHOTO_CONFIRM_DISABLED',
+          error: 'Fotos pagas permanecem bloqueadas.',
+        },
+        { status: 423 }
+      )
+    }
+
+    if (
+      !isCreatorPhotoKey(photo.r2_key, creator.id) ||
+      !isCreatorPhotoKey(photo.r2_key_blur, creator.id)
+    ) {
       return NextResponse.json(
         { error: 'Registro de foto incompleto' },
         { status: 500 }
       )
     }
 
-    // ── 1. Baixa a imagem que o browser acabou de fazer upload ──
     const { buffer: rawBuffer, status: fetchStatus } = await fetchUploadedObject(photo.r2_key)
 
     if (!rawBuffer) {
@@ -86,39 +103,30 @@ export async function POST(request: Request) {
         status: fetchStatus,
       })
       return NextResponse.json(
-        { code: 'PHOTO_UPLOAD_OBJECT_NOT_READY', error: 'Foto ainda não disponível no R2. Tente novamente em instantes.' },
+        { code: 'PHOTO_UPLOAD_OBJECT_NOT_READY', error: 'Foto ainda nao disponivel no R2. Tente novamente em instantes.' },
         { status: 422 }
       )
     }
 
-    // ── 2. Processa imagem: resize, remove EXIF, JPEG otimizado ──
     const processedBuffer = await processImageForUpload(rawBuffer, 1920)
-
-    // ── 3. Gera blur hash (para placeholder CSS) ──
     const blurHash = await generateBlurHash(processedBuffer)
-
-    // ── 4. Gera preview borrado (para foto bloqueada) ──
     const blurBuffer = await generateBlurredPreview(processedBuffer)
 
-    // ── 5. Faz upload da versão processada de volta no R2 ──
-    // (substitui o arquivo original que o browser enviou)
     const [processedUpload, blurUpload] = await Promise.all([
       createUploadUrl({ key: photo.r2_key, contentType: 'image/jpeg' }),
       createUploadUrl({ key: photo.r2_key_blur, contentType: 'image/jpeg' }),
     ])
 
     const [uploadProcessed, uploadBlur] = await Promise.all([
-      // Foto processada
       fetch(processedUpload.uploadUrl, {
-        method:  'PUT',
+        method: 'PUT',
         headers: { 'Content-Type': 'image/jpeg' },
-        body:    processedBuffer,
+        body: processedBuffer,
       }),
-      // Blur preview — vai para a key _blur.jpg
       fetch(blurUpload.uploadUrl, {
-        method:  'PUT',
+        method: 'PUT',
         headers: { 'Content-Type': 'image/jpeg' },
-        body:    blurBuffer,
+        body: blurBuffer,
       }),
     ])
 
@@ -130,11 +138,11 @@ export async function POST(request: Request) {
       throw new Error('Falha ao reprocessar imagem no R2')
     }
 
-    // ── 6. Atualiza banco com blur hash ──
     const { error: updateError } = await admin
       .from('album_photos')
       .update({ blur_hash: blurHash })
-      .eq('id', photo_id)
+      .eq('id', photo.id)
+      .eq('creator_id', creator.id)
 
     if (updateError) {
       console.error('[/api/fotos/confirmar] erro ao atualizar foto', {
@@ -148,13 +156,12 @@ export async function POST(request: Request) {
     const blurUrl = getPublicUrl(photo.r2_key_blur)
 
     return NextResponse.json({
-      success:    true,
-      photo_id,
-      blur_hash:  blurHash,
+      success: true,
+      photo_id: photo.id,
+      blur_hash: blurHash,
       public_url: publicUrl,
-      blur_url:   blurUrl,
+      blur_url: blurUrl,
     })
-
   } catch (err) {
     console.error('[/api/fotos/confirmar]', err)
     return NextResponse.json({ error: 'Erro ao processar imagem' }, { status: 500 })

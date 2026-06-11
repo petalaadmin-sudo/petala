@@ -72,7 +72,7 @@ export function AlbumPhoto({
         {/* Foto real (desbloqueada) */}
         {canAccess && (
           <img
-            src={`/api/fotos/url?key=${photo.r2_key}`}
+            src={`/api/fotos/url?photo_id=${encodeURIComponent(photo.id)}`}
             alt=""
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
