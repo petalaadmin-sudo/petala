@@ -4,6 +4,9 @@ import { requireCreatorAreaPage } from '@/lib/auth/require-creator-area'
 
 export default async function CreatorProfilePage() {
   const { creator } = await requireCreatorAreaPage()
+  const profilePhotoSrc = creator.photo_url
+    ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creator.id)}`
+    : null
 
   return (
     <CreatorAreaShell
@@ -14,8 +17,8 @@ export default async function CreatorProfilePage() {
     >
       <div className="flex flex-col gap-4">
         <section className="overflow-hidden rounded-3xl border border-white/8 bg-[#111]">
-          {creator.photo_url ? (
-            <img src={creator.photo_url} alt="" className="h-48 w-full object-cover" />
+          {profilePhotoSrc ? (
+            <img src={profilePhotoSrc} alt="" className="h-48 w-full object-cover" />
           ) : (
             <div className="flex h-48 items-center justify-center bg-[#0d0d0d] text-sm text-white/30">
               Foto de perfil nao configurada

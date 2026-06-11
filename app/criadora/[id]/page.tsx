@@ -46,9 +46,16 @@ export default async function CreatorProfilePage({ params }: Props) {
 
   if (!creatorRes.data) notFound()
 
+  const creator = {
+    ...creatorRes.data,
+    photo_url: creatorRes.data.photo_url
+      ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creatorRes.data.id)}`
+      : null,
+  }
+
   return (
     <CreatorProfileClient
-      creator={creatorRes.data}
+      creator={creator}
       photos={photosRes.data ?? []}
       userBalance={userRes.data?.balance_petals ?? 0}
       isVip={!!vipRes.data}

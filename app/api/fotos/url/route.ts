@@ -7,13 +7,20 @@ import { createPrivateUrl, R2ConfigError } from '@/lib/r2'
 
 export const dynamic = 'force-dynamic'
 
-const PAID_PHOTO_URL_DISABLED = {
-  code: 'PAID_PHOTO_URL_DISABLED',
-  error: 'Fotos pagas permanecem indisponiveis enquanto o fluxo financeiro auditavel e implementado.',
-}
-
 function isUuid(value: string | null) {
   return Boolean(value?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i))
+}
+
+function fallbackImage(status = 200) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="Foto indisponivel"><rect width="640" height="640" fill="#141014"/><circle cx="320" cy="300" r="70" fill="#fff" fill-opacity=".07"/><text x="320" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" fill="#fff" fill-opacity=".3">P</text></svg>`
+
+  return new NextResponse(svg, {
+    status,
+    headers: {
+      'Content-Type': 'image/svg+xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=300',
+    },
+  })
 }
 
 function isExpectedPhotoKey(key: string | null | undefined, creatorId: string) {
@@ -49,10 +56,7 @@ export async function GET(request: Request) {
     const key = url.searchParams.get('key')
 
     if (!isUuid(photoId) && !key) {
-      return NextResponse.json(
-        { code: 'PHOTO_URL_INVALID_REQUEST', error: 'Foto nao informada.' },
-        { status: 400 }
-      )
+      return fallbackImage()
     }
 
     const admin = createAdminClient()
@@ -74,54 +78,48 @@ export async function GET(request: Request) {
         code: error.code,
         message: error.message,
       })
-      return NextResponse.json(
-        { code: 'PHOTO_URL_LOOKUP_FAILED', error: 'Nao foi possivel carregar a foto.' },
-        { status: 500 }
-      )
+      return fallbackImage()
     }
 
     if (!photo) {
-      return NextResponse.json(
-        { code: 'PHOTO_NOT_FOUND', error: 'Foto nao encontrada.' },
-        { status: 404 }
-      )
+      return fallbackImage()
     }
 
     const creator = Array.isArray(photo.creators) ? photo.creators[0] : photo.creators
 
     if (!creator || creator.verified !== true || creator.active !== true) {
-      return NextResponse.json(
-        { code: 'PHOTO_NOT_AVAILABLE', error: 'Foto indisponivel.' },
-        { status: 404 }
-      )
+      return fallbackImage()
     }
 
     if (!isExpectedPhotoKey(photo.r2_key, photo.creator_id)) {
-      return NextResponse.json(
-        { code: 'PHOTO_KEY_INVALID', error: 'Foto indisponivel.' },
-        { status: 404 }
-      )
+      return fallbackImage()
     }
 
     if (photo.is_free !== true || Number(photo.price_petals) !== 0) {
-      return NextResponse.json(PAID_PHOTO_URL_DISABLED, { status: 423 })
+      return fallbackImage()
     }
 
     try {
       const signedUrl = await createPrivateUrl(photo.r2_key, 300)
-      return NextResponse.json({ url: signedUrl })
+      const imageResponse = await fetch(signedUrl, { cache: 'no-store' })
+
+      if (!imageResponse.ok || !imageResponse.body) {
+        return fallbackImage()
+      }
+
+      return new NextResponse(imageResponse.body, {
+        status: 200,
+        headers: {
+          'Content-Type': imageResponse.headers.get('Content-Type') ?? 'image/jpeg',
+          'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
+        },
+      })
     } catch (err) {
       logPhotoUrlError('create_private_url', err)
-      return NextResponse.json(
-        { code: 'PHOTO_URL_STORAGE_ERROR', error: 'Foto temporariamente indisponivel.' },
-        { status: 500 }
-      )
+      return fallbackImage()
     }
   } catch (err) {
     logPhotoUrlError('unexpected', err)
-    return NextResponse.json(
-      { code: 'PHOTO_URL_INTERNAL_ERROR', error: 'Erro interno ao carregar foto.' },
-      { status: 500 }
-    )
+    return fallbackImage()
   }
 }
