@@ -8,8 +8,14 @@ type CreatorAreaAuth = {
   creator: CreatorAreaContext
 }
 
-type UserRoleRow = {
+type CreatorAreaUserRow = {
   role: string | null
+  operational_channel: string | null
+  role_locked_reason: string | null
+}
+
+type AgencyUserRow = {
+  id: string
 }
 
 type CreatorRow = CreatorAreaContext
@@ -22,15 +28,22 @@ export async function requireCreatorAreaPage(): Promise<CreatorAreaAuth> {
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    redirect('/auth/login')
+    redirect('/criadora/onboarding')
   }
 
   const admin = createAdminClient() as any
-  const [userRes, creatorRes] = await Promise.all([
+  const [userRes, agencyUserRes, creatorRes] = await Promise.all([
     admin
       .from('users')
-      .select('role')
+      .select('role, operational_channel, role_locked_reason')
       .eq('id', user.id)
+      .maybeSingle(),
+    admin
+      .from('agency_users')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('active', true)
+      .limit(1)
       .maybeSingle(),
     admin
       .from('creators')
@@ -41,16 +54,27 @@ export async function requireCreatorAreaPage(): Promise<CreatorAreaAuth> {
       .maybeSingle(),
   ])
 
-  const userRole = (userRes.data as UserRoleRow | null)?.role ?? null
+  const account = userRes.data as CreatorAreaUserRow | null
+  const agencyUser = agencyUserRes.data as AgencyUserRow | null
   const creator = creatorRes.data as CreatorRow | null
 
-  if (userRes.error || creatorRes.error) {
-    console.error('[require creator area]', userRes.error ?? creatorRes.error)
-    redirect('/feed')
+  if (userRes.error || agencyUserRes.error || creatorRes.error) {
+    console.error('[require creator area]', userRes.error ?? agencyUserRes.error ?? creatorRes.error)
+    redirect('/criadora/onboarding')
+  }
+
+  if (
+    !account ||
+    account.role !== 'creator' ||
+    account.operational_channel !== 'creator' ||
+    account.role_locked_reason === 'backfill_creator_pending_review' ||
+    agencyUser
+  ) {
+    redirect('/criadora/onboarding')
   }
 
   if (!creator) {
-    redirect(userRole === 'creator' ? '/criadora/onboarding' : '/feed')
+    redirect('/criadora/onboarding')
   }
 
   if (!creator.verified || !creator.active) {
