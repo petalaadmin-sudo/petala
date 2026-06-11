@@ -1,6 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth/api-auth'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCreatorAreaApi } from '@/lib/auth/require-creator-area-api'
 
 type RpcResult = {
   success?: boolean
@@ -19,10 +18,10 @@ function statusForRpcResult(result: RpcResult | null) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request)
+    const creatorAuth = await requireCreatorAreaApi(request)
 
-    if (!auth.ok) {
-      return auth.response
+    if (!creatorAuth.ok) {
+      return creatorAuth.response
     }
 
     const { session_id } = await request.json()
@@ -31,10 +30,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'session_id obrigatorio' }, { status: 400 })
     }
 
-    const admin = createAdminClient() as any
+    const { admin, user } = creatorAuth
     const { data, error } = await admin.rpc('accept_chat_request', {
       p_session_id: session_id,
-      p_creator_user_id: auth.user.id,
+      p_creator_user_id: user.id,
     })
 
     const result = (data ?? null) as RpcResult | null

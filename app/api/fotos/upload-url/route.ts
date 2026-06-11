@@ -3,9 +3,9 @@
 // Passo 2: frontend faz PUT direto no R2 (sem passar pelo servidor)
 // Passo 3: frontend chama /api/fotos/confirmar com a key
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { createUploadUrl, generatePhotoKey, isValidImageType, MAX_FILE_SIZE_BYTES, R2ConfigError } from '@/lib/r2'
 import { NextResponse } from 'next/server'
+import { requireCreatorAreaApi } from '@/lib/auth/require-creator-area-api'
 
 const PAID_PHOTO_UPLOAD_DISABLED = {
   code: 'PAID_PHOTO_UPLOAD_DISABLED',
@@ -38,9 +38,13 @@ function logUploadError(stage: string, err: unknown) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const creatorAuth = await requireCreatorAreaApi(request)
+
+    if (!creatorAuth.ok) {
+      return creatorAuth.response
+    }
+
+    const { admin, creator } = creatorAuth
 
     const { content_type, file_size, is_free = false } = await request.json().catch(() => ({}))
 
@@ -69,33 +73,6 @@ export async function POST(request: Request) {
         { error: `Arquivo muito grande. Máximo: 20MB.` },
         { status: 400 }
       )
-    }
-
-    // Verifica que o usuário é uma criadora verificada
-    const admin = createAdminClient()
-    const { data: creator, error: creatorError } = await admin
-      .from('creators')
-      .select('id, verified')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (creatorError) {
-      console.error('[/api/fotos/upload-url] erro ao buscar criadora', {
-        code: creatorError.code,
-        message: creatorError.message,
-      })
-      return NextResponse.json(
-        { code: 'PHOTO_UPLOAD_CREATOR_LOOKUP_ERROR', error: 'Não foi possível validar a criadora.' },
-        { status: 500 }
-      )
-    }
-
-    if (!creator) {
-      return NextResponse.json({ error: 'Perfil de criadora não encontrado' }, { status: 403 })
-    }
-
-    if (!creator.verified) {
-      return NextResponse.json({ error: 'Conta ainda não verificada' }, { status: 403 })
     }
 
     // Gera chave única para a foto principal e para o blur

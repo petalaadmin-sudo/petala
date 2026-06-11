@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth/api-auth'
-import { createAdminClient } from '@/lib/supabase/server'
+import { requireCreatorAreaApi } from '@/lib/auth/require-creator-area-api'
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth(request)
+    const creatorAuth = await requireCreatorAreaApi(request)
 
-    if (!auth.ok) {
-      return auth.response
+    if (!creatorAuth.ok) {
+      return creatorAuth.response
     }
 
     const body = await request.json().catch(() => null)
@@ -19,35 +18,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const admin = createAdminClient() as any
-
-    const { data: creator, error: creatorError } = await admin
-      .from('creators')
-      .select('id, verified, active')
-      .eq('user_id', auth.user.id)
-      .maybeSingle()
-
-    if (creatorError) {
-      console.error('[/api/criadora/presenca] creator lookup', creatorError)
-      return NextResponse.json(
-        { success: false, error: 'Erro ao validar criadora', code: 'CREATOR_LOOKUP_FAILED' },
-        { status: 500 }
-      )
-    }
-
-    if (!creator) {
-      return NextResponse.json(
-        { success: false, error: 'Perfil de criadora nao encontrado', code: 'CREATOR_NOT_FOUND' },
-        { status: 404 }
-      )
-    }
-
-    if (!creator.verified || !creator.active) {
-      return NextResponse.json(
-        { success: false, error: 'Criadora ainda nao esta habilitada', code: 'CREATOR_NOT_ACTIVE' },
-        { status: 403 }
-      )
-    }
+    const { admin, creator } = creatorAuth
 
     const now = new Date().toISOString()
 

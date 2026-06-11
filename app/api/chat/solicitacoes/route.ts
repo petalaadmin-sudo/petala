@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/api-auth'
+import { requireCreatorAreaApi } from '@/lib/auth/require-creator-area-api'
 import { NextRequest, NextResponse } from 'next/server'
 
 type RpcResult = {
@@ -25,33 +26,15 @@ function statusForRpcResult(result: RpcResult | null) {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request)
+    const creatorAuth = await requireCreatorAreaApi(request)
 
-    if (!auth.ok) {
-      return auth.response
+    if (!creatorAuth.ok) {
+      return creatorAuth.response
     }
 
-    const admin = createAdminClient() as any
+    const { admin, creator } = creatorAuth
 
     await admin.rpc('expire_pending_chat_requests')
-
-    const { data: creator, error: creatorError } = await admin
-      .from('creators')
-      .select('id')
-      .eq('user_id', auth.user.id)
-      .maybeSingle()
-
-    if (creatorError) {
-      console.error('[/api/chat/solicitacoes GET] creator lookup', creatorError)
-      return NextResponse.json({ error: 'Erro ao validar criadora' }, { status: 500 })
-    }
-
-    if (!creator) {
-      return NextResponse.json({
-        error: 'Apenas criadoras podem listar solicitacoes',
-        code: 'NOT_CREATOR',
-      }, { status: 403 })
-    }
 
     const { data: requests, error: requestsError } = await admin
       .from('chat_sessions')
