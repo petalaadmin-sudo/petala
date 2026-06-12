@@ -508,7 +508,7 @@ export default function CreatorOnboardingPage() {
         })
 
         if (error) {
-          setAuthError('Nao foi possivel criar sua conta. Tente entrar ou use outro e-mail.')
+          setAuthError('Não foi possível criar sua conta. Tente entrar ou use outro e-mail.')
           return
         }
 
@@ -519,7 +519,7 @@ export default function CreatorOnboardingPage() {
           } = await supabase.auth.getUser()
 
           if (userError || !user) {
-            setAuthError('Nao foi possivel confirmar sua sessao. Tente entrar novamente.')
+            setAuthError('Não foi possível confirmar sua sessão. Tente entrar novamente.')
             setAuthStatus('anonymous')
             setAuthUserId(null)
             setAuthUserEmail(null)
@@ -562,7 +562,7 @@ export default function CreatorOnboardingPage() {
           return
         }
 
-        setAuthMessage('Enviamos um link de confirmacao para seu e-mail. Ao abrir, voce volta para continuar o onboarding.')
+        setAuthMessage('Enviamos um link de confirmação para seu e-mail. Ao abrir, você volta para continuar o onboarding.')
         return
       }
 
@@ -575,7 +575,7 @@ export default function CreatorOnboardingPage() {
       })
 
       if (error || !session?.access_token) {
-        setAuthError('E-mail ou senha invalidos.')
+        setAuthError('E-mail ou senha inválidos.')
         return
       }
 
@@ -585,7 +585,7 @@ export default function CreatorOnboardingPage() {
       } = await supabase.auth.getUser()
 
       if (userError || !user) {
-        setAuthError('Nao foi possivel confirmar sua sessao. Tente entrar novamente.')
+        setAuthError('Não foi possível confirmar sua sessão. Tente entrar novamente.')
         setAuthStatus('anonymous')
         setAuthUserId(null)
         setAuthUserEmail(null)
@@ -627,7 +627,7 @@ export default function CreatorOnboardingPage() {
       setAuthStatus('authenticated')
     } catch (err) {
       console.warn('[creator onboarding] auth submit error', err)
-      setAuthError('Nao foi possivel autenticar agora. Tente novamente.')
+      setAuthError('Não foi possível autenticar agora. Tente novamente.')
     } finally {
       setAuthAction(null)
     }
@@ -657,14 +657,14 @@ export default function CreatorOnboardingPage() {
       })
 
       if (error) {
-        setAuthError('Nao foi possivel enviar o link. Tente novamente.')
+        setAuthError('Não foi possível enviar o link. Tente novamente.')
         return
       }
 
-      setAuthMessage('Enviamos um link de acesso para seu e-mail. Ao abrir, voce volta para continuar o onboarding.')
+      setAuthMessage('Enviamos um link de acesso para seu e-mail. Ao abrir, você volta para continuar o onboarding.')
     } catch (err) {
       console.warn('[creator onboarding] email link error', err)
-      setAuthError('Nao foi possivel enviar o link agora. Tente novamente.')
+      setAuthError('Não foi possível enviar o link agora. Tente novamente.')
     } finally {
       setAuthAction(null)
     }
@@ -856,17 +856,17 @@ export default function CreatorOnboardingPage() {
         <section className="w-full max-w-sm">
           <div className="mb-7 text-center">
             <div className="text-4xl mb-3">🌸</div>
-            <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Creator Bloom</p>
+            <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Área da criadora</p>
             <h1 className="text-white text-2xl font-medium mt-2">Entre para criar seu perfil</h1>
             <p className="text-white/35 text-sm mt-2 leading-relaxed">
-              Sua conta fica pronta antes do onboarding para salvar convite, perfil e verificacao.
+              Sua conta fica pronta antes do onboarding para salvar convite, perfil e verificação.
             </p>
           </div>
 
           {hasPendingAgencyInvite && (
             <div className="mb-4 rounded-xl border border-[#ff4d7d]/20 bg-[#130b0f] px-4 py-3">
-              <div className="text-[#ff8aaa] text-xs font-medium">Convite de agencia detectado</div>
-              <div className="text-white/45 text-xs mt-1">Ele sera preservado durante o acesso.</div>
+              <div className="text-[#ff8aaa] text-xs font-medium">Convite de agência detectado</div>
+              <div className="text-white/45 text-xs mt-1">Ele será preservado durante o acesso.</div>
             </div>
           )}
 
@@ -946,7 +946,7 @@ export default function CreatorOnboardingPage() {
           </div>
 
           <p className="text-white/20 text-xs text-center mt-5 leading-relaxed">
-            Ao continuar voce confirma ter 18 anos ou mais.
+            Ao continuar você confirma ter 18 anos ou mais.
           </p>
         </section>
       </main>
@@ -1055,7 +1055,7 @@ export default function CreatorOnboardingPage() {
           <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-white text-xl font-medium mb-1">Preços fixos da plataforma</h2>
-              <p className="text-white/35 text-sm">Esses valores são aplicados ao seu perfil de creator.</p>
+              <p className="text-white/35 text-sm">Esses valores são aplicados ao seu perfil de criadora.</p>
             </div>
 
             {/* Precos fixos */}
@@ -1083,8 +1083,8 @@ export default function CreatorOnboardingPage() {
               {[
                 'Ganhos calculados sobre pétalas elegíveis.',
                 'Referência: US$1 a cada 850 pétalas elegíveis.',
-                'Bônus, promoções e créditos não sacáveis não entram no cálculo.',
-                'Agências recebem 30% sobre ganhos elegíveis da creator vinculada.',
+                'Bônus, promoções e créditos gratuitos não entram no cálculo.',
+                'Agências recebem 30% sobre ganhos elegíveis da criadora vinculada.',
               ].map(item => (
                 <div key={item} className="flex gap-2 mb-2 last:mb-0">
                   <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-400 flex-shrink-0" />

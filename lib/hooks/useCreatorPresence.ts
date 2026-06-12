@@ -94,7 +94,7 @@ export function useCreatorSelfPresence(creatorId: string) {
     const accessToken = session?.access_token
 
     if (!accessToken) {
-      throw new Error('Sessao expirada')
+      throw new Error('Sessão expirada')
     }
 
     const res = await fetch('/api/criadora/presenca', {

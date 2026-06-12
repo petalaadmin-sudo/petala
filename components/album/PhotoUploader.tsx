@@ -91,7 +91,7 @@ export function PhotoUploader({ onUploaded }: Props) {
           <div className="text-white/40 text-xs text-center leading-relaxed">
             Toque para escolher<br />ou arraste a foto aqui
           </div>
-          <div className="text-white/20 text-[10px]">JPEG, PNG ou WebP · máx 20MB</div>
+          <div className="text-white/20 text-[10px]">JPEG, PNG ou WebP · máx. 20 MB</div>
         </div>
       ) : (
         <div className="relative rounded-2xl overflow-hidden h-44">
@@ -115,7 +115,7 @@ export function PhotoUploader({ onUploaded }: Props) {
 
       {/* Configurações de preço */}
       <div className="bg-[#111] rounded-xl p-4 border border-white/5">
-        {/* Foto paga bloqueada até existir fluxo financeiro auditável */}
+        {/* Foto paga bloqueada até validação do fluxo financeiro */}
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-white text-xs font-medium">Foto gratuita</div>
@@ -130,7 +130,7 @@ export function PhotoUploader({ onUploaded }: Props) {
         </div>
 
         <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-3 py-2 text-yellow-100 text-[10px] leading-relaxed">
-          Fotos pagas serão reativadas após o fluxo financeiro auditável.
+          Fotos pagas serão reativadas após a validação do fluxo financeiro.
         </div>
       </div>
 

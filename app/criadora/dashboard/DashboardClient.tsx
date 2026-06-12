@@ -70,7 +70,7 @@ function formatTodayLabel() {
 }
 
 function requestTypeLabel(type: ChatRequest['type']) {
-  return type === 'video' ? 'Video' : 'Texto'
+  return type === 'video' ? 'Vídeo' : 'Texto'
 }
 
 function requestStatusLabel(status: string) {
@@ -81,7 +81,7 @@ function requestStatusLabel(status: string) {
 }
 
 function userLabel(request: ChatRequest) {
-  return request.user?.username || request.user?.email || `Usuario ${request.user_id.slice(0, 8)}`
+  return request.user?.username || request.user?.email || `Usuário ${request.user_id.slice(0, 8)}`
 }
 
 export function DashboardClient({ initialCreator }: DashboardClientProps) {
@@ -121,7 +121,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
       const accessToken = await getAccessToken()
 
       if (!accessToken) {
-        setRequestsError('Sessao expirada. Entre novamente para ver solicitacoes.')
+        setRequestsError('Sessão expirada. Entre novamente para ver solicitações.')
         return
       }
 
@@ -136,7 +136,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok || !data.success) {
-        setRequestsError(data.error ?? 'Falha ao carregar solicitacoes.')
+        setRequestsError(data.error ?? 'Falha ao carregar solicitações.')
         return
       }
 
@@ -144,7 +144,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
       setRequestsError(null)
     } catch (err) {
       console.error('[creator requests]', err)
-      setRequestsError('Erro ao carregar solicitacoes.')
+      setRequestsError('Erro ao carregar solicitações.')
     } finally {
       if (!options.silent) {
         setRequestsLoading(false)
@@ -161,7 +161,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
       const accessToken = await getAccessToken()
 
       if (!accessToken) {
-        setRequestsError('Sessao expirada. Entre novamente para responder solicitacoes.')
+        setRequestsError('Sessão expirada. Entre novamente para responder solicitações.')
         return
       }
 
@@ -181,19 +181,19 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok || !data.success) {
-        setRequestsError(data.error ?? 'Falha ao responder solicitacao.')
+        setRequestsError(data.error ?? 'Falha ao responder solicitação.')
         return
       }
 
       setRequestNotice(
         action === 'accept'
-          ? 'Solicitacao aceita. A ativacao completa da chamada sera finalizada em etapa futura.'
-          : 'Solicitacao recusada.'
+          ? 'Solicitação aceita. A ativação da chamada será concluída em uma próxima etapa.'
+          : 'Solicitação recusada.'
       )
       await loadRequests({ silent: true })
     } catch (err) {
       console.error('[creator request action]', err)
-      setRequestsError('Erro ao responder solicitacao.')
+      setRequestsError('Erro ao responder solicitação.')
     } finally {
       setRequestActionId(null)
     }
@@ -279,7 +279,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
     } catch (err) {
       console.error('[creator presence toggle]', err)
       setOnlineState(previousOnline)
-      setPresenceError('Nao foi possivel atualizar sua presenca. Tente novamente.')
+      setPresenceError('Não foi possível atualizar sua presença. Tente novamente.')
     } finally {
       setPresenceSaving(false)
     }
@@ -289,7 +289,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
     if (requestsLoading && items.length === 0) {
       return (
         <div className="rounded-2xl bg-white/[0.03] px-4 py-8 text-center text-xs text-white/35">
-          Carregando solicitacoes...
+          Carregando solicitações...
         </div>
       )
     }
@@ -299,7 +299,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         <div className="rounded-2xl bg-white/[0.03] px-4 py-8 text-center">
           <p className="text-sm font-medium text-white/70">Nenhum pedido pendente agora</p>
           <p className="mt-2 text-xs leading-relaxed text-white/35">
-            Quando houver novas solicitacoes, elas aparecerao aqui com prioridade para resposta.
+            Quando houver novas solicitações, elas aparecerão aqui com prioridade para resposta.
           </p>
         </div>
       )
@@ -370,10 +370,10 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
   const quickActions: QuickAction[] = [
     {
       title: online ? 'Manter disponibilidade' : 'Ficar online',
-      eyebrow: online ? 'Presenca ativa' : 'Primeiro passo',
+      eyebrow: online ? 'Presença ativa' : 'Primeiro passo',
       description: online
-        ? 'Voce ja esta visivel para receber novas solicitacoes.'
-        : 'Apareca no feed e abra janela para receber pedidos.',
+        ? 'Você já está visível para receber novas solicitações.'
+        : 'Apareça no feed e abra janela para receber pedidos.',
       onClick: online ? undefined : toggleOnline,
       disabled: online || presenceSaving,
       highlight: !online,
@@ -392,21 +392,21 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
       onClick: () => setView('requests'),
     },
     {
-      title: 'Publicar conteudo',
-      eyebrow: 'Album',
+      title: 'Publicar conteúdo',
+      eyebrow: 'Álbum',
       description: 'Mantenha seu perfil vivo com novas fotos.',
       onClick: () => setView('content'),
     },
     {
       title: 'Melhorar perfil',
       eyebrow: 'Vitrine',
-      description: 'Veja sua pagina publica e ajuste sua apresentacao.',
+      description: 'Veja sua página pública e ajuste sua apresentação.',
       href: '/criadora/perfil',
     },
     {
-      title: 'Ganhos em validacao',
-      eyebrow: 'Ledger',
-      description: 'Painel financeiro sera exibido quando os dados elegiveis estiverem conectados.',
+      title: 'Ganhos em validação',
+      eyebrow: 'Validação',
+      description: 'O painel financeiro será exibido quando os ganhos elegíveis estiverem conectados.',
       onClick: () => setView('earnings'),
     },
   ]
@@ -419,24 +419,24 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         sub: pendingCount > 0 ? 'aguardando resposta' : 'central limpa',
       },
       {
-        label: 'Sessoes hoje',
+        label: 'Sessões hoje',
         value: stats.sessionsToday,
         sub: 'atividade registrada',
       },
       {
         label: 'Presentes',
         value: stats.totalGifts,
-        sub: 'historico recebido',
+        sub: 'histórico recebido',
       },
       {
-        label: 'Avaliacao',
+        label: 'Avaliação',
         value: ratingValue,
-        sub: `${stats.ratingCount} avaliacao${stats.ratingCount === 1 ? '' : 'es'}`,
+        sub: `${stats.ratingCount} avaliação${stats.ratingCount === 1 ? '' : 'ões'}`,
       },
       {
         label: 'Ganhos',
-        value: 'Em validacao',
-        sub: 'ledger financeiro em preparacao',
+        value: 'Em validação',
+        sub: 'ganhos em validação',
       },
     ]
     : []
@@ -444,10 +444,10 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
   const shortcuts = [
     { label: 'Feed de oportunidades', href: '/criadora/feed', helper: 'Priorize sinais de interesse.' },
     { label: 'Mensagens', href: '/criadora/mensagens', helper: 'Veja pedidos e conversas.' },
-    { label: 'Chamadas', href: '/criadora/chamadas', helper: 'Politicas e preparacao.' },
-    { label: 'Ganhos', href: '/criadora/ganhos', helper: 'Acompanhamento em validacao.' },
+    { label: 'Chamadas', href: '/criadora/chamadas', helper: 'Políticas e preparação.' },
+    { label: 'Ganhos', href: '/criadora/ganhos', helper: 'Acompanhamento em validação.' },
     { label: 'Perfil', href: '/criadora/perfil', helper: 'Cuide da sua vitrine.' },
-    { label: 'Configuracoes', href: '/criadora/configuracoes', helper: 'Conta e preferencias.' },
+    { label: 'Configurações', href: '/criadora/configuracoes', helper: 'Conta e preferências.' },
   ]
 
   return (
@@ -457,7 +457,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         <div className="relative mx-auto max-w-5xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#ff9db8]">Creator Bloom</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#ff9db8]">Área da criadora</p>
               <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight sm:text-3xl">
                 Oi, {creatorName || 'criadora'}
               </h1>
@@ -469,14 +469,14 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                   ? 'bg-green-400/10 text-green-300 ring-green-400/20'
                   : 'bg-yellow-400/10 text-yellow-300 ring-yellow-400/20'
               }`}>
-                {creatorVerified ? 'Verificada' : 'Em verificacao'}
+                {creatorVerified ? 'Verificada' : 'Em verificação'}
               </div>
               <div className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ${
                 creatorActive
                   ? 'bg-white/[0.06] text-white/60 ring-white/[0.08]'
                   : 'bg-yellow-400/10 text-yellow-300 ring-yellow-400/20'
               }`}>
-                {creatorActive ? 'Perfil ativo' : 'Perfil em analise'}
+                {creatorActive ? 'Perfil ativo' : 'Perfil em análise'}
               </div>
             </div>
           </div>
@@ -508,22 +508,22 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
               <h2 className="mt-5 max-w-2xl text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
                 {online
-                  ? 'Voce esta disponivel para novas solicitacoes.'
-                  : 'Fique online para aparecer no feed e receber solicitacoes.'}
+                  ? 'Você está disponível para novas solicitações.'
+                  : 'Fique online para aparecer no feed e receber solicitações.'}
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/55">
-                Use esta tela para decidir o proximo movimento: abrir disponibilidade, responder pedidos,
-                cuidar do conteudo e acompanhar o painel financeiro quando o ledger estiver conectado.
+                Use esta tela para decidir o próximo movimento: abrir disponibilidade, responder pedidos,
+                cuidar do conteúdo e acompanhar ganhos quando eles estiverem em validação.
               </p>
               <p className="mt-3 text-xs text-white/38">
-                Offline manual nao religa sozinho. Voce controla quando aparece disponivel.
+                O modo offline não religa sozinho. Você controla quando aparece disponível.
               </p>
             </div>
 
             <div className="rounded-[28px] bg-black/18 p-4 ring-1 ring-white/[0.07]">
               <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">Status</div>
               <div className="mt-3 text-3xl font-semibold">{pendingCount}</div>
-              <div className="mt-1 text-xs text-white/45">solicitacoes aguardando</div>
+              <div className="mt-1 text-xs text-white/45">solicitações aguardando</div>
               <button
                 onClick={toggleOnline}
                 disabled={presenceSaving}
@@ -541,9 +541,9 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
         <nav className="mt-4 grid grid-cols-4 gap-2 rounded-[26px] bg-white/[0.035] p-1.5 ring-1 ring-white/[0.06]">
           {([
-            ['home', 'Inicio'],
+            ['home', 'Início'],
             ['requests', 'Pedidos'],
-            ['content', 'Conteudo'],
+            ['content', 'Conteúdo'],
             ['earnings', 'Ganhos'],
           ] as [DashboardView, string][]).map(([id, label]) => (
             <button
@@ -584,7 +584,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#ff9db8]">O que fazer agora</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight">Priorize a proxima acao</h2>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight">Priorize a próxima ação</h2>
                 </div>
                 <span className="hidden rounded-full bg-white/[0.05] px-3 py-1 text-[11px] text-white/45 sm:block">
                   rotina operacional
@@ -652,9 +652,9 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
               <div className="rounded-[32px] bg-white/[0.04] p-4 ring-1 ring-white/[0.07]">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold">Solicitacoes pendentes</h2>
+                    <h2 className="text-sm font-semibold">Solicitações pendentes</h2>
                     <p className="mt-1 text-[11px] text-white/38">
-                      Aceitar ainda nao inicia cobranca nem chamada completa.
+                      Aceitar ainda não inicia cobrança nem chamada completa.
                     </p>
                   </div>
                   <button
@@ -671,7 +671,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="text-sm font-semibold">Atalhos da criadora</h2>
-                    <p className="mt-1 text-[11px] text-white/38">Rotas principais da area interna.</p>
+                    <p className="mt-1 text-[11px] text-white/38">Atalhos principais da área interna.</p>
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -703,7 +703,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
               </div>
               {stats.recentGifts.length === 0 ? (
                 <div className="rounded-2xl bg-black/18 px-4 py-8 text-center text-xs text-white/35">
-                  Nenhum presente recente. Continue cuidando da presenca e do perfil.
+                  Nenhum presente recente. Continue cuidando da presença e do perfil.
                 </div>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -729,9 +729,9 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Pedidos</p>
-                <h2 className="mt-2 text-xl font-semibold">Solicitacoes de chat</h2>
+                <h2 className="mt-2 text-xl font-semibold">Solicitações de chat</h2>
                 <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/40">
-                  A etapa atual permite aceitar ou recusar. A ativacao completa sera conectada em bloco futuro.
+                  A etapa atual permite aceitar ou recusar. A ativação completa será liberada em uma próxima etapa.
                 </p>
               </div>
               <button
@@ -749,10 +749,10 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         {view === 'content' && (
           <section className="mt-4">
             <div className="mb-4 rounded-[32px] bg-white/[0.04] p-5 ring-1 ring-white/[0.07]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Conteudo</p>
-              <h2 className="mt-2 text-xl font-semibold">Album e vitrine</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Conteúdo</p>
+              <h2 className="mt-2 text-xl font-semibold">Álbum e vitrine</h2>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
-                Publique fotos gratuitas. Fotos pagas serao reativadas apos o fluxo financeiro auditavel.
+                Publique fotos gratuitas. Fotos pagas serão reativadas após a validação do fluxo financeiro.
               </p>
             </div>
             <PhotoUploader onUploaded={(photo) => { console.log('Foto publicada:', photo.photo_id) }} />
@@ -763,24 +763,24 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
           <section className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
             <div className="rounded-[32px] bg-white/[0.04] p-5 ring-1 ring-white/[0.07]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300/80">Ganhos</p>
-              <h2 className="mt-3 text-2xl font-semibold">Ledger financeiro em preparacao</h2>
+              <h2 className="mt-3 text-2xl font-semibold">Ganhos em validação</h2>
               <p className="mt-3 text-sm leading-relaxed text-white/45">
-                Esta area nao exibe saldo, valores sacaveis ou estimativas ate que os ganhos reais estejam conectados
-                ao ledger financeiro auditado.
+                Esta área não exibe valores disponíveis, estimativas ou pagamentos até que os ganhos reais estejam conectados
+                à validação financeira.
               </p>
             </div>
 
             <div className="rounded-[32px] bg-yellow-400/[0.07] p-5 ring-1 ring-yellow-400/15">
               <h3 className="text-sm font-semibold text-yellow-200">Acompanhamento seguro</h3>
               <p className="mt-3 text-xs leading-relaxed text-yellow-100/65">
-                Use este espaco como marcador operacional. Quando o painel financeiro estiver pronto, os valores
-                aparecerao com origem, elegibilidade e auditoria.
+                Use este espaço como marcador operacional. Quando o painel financeiro estiver pronto, os valores
+                aparecerão com origem, elegibilidade e revisão.
               </p>
               <Link
                 href="/criadora/ganhos"
                 className="mt-4 inline-flex rounded-2xl bg-white/[0.08] px-4 py-2 text-xs font-semibold text-white/70 ring-1 ring-white/[0.08]"
               >
-                Abrir pagina de ganhos
+                Abrir página de ganhos
               </Link>
             </div>
           </section>

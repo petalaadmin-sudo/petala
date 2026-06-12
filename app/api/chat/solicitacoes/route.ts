@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     if (requestsError) {
       console.error('[/api/chat/solicitacoes GET] requests lookup', requestsError)
-      return NextResponse.json({ error: 'Erro ao listar solicitacoes' }, { status: 500 })
+      return NextResponse.json({ error: 'Erro ao listar solicitações' }, { status: 500 })
     }
 
     const userIds = Array.from(new Set((requests ?? []).map((item: any) => item.user_id).filter(Boolean)))

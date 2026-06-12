@@ -31,11 +31,11 @@ function formatDateTime(value: string | null) {
 }
 
 function requestTypeLabel(type: ChatRequest['type']) {
-  return type === 'video' ? 'Video' : 'Texto'
+  return type === 'video' ? 'Vídeo' : 'Texto'
 }
 
 function userLabel(request: ChatRequest) {
-  return request.user?.username || request.user?.email || `Usuario ${request.user_id.slice(0, 8)}`
+  return request.user?.username || request.user?.email || `Usuário ${request.user_id.slice(0, 8)}`
 }
 
 export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext }) {
@@ -58,7 +58,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
       const accessToken = await getAccessToken()
 
       if (!accessToken) {
-        setError('Sessao expirada. Entre novamente para ver solicitacoes.')
+        setError('Sessão expirada. Entre novamente para ver solicitações.')
         return
       }
 
@@ -72,7 +72,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok || !data.success) {
-        setError(data.error ?? 'Falha ao carregar solicitacoes.')
+        setError(data.error ?? 'Falha ao carregar solicitações.')
         return
       }
 
@@ -80,7 +80,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
       setError(null)
     } catch (err) {
       console.error('[creator messages]', err)
-      setError('Erro ao carregar solicitacoes.')
+      setError('Erro ao carregar solicitações.')
     } finally {
       if (!silent) setLoading(false)
     }
@@ -105,7 +105,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
       const accessToken = await getAccessToken()
 
       if (!accessToken) {
-        setError('Sessao expirada. Entre novamente para responder solicitacoes.')
+        setError('Sessão expirada. Entre novamente para responder solicitações.')
         return
       }
 
@@ -124,19 +124,19 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok || !data.success) {
-        setError(data.error ?? 'Falha ao responder solicitacao.')
+        setError(data.error ?? 'Falha ao responder solicitação.')
         return
       }
 
       setNotice(
         action === 'accept'
-          ? 'Solicitacao aceita. A ativacao completa da chamada sera finalizada em etapa futura.'
-          : 'Solicitacao recusada.'
+          ? 'Solicitação aceita. A ativação da chamada será concluída em uma próxima etapa.'
+          : 'Solicitação recusada.'
       )
       await loadRequests(true)
     } catch (err) {
       console.error('[creator message action]', err)
-      setError('Erro ao responder solicitacao.')
+      setError('Erro ao responder solicitação.')
     } finally {
       setActionId(null)
     }
@@ -149,7 +149,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
           <div>
             <h2 className="text-base font-semibold">Pedidos pendentes</h2>
             <p className="mt-1 text-xs leading-relaxed text-white/40">
-              {creator.name || 'Sua conta'} recebe aqui pedidos de texto e video aguardando resposta.
+              {creator.name || 'Sua conta'} recebe aqui pedidos de texto e vídeo aguardando resposta.
             </p>
           </div>
           <button
@@ -176,12 +176,12 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
 
       <section className="rounded-3xl border border-white/8 bg-[#111] p-4">
         {loading && requests.length === 0 ? (
-          <div className="py-8 text-center text-xs text-white/30">Carregando solicitacoes...</div>
+          <div className="py-8 text-center text-xs text-white/30">Carregando solicitações...</div>
         ) : requests.length === 0 ? (
           <div className="py-8 text-center">
-            <div className="text-sm font-medium text-white">Nenhuma solicitacao pendente</div>
+            <div className="text-sm font-medium text-white">Nenhuma solicitação pendente</div>
             <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-white/35">
-              Conversas ativas e historico serao organizados aqui nos proximos blocos.
+              Conversas ativas e histórico serão organizados aqui em uma próxima etapa.
             </p>
           </div>
         ) : (

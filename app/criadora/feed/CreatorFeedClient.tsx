@@ -5,11 +5,11 @@ import { useMemo, useState } from 'react'
 type OpportunityFilter =
   | 'Todos'
   | 'Online agora'
-  | 'Favoritaram voce'
+  | 'Favoritaram você'
   | 'Visitaram seu perfil'
   | 'Novos'
-  | 'Compativeis'
-  | 'Video'
+  | 'Compatíveis'
+  | 'Vídeo'
   | 'Chat'
 
 type OpportunityPreview = {
@@ -32,11 +32,11 @@ type CreatorFeedClientProps = {
 const FILTERS: OpportunityFilter[] = [
   'Todos',
   'Online agora',
-  'Favoritaram voce',
+  'Favoritaram você',
   'Visitaram seu perfil',
   'Novos',
-  'Compativeis',
-  'Video',
+  'Compatíveis',
+  'Vídeo',
   'Chat',
 ]
 
@@ -48,19 +48,19 @@ const OPPORTUNITY_PREVIEWS: OpportunityPreview[] = [
     signal: 'Responder primeiro',
     note: 'Prioridade para responder quando houver interesse confirmado.',
     tags: ['chat', 'recente'],
-    filters: ['Online agora', 'Chat', 'Compativeis'],
+    filters: ['Online agora', 'Chat', 'Compatíveis'],
     gradient: 'from-[#ff4d7d] via-[#a855f7] to-[#2563eb]',
     initials: 'ON',
     intensity: 'Alta',
   },
   {
     id: 'favorite',
-    title: 'Favoritou voce',
+    title: 'Favoritou você',
     status: 'Sinal salvo',
     signal: 'Interesse forte',
-    note: 'Favoritos ajudam a identificar quem demonstrou intencao clara.',
+    note: 'Favoritos ajudam a identificar quem demonstrou intenção clara.',
     tags: ['favorito', 'perfil'],
-    filters: ['Favoritaram voce', 'Compativeis'],
+    filters: ['Favoritaram você', 'Compatíveis'],
     gradient: 'from-[#f59e0b] via-[#fb7185] to-[#ef4444]',
     initials: 'FV',
     intensity: 'Alta',
@@ -70,7 +70,7 @@ const OPPORTUNITY_PREVIEWS: OpportunityPreview[] = [
     title: 'Visitou seu perfil',
     status: 'Aquecimento recente',
     signal: 'Curiosidade ativa',
-    note: 'Visitas recentes ajudam a priorizar atencao sem expor dados sensiveis.',
+    note: 'Visitas recentes ajudam a priorizar atenção sem expor dados sensíveis.',
     tags: ['visita', 'perfil'],
     filters: ['Visitaram seu perfil', 'Chat'],
     gradient: 'from-[#06b6d4] via-[#3b82f6] to-[#4f46e5]',
@@ -79,12 +79,12 @@ const OPPORTUNITY_PREVIEWS: OpportunityPreview[] = [
   },
   {
     id: 'video-ready',
-    title: 'Possivel video',
+    title: 'Possível vídeo',
     status: 'Somente com aceite',
     signal: 'Consentimento primeiro',
-    note: 'Convites de video ficarao disponiveis apenas com seguranca e aceite.',
-    tags: ['video', 'aceite'],
-    filters: ['Video', 'Compativeis'],
+    note: 'Convites de vídeo ficarão disponíveis apenas com segurança e aceite.',
+    tags: ['vídeo', 'aceite'],
+    filters: ['Vídeo', 'Compatíveis'],
     gradient: 'from-[#22c55e] via-[#14b8a6] to-[#0ea5e9]',
     initials: 'VD',
     intensity: 'Futura',
@@ -94,7 +94,7 @@ const OPPORTUNITY_PREVIEWS: OpportunityPreview[] = [
     title: 'Novo no app',
     status: 'Primeiro contato',
     signal: 'Descoberta',
-    note: 'Novos perfis poderao aparecer com contexto minimo e seguro.',
+    note: 'Novos perfis poderão aparecer com contexto mínimo e seguro.',
     tags: ['novo', 'descoberta'],
     filters: ['Novos', 'Chat'],
     gradient: 'from-[#a855f7] via-[#ec4899] to-[#f43f5e]',
@@ -108,7 +108,7 @@ const OPPORTUNITY_PREVIEWS: OpportunityPreview[] = [
     signal: 'Boa afinidade',
     note: 'Sinais combinados ajudam a priorizar oportunidades melhores.',
     tags: ['match', 'sinais'],
-    filters: ['Compativeis', 'Online agora', 'Video'],
+    filters: ['Compatíveis', 'Online agora', 'Vídeo'],
     gradient: 'from-[#84cc16] via-[#22c55e] to-[#14b8a6]',
     initials: 'MP',
     intensity: 'Alta',
@@ -137,13 +137,13 @@ export function CreatorFeedClient({ creatorName }: CreatorFeedClientProps) {
           <div className="bg-[radial-gradient(circle_at_12%_15%,rgba(255,77,125,0.22),transparent_34%),linear-gradient(135deg,#181016,#0f1116_58%,#111827)] p-5 sm:p-6">
             <div className="max-w-2xl">
               <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#ffb0c5]/80">
-                Prioridade e atencao
+                Prioridade e atenção
               </div>
               <h2 className="mt-4 text-2xl font-semibold leading-tight text-white sm:text-3xl">
                 Organize os sinais que merecem resposta primeiro.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-white/54">
-                {creatorName || 'Sua area'} vera sinais de interesse conforme usuarios interagirem com seu perfil. Nenhuma acao inicia conversa, video ou cobranca sem consentimento.
+                {creatorName || 'Sua área'} verá sinais de interesse conforme usuários interagirem com seu perfil. Nenhuma ação inicia conversa, vídeo ou cobrança sem consentimento.
               </p>
             </div>
           </div>
@@ -159,8 +159,8 @@ export function CreatorFeedClient({ creatorName }: CreatorFeedClientProps) {
             <div className="grid grid-cols-3 gap-2">
               {[
                 ['Sinais', 'interesse'],
-                ['Acoes', 'seguras'],
-                ['Video', 'com aceite'],
+                ['Ações', 'seguras'],
+                ['Vídeo', 'com aceite'],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-white/[0.055] px-3 py-3">
                   <div className="text-[10px] uppercase tracking-[0.14em] text-white/34">{label}</div>
@@ -224,7 +224,7 @@ export function CreatorFeedClient({ creatorName }: CreatorFeedClientProps) {
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2">
-                {['Perfil', 'Mensagem', 'Video'].map(action => (
+                {['Perfil', 'Mensagem', 'Vídeo'].map(action => (
                   <div
                     key={action}
                     aria-disabled="true"
@@ -243,18 +243,18 @@ export function CreatorFeedClient({ creatorName }: CreatorFeedClientProps) {
         <div className="bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.16),transparent_32%),linear-gradient(135deg,rgba(255,77,125,0.08),transparent)] p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-200">Politica futura de video</div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-200">Política futura de vídeo</div>
               <h2 className="mt-2 text-lg font-semibold text-yellow-50">Convite sempre depende de aceite.</h2>
               <p className="mt-2 max-w-xl text-xs leading-relaxed text-yellow-100/62">
-                Esta regra e apenas informativa aqui. O usuario precisa aceitar antes de qualquer chamada ou cobranca.
+                Esta regra é apenas informativa aqui. O usuário precisa aceitar antes de qualquer chamada ou cobrança.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
               {[
-                ['1o minuto', '30 petalas'],
+                ['1º minuto', '30 pétalas'],
                 ['Depois', '120/min'],
-                ['Inicio', 'com aceite'],
+                ['Início', 'com aceite'],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-black/20 px-3 py-3">
                   <div className="text-[10px] text-yellow-100/42">{label}</div>
@@ -268,7 +268,7 @@ export function CreatorFeedClient({ creatorName }: CreatorFeedClientProps) {
 
       <section className="rounded-[26px] bg-[#0e0e0f] p-4">
         <p className="text-xs leading-relaxed text-white/42">
-          Os cards desta tela sao exemplos de interface. Oportunidades reais aparecerao aqui somente quando os sinais forem conectados ao backend.
+          Os cards desta tela são exemplos de interface. Oportunidades reais aparecerão aqui somente quando os sinais forem conectados ao sistema.
         </p>
       </section>
     </div>

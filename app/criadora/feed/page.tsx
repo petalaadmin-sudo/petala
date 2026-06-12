@@ -9,7 +9,7 @@ export default async function CreatorFeedPage() {
     <CreatorAreaShell
       section="feed"
       title="Feed de oportunidades"
-      subtitle="Priorize sinais de interesse sem iniciar acoes automaticas."
+      subtitle="Priorize sinais de interesse sem iniciar ações automáticas."
       creator={creator}
     >
       <CreatorFeedClient creatorName={creator.name} />

@@ -37,7 +37,7 @@ type CreatorAreaNavProps = {
 }
 
 const NAV_ITEMS: { section: CreatorAreaSection; label: string; href: string }[] = [
-  { section: 'dashboard', label: 'Inicio', href: '/criadora/dashboard' },
+  { section: 'dashboard', label: 'Início', href: '/criadora/dashboard' },
   { section: 'feed', label: 'Feed', href: '/criadora/feed' },
   { section: 'mensagens', label: 'Mensagens', href: '/criadora/mensagens' },
   { section: 'chamadas', label: 'Chamadas', href: '/criadora/chamadas' },
@@ -72,7 +72,7 @@ export function CreatorAreaShell({ section, title, subtitle, children }: Creator
       <header className="px-4 pb-3 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#ff8aaa]">Creator Bloom</p>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#ff8aaa]">Área da criadora</p>
             <h1 className="mt-2 truncate text-2xl font-semibold">{title}</h1>
             <p className="mt-2 max-w-sm text-xs leading-relaxed text-white/40">{subtitle}</p>
           </div>
