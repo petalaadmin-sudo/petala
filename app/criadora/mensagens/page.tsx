@@ -9,7 +9,7 @@ export default async function CreatorMessagesPage() {
     <CreatorAreaShell
       section="mensagens"
       title="Mensagens"
-      subtitle="Central para pedidos de texto, conversas e solicitações pendentes. Aceitar ainda não ativa cobrança por aqui."
+      subtitle="Central para pedidos de texto, conversas e solicitações pendentes. O aceite está em preparação e não ativa cobrança por aqui."
       creator={creator}
     >
       <CreatorMessagesClient creator={creator} />

@@ -152,7 +152,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
     }
   }, [creatorId, getAccessToken])
 
-  const handleRequestAction = async (requestId: string, action: 'accept' | 'decline') => {
+  const declineRequest = async (requestId: string) => {
     setRequestActionId(requestId)
     setRequestNotice(null)
     setRequestsError(null)
@@ -165,17 +165,13 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         return
       }
 
-      const res = await fetch(action === 'accept' ? '/api/chat/aceitar' : '/api/chat/recusar', {
+      const res = await fetch('/api/chat/recusar', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(
-          action === 'accept'
-            ? { session_id: requestId }
-            : { session_id: requestId, reason: 'creator_declined_from_dashboard' }
-        ),
+        body: JSON.stringify({ session_id: requestId, reason: 'creator_declined_from_dashboard' }),
       })
 
       const data = await res.json().catch(() => ({}))
@@ -185,11 +181,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
         return
       }
 
-      setRequestNotice(
-        action === 'accept'
-          ? 'Solicitação aceita. A ativação da chamada será concluída em uma próxima etapa.'
-          : 'Solicitação recusada.'
-      )
+      setRequestNotice('Solicitação recusada.')
       await loadRequests({ silent: true })
     } catch (err) {
       console.error('[creator request action]', err)
@@ -333,19 +325,22 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
                 <div className="flex shrink-0 flex-col gap-2">
                   <button
-                    onClick={() => handleRequestAction(request.id, 'accept')}
-                    disabled={Boolean(requestActionId)}
-                    className="rounded-2xl bg-[#ff4d7d] px-4 py-2 text-[11px] font-semibold text-white shadow-[0_12px_30px_rgba(255,77,125,0.25)] transition disabled:opacity-40"
+                    type="button"
+                    disabled
+                    className="rounded-2xl bg-white/[0.06] px-4 py-2 text-[11px] font-semibold text-white/35 ring-1 ring-white/[0.06]"
                   >
-                    {actionBusy ? '...' : 'Aceitar'}
+                    Aceite em preparação
                   </button>
                   <button
-                    onClick={() => handleRequestAction(request.id, 'decline')}
+                    onClick={() => declineRequest(request.id)}
                     disabled={Boolean(requestActionId)}
                     className="rounded-2xl bg-white/[0.06] px-4 py-2 text-[11px] font-semibold text-white/60 ring-1 ring-white/[0.06] transition disabled:opacity-40"
                   >
-                    Recusar
+                    {actionBusy ? '...' : 'Recusar'}
                   </button>
+                  <p className="max-w-[11rem] text-[10px] leading-relaxed text-white/32">
+                    Aceite será liberado quando a ativação segura do chat estiver pronta. Recusar não gera cobrança.
+                  </p>
                 </div>
               </div>
             </div>
@@ -654,7 +649,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                   <div>
                     <h2 className="text-sm font-semibold">Solicitações pendentes</h2>
                     <p className="mt-1 text-[11px] text-white/38">
-                      Aceitar ainda não inicia cobrança nem chamada completa.
+                      O aceite está em preparação e não inicia cobrança nem chamada completa.
                     </p>
                   </div>
                   <button
@@ -731,7 +726,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ff9db8]">Pedidos</p>
                 <h2 className="mt-2 text-xl font-semibold">Solicitações de chat</h2>
                 <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/40">
-                  A etapa atual permite aceitar ou recusar. A ativação completa será liberada em uma próxima etapa.
+                  A etapa atual mantém os pedidos visíveis e permite recusar. O aceite será liberado quando a ativação segura do chat estiver pronta.
                 </p>
               </div>
               <button

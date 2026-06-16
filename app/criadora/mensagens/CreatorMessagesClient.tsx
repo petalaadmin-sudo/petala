@@ -96,7 +96,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
     return () => window.clearInterval(interval)
   }, [loadRequests])
 
-  const respondRequest = async (requestId: string, action: 'accept' | 'decline') => {
+  const declineRequest = async (requestId: string) => {
     setActionId(requestId)
     setNotice(null)
     setError(null)
@@ -109,17 +109,13 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
         return
       }
 
-      const res = await fetch(action === 'accept' ? '/api/chat/aceitar' : '/api/chat/recusar', {
+      const res = await fetch('/api/chat/recusar', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(
-          action === 'accept'
-            ? { session_id: requestId }
-            : { session_id: requestId, reason: 'creator_declined_from_messages' }
-        ),
+        body: JSON.stringify({ session_id: requestId, reason: 'creator_declined_from_messages' }),
       })
       const data = await res.json().catch(() => ({}))
 
@@ -128,11 +124,7 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
         return
       }
 
-      setNotice(
-        action === 'accept'
-          ? 'Solicitação aceita. A ativação da chamada será concluída em uma próxima etapa.'
-          : 'Solicitação recusada.'
-      )
+      setNotice('Solicitação recusada.')
       await loadRequests(true)
     } catch (err) {
       console.error('[creator message action]', err)
@@ -212,19 +204,22 @@ export function CreatorMessagesClient({ creator }: { creator: CreatorAreaContext
 
                     <div className="flex shrink-0 flex-col gap-2">
                       <button
-                        onClick={() => respondRequest(request.id, 'accept')}
-                        disabled={Boolean(actionId)}
-                        className="rounded-xl bg-[#ff4d7d] px-4 py-2 text-[11px] font-medium text-white disabled:opacity-40"
+                        type="button"
+                        disabled
+                        className="rounded-xl bg-white/8 px-4 py-2 text-[11px] font-medium text-white/35"
                       >
-                        {busy ? '...' : 'Aceitar'}
+                        Aceite em preparação
                       </button>
                       <button
-                        onClick={() => respondRequest(request.id, 'decline')}
+                        onClick={() => declineRequest(request.id)}
                         disabled={Boolean(actionId)}
                         className="rounded-xl border border-white/10 px-4 py-2 text-[11px] font-medium text-white/60 disabled:opacity-40"
                       >
-                        Recusar
+                        {busy ? '...' : 'Recusar'}
                       </button>
+                      <p className="max-w-[10rem] text-[10px] leading-relaxed text-white/30">
+                        Aceite será liberado quando a ativação segura do chat estiver pronta. Recusar não gera cobrança.
+                      </p>
                     </div>
                   </div>
                 </div>
