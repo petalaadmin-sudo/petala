@@ -106,6 +106,25 @@ export const GIFT_CATALOG = [
 ]
 
 // ── Hook principal ──────────────────────────────────────────
+function chatUnavailableMessage(code: unknown, fallback: string) {
+  if (typeof code !== 'string') return fallback
+
+  switch (code) {
+    case 'CHAT_START_NOT_READY':
+      return 'Chat em preparação. Em breve você poderá iniciar conversas com aceite seguro da criadora.'
+    case 'CHAT_BILLING_NOT_READY':
+      return 'Cobrança de chat em preparação. Aguarde a ativação segura do fluxo.'
+    case 'CHAT_MESSAGES_NOT_READY':
+      return 'Mensagens de chat em preparação. Aguarde a ativação segura do fluxo.'
+    case 'CHAT_HEARTBEAT_NOT_READY':
+      return 'Chat em preparação. Aguarde a ativação segura do fluxo.'
+    case 'CHAT_END_NOT_READY':
+      return 'Encerramento de chat em preparação. Sessões legadas serão tratadas por fluxo seguro de limpeza.'
+    default:
+      return fallback
+  }
+}
+
 export function useChat({
   creatorId,
   chatType = 'text',
@@ -242,8 +261,12 @@ export function useChat({
     }
 
     if (!res.ok || !result.success) {
-      setError(result.error ?? 'Falha ao cobrar minuto do chat')
-      return { ok: false, error: result.error ?? 'Falha ao cobrar minuto do chat', result }
+      const message = chatUnavailableMessage(
+        result.code,
+        result.error ?? 'Falha ao cobrar minuto do chat'
+      )
+      setError(message)
+      return { ok: false, error: message, result }
     }
 
     applyBalance(result.new_balance)
@@ -281,7 +304,19 @@ export function useChat({
       return
     }
 
-    if (res.ok && result.success) {
+    if (!res.ok) {
+      const message = chatUnavailableMessage(
+        result.code,
+        result.error ?? 'Falha ao atualizar o chat'
+      )
+      stopBilling()
+      setError(message)
+      statusRef.current = 'error'
+      setStatus('error')
+      return
+    }
+
+    if (result.success) {
       applyBalance(result.new_balance)
     }
   }, [applyBalance, applyServerDuration, getAccessToken, onSessionEnded, stopBilling])
@@ -442,11 +477,7 @@ export function useChat({
       const data = await res.json()
 
       if (!res.ok) {
-        setError(
-          data.code === 'CHAT_START_NOT_READY'
-            ? 'Chat em preparação. Em breve você poderá iniciar conversas com aceite seguro da criadora.'
-            : data.error ?? 'Erro ao iniciar chat'
-        )
+        setError(chatUnavailableMessage(data.code, data.error ?? 'Erro ao iniciar chat'))
         statusRef.current = 'error'
         setStatus('error')
         return
@@ -527,7 +558,7 @@ export function useChat({
           return
         }
 
-        setError(data.error ?? 'Erro ao encerrar chat')
+        setError(chatUnavailableMessage(data.code, data.error ?? 'Erro ao encerrar chat'))
         statusRef.current = 'error'
         setStatus('error')
         endingRef.current = false
@@ -577,7 +608,7 @@ export function useChat({
         return
       }
 
-      await fetch('/api/chat/mensagem', {
+      const res = await fetch('/api/chat/mensagem', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -589,6 +620,12 @@ export function useChat({
           type: 'text',
         }),
       })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMessages(prev => prev.filter(m => m.id !== optimistic.id))
+        setError(chatUnavailableMessage(data.code, data.error ?? 'Falha ao enviar mensagem'))
+      }
     } catch (err) {
       // Remove otimista em caso de falha
       setMessages(prev => prev.filter(m => m.id !== optimistic.id))
@@ -624,7 +661,7 @@ export function useChat({
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error)
+        setError(chatUnavailableMessage(data.code, data.error ?? 'Falha ao enviar presente'))
         return null
       }
 

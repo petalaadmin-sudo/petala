@@ -89,7 +89,9 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
           const tokenData = (await res.json()) as AgoraTokenResponse
 
           if (!res.ok || !tokenData.token || !tokenData.appId || !tokenData.channelName || !tokenData.uid) {
-            const message = tokenData.error ?? 'Token de video negado'
+            const message = tokenData.code === 'VIDEO_NOT_READY'
+              ? 'Vídeo em preparação. Aguarde a ativação segura do fluxo.'
+              : tokenData.error ?? 'Token de video negado'
             const tokenError = new Error(message) as Error & { code?: string }
             tokenError.code = tokenData.code
             throw tokenError
