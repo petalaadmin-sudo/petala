@@ -442,7 +442,11 @@ export function useChat({
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error ?? 'Erro ao iniciar chat')
+        setError(
+          data.code === 'CHAT_START_NOT_READY'
+            ? 'Chat em preparação. Em breve você poderá iniciar conversas com aceite seguro da criadora.'
+            : data.error ?? 'Erro ao iniciar chat'
+        )
         statusRef.current = 'error'
         setStatus('error')
         return
