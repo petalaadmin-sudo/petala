@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
-import { ChatWindow } from '@/components/chat/ChatWindow'
 import { DailyBonusModal } from '@/components/ui/DailyBonusModal'
 import { useDailyBonus } from '@/hooks/useDailyBonus'
 import Link from 'next/link'
@@ -19,20 +18,16 @@ interface Creator {
   rank_weekly: number | null
 }
 
-type ChatType = 'text' | 'video'
-
 function FeedCard({
   creator,
   isActive,
   userBalance,
-  onChatOpen,
   isFavorited,
   onToggleFavorite,
 }: {
   creator: Creator
   isActive: boolean
   userBalance: number
-  onChatOpen: (creator: Creator, type: ChatType) => void
   isFavorited: boolean
   onToggleFavorite: (creatorId: string) => void
 }) {
@@ -128,18 +123,18 @@ function FeedCard({
 
         <div className="grid grid-cols-3 gap-2">
           <button
-            onClick={() => onChatOpen(creator, 'text')}
-            disabled={!presence.online}
-            className="bg-[#ff4d7d] text-white rounded-xl py-2.5 text-[11px] font-medium disabled:opacity-40 active:scale-95 transition-transform"
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-xl bg-[#ff4d7d]/35 py-2.5 text-[10px] font-medium text-white/70"
           >
-            {presence.online ? '💬 Chat — 10 🌸 + 50/min' : '💤 Offline'}
+            Chat em preparação
           </button>
           <button
-            onClick={() => onChatOpen(creator, 'video')}
-            disabled={!presence.online}
-            className="bg-white text-[#17070f] rounded-xl py-2.5 text-[11px] font-semibold disabled:opacity-40 active:scale-95 transition-transform"
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-xl bg-white/15 py-2.5 text-[10px] font-semibold text-white/60"
           >
-            {presence.online ? '🎥 Vídeo — 120 🌸/min' : '💤 Offline'}
+            Vídeo em preparação
           </button>
           <Link
             href={`/criadora/${creator.id}`}
@@ -158,8 +153,6 @@ export default function FeedPage() {
   const [creators, setCreators]       = useState<Creator[]>([])
   const [currentIdx, setCurrentIdx]   = useState(0)
   const [userBalance, setUserBalance] = useState(0)
-  const [chatCreator, setChatCreator] = useState<Creator | null>(null)
-  const [chatType, setChatType]       = useState<ChatType>('text')
   const [loading, setLoading]         = useState(true)
   const [favorites, setFavorites]     = useState<Set<string>>(new Set())
   const [userId, setUserId]           = useState<string | null>(null)
@@ -168,11 +161,6 @@ export default function FeedPage() {
 
   // Bônus diário
   const { status, claiming, result, showModal, claim, closeModal } = useDailyBonus()
-
-  const openChat = useCallback((creator: Creator, type: ChatType) => {
-    setChatCreator(creator)
-    setChatType(type)
-  }, [])
 
   // Atualiza saldo após coletar bônus
   useEffect(() => {
@@ -277,7 +265,6 @@ export default function FeedPage() {
               creator={creator}
               isActive={idx === currentIdx}
               userBalance={userBalance}
-              onChatOpen={openChat}
               isFavorited={favorites.has(creator.id)}
               onToggleFavorite={toggleFavorite}
             />
@@ -307,17 +294,6 @@ export default function FeedPage() {
         <span className="text-xs">🌸</span>
         <span className="text-yellow-400 text-xs font-medium">{userBalance}</span>
       </div>
-
-      {/* Chat */}
-      {chatCreator && (
-        <ChatWindow
-          creator={chatCreator}
-          chatType={chatType}
-          initialBalance={userBalance}
-          onBalanceUpdate={setUserBalance}
-          onClose={() => setChatCreator(null)}
-        />
-      )}
 
       {/* Modal de bônus diário */}
       <DailyBonusModal

@@ -1011,7 +1011,7 @@ export default function CreatorOnboardingPage() {
           <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-white text-xl font-medium mb-1">Sua foto de perfil</h2>
-              <p className="text-white/35 text-sm">Criadoras com foto recebem 3× mais chats</p>
+              <p className="text-white/35 text-sm">Uma foto clara deixa sua vitrine mais confiável.</p>
             </div>
 
             <label className="cursor-pointer">
@@ -1054,14 +1054,14 @@ export default function CreatorOnboardingPage() {
         {step === 'precos' && (
           <div className="flex flex-col gap-5">
             <div>
-              <h2 className="text-white text-xl font-medium mb-1">Preços fixos da plataforma</h2>
-              <p className="text-white/35 text-sm">Esses valores são aplicados ao seu perfil de criadora.</p>
+              <h2 className="text-white text-xl font-medium mb-1">Referências comerciais da plataforma</h2>
+              <p className="text-white/35 text-sm">Esses valores entram em vigor quando o fluxo seguro de conversas estiver ativo.</p>
             </div>
 
             {/* Precos fixos */}
             {[
-              { label: 'Chat de texto', sub: '10 pétalas no 1º minuto; depois 50 pétalas/min', value: `${FIXED_TEXT_PRICE_PETALS} pétalas/min`, detail: `${FIXED_TEXT_FIRST_MINUTE_PETALS} pétalas no 1º minuto. Depois, ${FIXED_TEXT_PRICE_PETALS} pétalas por minuto.` },
-              { label: 'Vídeo privado', sub: 'preço fixo da plataforma', value: `${FIXED_VIDEO_PRICE_PETALS} pétalas/min`, detail: `${FIXED_VIDEO_PRICE_PETALS} pétalas por minuto.` },
+              { label: 'Chat de texto', sub: 'modelo previsto para ativação segura', value: `${FIXED_TEXT_PRICE_PETALS} pétalas/min`, detail: `${FIXED_TEXT_FIRST_MINUTE_PETALS} pétalas no 1º minuto. Depois, ${FIXED_TEXT_PRICE_PETALS} pétalas por minuto quando o recurso estiver ativo.` },
+              { label: 'Vídeo privado', sub: 'modelo previsto para ativação segura', value: `${FIXED_VIDEO_PRICE_PETALS} pétalas/min`, detail: `${FIXED_VIDEO_PRICE_PETALS} pétalas por minuto quando o recurso estiver ativo.` },
             ].map(item => (
               <div key={item.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-3">
@@ -1153,7 +1153,7 @@ export default function CreatorOnboardingPage() {
               {[
                 { icon: '📋', text: 'Você envia seus documentos para verificação' },
                 { icon: '⏱',  text: 'Nossa equipe revisa em até 24 horas' },
-                { icon: '✅', text: 'Perfil ativo — você começa a receber chats' },
+                { icon: '✅', text: 'Perfil ativo — recursos comerciais serão liberados gradualmente com ativação segura' },
               ].map((s, i) => (
                 <div key={i} className="flex gap-3 mb-2 last:mb-0">
                   <span className="text-sm flex-shrink-0">{s.icon}</span>

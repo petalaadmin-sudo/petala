@@ -4,7 +4,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlbumPhoto } from '@/components/album/AlbumPhoto'
-import { ChatWindow } from '@/components/chat/ChatWindow'
 import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
 
 interface Photo {
@@ -49,7 +48,6 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
   const [tab, setTab]               = useState<TabId>('album')
   const [balance, setBalance]       = useState(userBalance)
   const [photoList, setPhotoList]   = useState<Photo[]>(photos)
-  const [chatOpen, setChatOpen]     = useState(false)
   const [showBuyModal, setShowBuyModal] = useState(false)
 
   const handleUnlock = async (photoId: string) => {
@@ -132,8 +130,8 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
         <div className="grid grid-cols-3 gap-2 mb-4">
           {[
             { n: creator.total_gifts, l: 'presentes' },
-            { n: `${creator.price_text_petals}🌸`, l: 'por min texto' },
-            { n: `${creator.price_video_petals}🌸`, l: 'por min vídeo' },
+            { n: 'Em breve', l: 'chat seguro' },
+            { n: 'Em breve', l: 'vídeo seguro' },
           ].map(s => (
             <div key={s.l} className="bg-[#111] rounded-xl py-2.5 text-center border border-white/5">
               <div className="text-white text-sm font-medium">{s.n}</div>
@@ -145,11 +143,11 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
         {/* CTAs */}
         <div className="flex gap-2 mb-4">
           <button
-            onClick={() => setChatOpen(true)}
-            disabled={!presence.online}
-            className="flex-[2] bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40 active:scale-95 transition-transform"
+            type="button"
+            disabled
+            className="flex-[2] cursor-not-allowed rounded-xl bg-[#ff4d7d]/35 py-3 text-sm font-medium text-white/70"
           >
-            {presence.online ? '💬 Iniciar chat' : '💤 Offline'}
+            Chat em preparação
           </button>
           <button className="flex-1 bg-[#1e1e1e] text-white/60 rounded-xl py-3 text-sm border border-white/8">
             🎁
@@ -250,8 +248,8 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
             <div className="bg-[#111] rounded-xl p-4 border border-white/5">
               <div className="text-white/30 text-[10px] uppercase tracking-wider mb-3">Preços</div>
               {[
-                { label: 'Chat de texto', value: `${creator.price_text_petals} 🌸 / min` },
-                { label: 'Chat de vídeo', value: `${creator.price_video_petals} 🌸 / min` },
+                { label: 'Chat de texto', value: 'em ativação segura' },
+                { label: 'Chat de vídeo', value: 'em ativação segura' },
                 { label: 'Fotos pagas', value: 'em manutencao financeira' },
                 { label: 'VIP mensal', value: 'em manutenção' },
               ].map(row => (
@@ -264,15 +262,6 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
           </div>
         )}
       </div>
-
-      {/* Chat overlay */}
-      {chatOpen && (
-        <ChatWindow
-          creator={creator}
-          initialBalance={balance}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
 
       {/* Modal comprar pétalas (placeholder) */}
       {showBuyModal && (

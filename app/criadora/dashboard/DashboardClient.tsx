@@ -364,11 +364,11 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
   const quickActions: QuickAction[] = [
     {
-      title: online ? 'Manter disponibilidade' : 'Ficar online',
-      eyebrow: online ? 'Presença ativa' : 'Primeiro passo',
+      title: online ? 'Manter visibilidade' : 'Ficar visível',
+      eyebrow: online ? 'Vitrine ativa' : 'Presença',
       description: online
-        ? 'Você já está visível para receber novas solicitações.'
-        : 'Apareça no feed e abra janela para receber pedidos.',
+        ? 'Sua presença está visível na vitrine. Solicitações pagas seguem em ativação segura.'
+        : 'Apareça na vitrine enquanto o fluxo seguro de conversas é preparado.',
       onClick: online ? undefined : toggleOnline,
       disabled: online || presenceSaving,
       highlight: !online,
@@ -494,7 +494,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                   online ? 'bg-green-400/12 text-green-300' : 'bg-white/[0.06] text-white/55'
                 }`}>
                   <span className={`h-2 w-2 rounded-full ${online ? 'bg-green-300 shadow-[0_0_16px_rgba(74,222,128,0.8)]' : 'bg-white/25'}`} />
-                  {online ? 'Online agora' : 'Offline'}
+                  {online ? 'Visível agora' : 'Offline'}
                 </span>
                 <span className="rounded-full bg-black/20 px-3 py-1.5 text-xs text-white/45">
                   {pendingCount} pedido{pendingCount === 1 ? '' : 's'} pendente{pendingCount === 1 ? '' : 's'}
@@ -503,11 +503,11 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
 
               <h2 className="mt-5 max-w-2xl text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
                 {online
-                  ? 'Você está disponível para novas solicitações.'
-                  : 'Fique online para aparecer no feed e receber solicitações.'}
+                  ? 'Sua presença está visível na vitrine da criadora.'
+                  : 'Fique visível para validar sua vitrine enquanto as conversas seguem em ativação segura.'}
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/55">
-                Use esta tela para decidir o próximo movimento: abrir disponibilidade, responder pedidos,
+                Use esta tela para decidir o próximo movimento: ajustar presença, acompanhar pedidos existentes,
                 cuidar do conteúdo e acompanhar ganhos quando eles estiverem em validação.
               </p>
               <p className="mt-3 text-xs text-white/38">
@@ -528,7 +528,7 @@ export function DashboardClient({ initialCreator }: DashboardClientProps) {
                     : 'bg-[#ff4d7d] text-white shadow-[0_16px_38px_rgba(255,77,125,0.28)]'
                 }`}
               >
-                {presenceSaving ? 'Atualizando...' : online ? 'Ficar offline' : 'Ficar online'}
+                {presenceSaving ? 'Atualizando...' : online ? 'Ficar offline' : 'Ficar visível'}
               </button>
             </div>
           </div>

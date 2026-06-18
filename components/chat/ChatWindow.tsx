@@ -79,7 +79,6 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
   const isVideo = chatType === 'video'
   const priceLabel = isVideo ? '120 🌸/min' : '10 🌸 primeiro minuto · depois 50 🌸/min'
   const activePriceLabel = isVideo ? 'vídeo seguro · 120 🌸/min' : '10 🌸 + 50 🌸/min'
-  const startLabel = isVideo ? 'Iniciar vídeo' : 'Iniciar chat'
   const endedLabel = isVideo ? 'Vídeo encerrado' : 'Chat encerrado'
 
   const headerPriceLabel = isVideo ? 'vídeo seguro · 120 🌸/min' : activePriceLabel
@@ -87,7 +86,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
   const {
     session, messages, balance, status, error,
     elapsedSeconds, serverDurationSeconds, isTyping,
-    startChat, endChat, sendMessage, sendGift, setIsTyping,
+    endChat, sendMessage, sendGift, setIsTyping,
   } = useChat({
     creatorId: creator.id,
     chatType,
@@ -112,6 +111,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
     endChat,
   })
   const endedDisplaySeconds = serverDurationSeconds ?? elapsedSeconds
+  const unavailableLabel = isVideo ? 'Vídeo em preparação' : 'Chat em preparação'
 
   // Scroll automático ao receber mensagem
   useEffect(() => {
@@ -235,7 +235,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
           {isVideo ? (
             <div className="bg-black/40 rounded-xl p-3 mb-4 border border-white/5">
               <div className="flex justify-between text-xs mb-2">
-                <span className="text-white/40">Custo</span>
+                <span className="text-white/40">Modelo previsto</span>
                 <span className="text-yellow-400 font-medium">{priceLabel}</span>
               </div>
               <div className="flex justify-between text-xs">
@@ -246,7 +246,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
           ) : (
           <div className="bg-black/40 rounded-xl p-3 mb-4 border border-white/5">
             <div className="flex justify-between text-xs mb-2">
-              <span className="text-white/40">Custo</span>
+              <span className="text-white/40">Modelo previsto</span>
               <span className="text-yellow-400 font-medium">10 🌸 primeiro minuto · depois 50 🌸/min</span>
             </div>
             <div className="flex justify-between text-xs">
@@ -255,6 +255,10 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
             </div>
           </div>
           )}
+
+          <div className="bg-[#ff4d7d]/10 border border-[#ff4d7d]/20 rounded-xl p-3 mb-4 text-xs leading-relaxed text-[#ffc1d0]">
+            {unavailableLabel}. Em breve você poderá conversar com ativação segura, aceite adequado e validações completas.
+          </div>
 
           {!presence.online && (
             <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-3 mb-4 text-xs text-red-300">
@@ -275,13 +279,11 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
           )}
 
           <button
-            onClick={startChat}
-            disabled={!presence.online || status === 'starting'}
-            className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 mb-2"
+            type="button"
+            disabled
+            className="w-full cursor-not-allowed rounded-xl bg-[#ff4d7d]/35 py-3 text-sm font-medium text-white/70 disabled:opacity-70 flex items-center justify-center gap-2 mb-2"
           >
-            {status === 'starting' ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Iniciando…</>
-            ) : startLabel}
+            {unavailableLabel}
           </button>
           <button onClick={onClose} className="w-full text-white/25 text-xs py-2">cancelar</button>
         </div>
