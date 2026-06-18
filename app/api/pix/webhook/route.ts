@@ -142,8 +142,8 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             app_id: appId,
             include_player_ids: [userData.onesignal_player_id],
-            headings: { pt: 'Petalas adicionadas!' },
-            contents: { pt: `${totalPetals} petalas do pacote ${packageName ?? 'Pix'} estao na sua conta.` },
+            headings: { pt: 'Pétalas adicionadas!' },
+            contents: { pt: `${totalPetals} pétalas do pacote ${packageName ?? 'Pix'} estão na sua conta.` },
           }),
         }).catch(console.error)
       }

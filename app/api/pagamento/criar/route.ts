@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 const LEGACY_PAYMENT_DISABLED_RESPONSE = {
   success: false,
-  error: 'Fluxo de pagamento legado desativado. Use Stripe.',
+  error: 'Fluxo de pagamento legado desativado. Use o checkout disponível no perfil.',
 }
 
 export async function POST() {

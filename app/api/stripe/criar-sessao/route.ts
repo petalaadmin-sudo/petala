@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           currency: 'brl',
           product_data: {
             name: `${totalPetals} Pétalas — ${pacote.name}`,
-            description: 'Pétala App — Moeda virtual',
+            description: 'Pétala/Bloom — créditos internos',
           },
           unit_amount: unitAmount,
         },

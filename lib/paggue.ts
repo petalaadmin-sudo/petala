@@ -1,5 +1,5 @@
 // lib/paggue.ts
-// SDK manual para o gateway Paggue (aceita conteudo adulto no Brasil)
+// Cliente manual para integração com o gateway Paggue.
 // Docs: https://docs.paggue.io
 
 import crypto from 'crypto'

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     const charge = await createPixCharge({
       amount_cents: Math.round(pkg.price_brl * 100),
-      description: `Petala - ${pkg.name} (${totalPetals} petalas)`,
+      description: `Pétala/Bloom - créditos internos (${totalPetals} pétalas)`,
       customer_name: userData?.email?.split('@')[0] ?? 'Usuario',
       customer_email: userData?.email ?? user.email ?? '',
       expires_in_minutes: 30,
