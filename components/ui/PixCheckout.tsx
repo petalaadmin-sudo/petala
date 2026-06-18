@@ -136,7 +136,7 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
   }
 
   return (
-    <div className="px-4 pb-6 pt-2">
+    <div className="max-h-[calc(100dvh-5rem)] overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
       <div className="flex items-center justify-center gap-2 mb-5">
         <span className="text-white/40 text-xs">Seu saldo:</span>
         <span className="text-yellow-400 text-sm font-medium">🌸 {currentBalance} pétalas</span>
