@@ -163,7 +163,7 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
             <span className="text-xl">👑</span>
             <div className="flex-1">
               <div className="text-yellow-400 text-xs font-medium">VIP em revisão</div>
-              <div className="text-white/30 text-[10px]">será reativado com fluxo financeiro auditável</div>
+              <div className="text-white/30 text-[10px]">benefícios serão liberados em ativação segura</div>
             </div>
             <button disabled className="bg-yellow-400/30 text-yellow-100 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap cursor-not-allowed">
               Em preparação
@@ -213,26 +213,9 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
         {/* Aba: Avaliações */}
         {tab === 'avaliacoes' && (
           <div className="flex flex-col gap-3 mb-20">
-            {creator.rating_count === 0 ? (
-              <div className="py-10 text-center text-white/25 text-sm">Ainda sem avaliações</div>
-            ) : (
-              // Avaliações estáticas — em produção viria do banco
-              [
-                { user: 'Carlos M.', stars: 5, text: 'Incrível! Super atenciosa e o conteúdo é exclusivo mesmo.', time: 'há 2 dias' },
-                { user: 'João R.',   stars: 5, text: 'Melhor criadora do app, sem dúvida. Vale cada pétala.', time: 'há 4 dias' },
-                { user: 'Pedro L.',  stars: 4, text: 'Chat muito bom, ela é natural e descontraída.', time: 'há 1 semana' },
-              ].map((r, i) => (
-                <div key={i} className="bg-[#111] rounded-xl p-3 border border-white/5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-full bg-[#1e1e1e] flex items-center justify-center text-sm">👤</div>
-                    <span className="text-white/60 text-xs flex-1">{r.user}</span>
-                    <span className="text-yellow-400 text-xs">{'⭐'.repeat(r.stars)}</span>
-                  </div>
-                  <p className="text-white/50 text-xs leading-relaxed">{r.text}</p>
-                  <p className="text-white/20 text-[10px] mt-1">{r.time}</p>
-                </div>
-              ))
-            )}
+            <div className="py-10 text-center text-white/25 text-sm">
+              Avaliações serão exibidas quando houver interações qualificadas.
+            </div>
           </div>
         )}
 
@@ -250,7 +233,7 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
               {[
                 { label: 'Chat de texto', value: 'em ativação segura' },
                 { label: 'Chat de vídeo', value: 'em ativação segura' },
-                { label: 'Fotos pagas', value: 'em manutencao financeira' },
+                { label: 'Fotos pagas', value: 'em ativação segura' },
                 { label: 'VIP mensal', value: 'em manutenção' },
               ].map(row => (
                 <div key={row.label} className="flex justify-between py-2 border-b border-white/5 last:border-0">
@@ -269,7 +252,7 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
           <div className="bg-[#161616] rounded-t-2xl w-full max-w-sm px-5 pb-8 pt-4 border-t border-white/8">
             <div className="w-8 h-1 bg-white/15 rounded-full mx-auto mb-4" />
             <h3 className="text-white font-medium text-center mb-2">Desbloqueio pago em manutenção</h3>
-            <p className="text-white/40 text-xs text-center mb-4">Fotos gratuitas continuam disponíveis enquanto o fluxo financeiro auditável é implementado.</p>
+            <p className="text-white/40 text-xs text-center mb-4">Fotos gratuitas continuam disponíveis enquanto este recurso é preparado.</p>
             <button
               onClick={() => setShowBuyModal(false)}
               className="w-full bg-[#ff4d7d] text-white rounded-xl py-3 text-sm font-medium mb-2"

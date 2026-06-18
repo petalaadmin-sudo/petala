@@ -31,11 +31,11 @@ const initialForm: FormState = {
 const steps = [
   {
     title: 'Escolha seu perfil',
-    description: 'Candidate-se como agência parceira ou creator verificada.',
+    description: 'Candidate-se como agência parceira ou criadora verificada.',
   },
   {
     title: 'Siga o fluxo correto',
-    description: 'Agências enviam a candidatura nesta página. Creators seguem para onboarding e verificação.',
+    description: 'Agências enviam a candidatura nesta página. Criadoras seguem para onboarding e verificação.',
   },
   {
     title: 'Nossa equipe analisa',
@@ -43,30 +43,30 @@ const steps = [
   },
   {
     title: 'Receba acesso',
-    description: 'Agências aprovadas acessam o painel. Creators aprovadas seguem para seu dashboard.',
+    description: 'Agências aprovadas acessam o painel. Criadoras aprovadas seguem para seu dashboard.',
   },
 ]
 
 const benefits = [
-  'Comissão sobre creators vinculadas',
+  'Modelo comercial em validação',
   'Painel de performance por agência',
   'Ranking e metas Bloom',
-  'Acompanhamento de ganhos',
+  'Acompanhamento operacional',
   'Suporte para crescimento',
 ]
 
 const profiles = [
   {
     title: 'Agência parceira',
-    description: 'Recrute, oriente e acompanhe creators vinculadas. Receba 30% sobre ganhos sacáveis elegíveis, conforme regras da plataforma.',
+    description: 'Recrute, oriente e acompanhe criadoras verificadas dentro de um modelo comercial em validação, com regras auditadas pela plataforma.',
     action: 'Quero ser agência',
     href: '#candidatura',
     applicationType: 'agency' as ApplicationType,
   },
   {
-    title: 'Creator verificada',
-    description: 'Crie seu perfil, passe pela verificação e monetize sua presença por meio de experiências privadas dentro da plataforma.',
-    action: 'Quero ser creator',
+    title: 'Criadora verificada',
+    description: 'Crie seu perfil, passe pela verificação e acompanhe os recursos comerciais quando forem liberados com segurança.',
+    action: 'Quero ser criadora',
     href: '#candidatura',
     applicationType: 'creator' as ApplicationType,
   },
@@ -74,27 +74,27 @@ const profiles = [
 
 const earnings = [
   {
-    title: 'Comissão da agência',
-    description: '30% sobre ganhos elegíveis das creators vinculadas.',
+    title: 'Modelo comercial',
+    description: 'As regras comerciais para agências serão exibidas quando estiverem ativas, auditadas e disponíveis.',
   },
   {
     title: 'Crescimento por performance',
-    description: 'Quanto mais creators ativas e consistentes sua agência acompanha, maior pode ser sua comissão.',
+    description: 'Acompanhe criadoras verificadas com consistência, qualidade operacional e respeito às regras da plataforma.',
   },
   {
     title: 'Painel transparente',
-    description: 'Acompanhe creators, metas, performance e comissão gerada no painel da agência.',
+    description: 'Acompanhe criadoras, metas, performance e etapas de validação no painel da agência.',
   },
   {
     title: 'Regras de elegibilidade',
-    description: 'Bônus, testes, créditos promocionais, fraudes, chargebacks e valores não sacáveis não entram no cálculo da comissão.',
+    description: 'Bônus, testes, créditos promocionais, fraudes, chargebacks e valores inelegíveis seguem revisão e não representam repasse garantido.',
   },
 ]
 
 const creatorEarnings = [
   {
-    title: 'Ganhos por atividade',
-    description: 'Monetize interações privadas e chamadas dentro da plataforma.',
+    title: 'Recursos comerciais',
+    description: 'Criadoras verificadas terão acesso gradual aos recursos comerciais quando estiverem disponíveis.',
   },
   {
     title: 'Horários flexíveis',
@@ -112,7 +112,7 @@ const creatorEarnings = [
 
 const requirements = [
   'Experiência com recrutamento, comunidade ou influenciadoras',
-  'Comunicação profissional com equipe e creators',
+  'Comunicação profissional com equipe e criadoras',
   'Capacidade de acompanhar evolução e consistência da base',
   'Respeito às regras, políticas e padrões da plataforma',
   'Informações verdadeiras durante toda a candidatura',
@@ -132,12 +132,12 @@ const faqs = [
     answer: 'Após aprovação da equipe Bloom, você recebe as instruções de primeiro acesso.',
   },
   {
-    question: 'Posso cadastrar creators de outros países?',
+    question: 'Posso cadastrar criadoras de outros países?',
     answer: 'Sim, sujeito às regras da plataforma e aos critérios de verificação aplicáveis.',
   },
   {
-    question: 'Como recebo comissão?',
-    answer: 'A comissão segue o modelo definido pela plataforma para creators vinculadas.',
+    question: 'Como funciona o modelo comercial?',
+    answer: 'As regras comerciais serão apresentadas quando estiverem ativas, auditadas e disponíveis para agências aprovadas.',
   },
 ]
 
@@ -226,7 +226,7 @@ export default function AgencyPartnersPage() {
               Faça parte da <span className="text-[#ff4d7d]">Bloom</span>
             </h1>
             <p className="text-white/55 text-base sm:text-lg leading-relaxed mt-5 max-w-2xl">
-              A Bloom conecta creators verificadas, agências parceiras e usuários em uma experiência privada, segura e profissional. Escolha como quer participar da plataforma.
+              A Bloom conecta criadoras verificadas, agências parceiras e usuários em uma experiência privada, segura e profissional. Escolha como quer participar da plataforma.
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-8">
               <a
@@ -246,7 +246,7 @@ export default function AgencyPartnersPage() {
               ['Painel', 'Performance semanal'],
               ['Metas', 'Acompanhamento claro'],
               ['Ranking', 'Visão competitiva'],
-              ['Comissão', 'Ganhos por creators'],
+              ['Validação', 'Modelo comercial'],
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">{label}</div>
@@ -260,7 +260,7 @@ export default function AgencyPartnersPage() {
           <SectionHeading
             eyebrow="Perfis"
             title="Duas formas de participar"
-            description="A Bloom conecta creators verificadas, agências parceiras e usuários em uma experiência privada, segura e profissional."
+            description="A Bloom conecta criadoras verificadas, agências parceiras e usuários em uma experiência privada, segura e profissional."
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             {profiles.map(profile => (
@@ -302,7 +302,7 @@ export default function AgencyPartnersPage() {
           <SectionHeading
             eyebrow="Benefícios"
             title="Estrutura para operar com clareza"
-            description="O programa foi pensado para agências que querem acompanhar creators com visão de performance, metas e retorno."
+            description="O programa foi pensado para agências que querem acompanhar criadoras verificadas com visão de performance, metas e responsabilidade."
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-8">
             {benefits.map(benefit => (
@@ -318,10 +318,10 @@ export default function AgencyPartnersPage() {
           <div className="rounded-2xl border border-[#ff4d7d]/20 bg-[#130b0f] p-6 sm:p-8">
             <div className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start">
               <div>
-                <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">Modelo de ganhos</div>
-                <h2 className="text-white text-2xl sm:text-3xl font-medium mt-3 leading-tight">Modelo de ganhos para agências</h2>
+                <div className="text-[#ff4d7d] text-xs font-medium uppercase tracking-[0.22em]">Modelo comercial</div>
+                <h2 className="text-white text-2xl sm:text-3xl font-medium mt-3 leading-tight">Operação de agência em ativação segura</h2>
                 <p className="text-white/55 text-sm leading-relaxed mt-4">
-                  Agências parceiras recebem 30% sobre os ganhos sacáveis elegíveis das creators vinculadas, conforme as regras antifraude e de validação da plataforma.
+                  As regras comerciais para agências serão apresentadas quando estiverem ativas, auditadas e prontas para operação responsável.
                 </p>
               </div>
 
@@ -339,9 +339,9 @@ export default function AgencyPartnersPage() {
 
         <section className="py-16 border-b border-white/10">
           <SectionHeading
-            eyebrow="Creators"
-            title="Ganhos para creators"
-            description="Creators verificadas podem monetizar sua presença na Bloom por meio de interações privadas, chamadas e atividade consistente, sempre conforme as regras de elegibilidade da plataforma."
+            eyebrow="Criadoras"
+            title="Recursos para criadoras"
+            description="Criadoras verificadas terão acesso gradual aos recursos comerciais da Bloom, sempre conforme as regras de elegibilidade e ativação segura da plataforma."
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
             {creatorEarnings.map(item => (
@@ -357,7 +357,7 @@ export default function AgencyPartnersPage() {
           <SectionHeading
             eyebrow="Requisitos"
             title="O que buscamos em uma agência parceira"
-            description="A Bloom prioriza parceiros com operação responsável, comunicação clara e capacidade real de acompanhar creators."
+            description="A Bloom prioriza parceiros com operação responsável, comunicação clara e capacidade real de acompanhar criadoras."
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-8">
             {requirements.map(requirement => (
@@ -432,15 +432,15 @@ export default function AgencyPartnersPage() {
 
                 {applicationType === 'creator' && (
                   <div className="md:col-span-2 rounded-2xl border border-[#ff4d7d]/20 bg-[#130b0f] p-5">
-                    <h3 className="text-white text-lg font-medium">Fluxo de creator verificada</h3>
+                    <h3 className="text-white text-lg font-medium">Fluxo de criadora verificada</h3>
                     <p className="text-white/50 text-sm leading-relaxed mt-3">
-                      O cadastro de creators continua pelo fluxo de onboarding e verificação.
+                      O cadastro de criadoras continua pelo fluxo de onboarding e verificação.
                     </p>
                     <a
                       href="/criadora/onboarding"
                       className="mt-5 inline-flex justify-center rounded-xl bg-[#ff4d7d] px-5 py-3 text-sm font-medium text-white hover:bg-[#ff6a92] transition-colors"
                     >
-                      Continuar como creator
+                      Continuar como criadora
                     </a>
                   </div>
                 )}
@@ -498,7 +498,7 @@ export default function AgencyPartnersPage() {
                       />
                     </Field>
 
-                    <Field label="Creators esperadas" required>
+                    <Field label="Criadoras esperadas" required>
                       <input
                         type="number"
                         min={1}

@@ -92,14 +92,14 @@ export default function IndicacaoPage() {
         </div>
       </div>
 
-      {/* ── Bônus para criadoras ── */}
+      {/* Programa para criadoras */}
       <div className="mx-4 mt-3 bg-[#1a1000] border border-yellow-400/20 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">🎬</span>
-          <span className="text-yellow-400 text-xs font-medium">Bônus exclusivo para criadoras</span>
+          <span className="text-lg">•</span>
+          <span className="text-yellow-400 text-xs font-medium">Programa de indicação em preparação</span>
         </div>
         <p className="text-white/45 text-xs leading-relaxed">
-          Quando você indica outra <strong className="text-white/70">criadora</strong>, recebe <strong className="text-yellow-400">10% dos ganhos dela em chamadas de vídeo e lives</strong>, automaticamente. Não se aplica a presentes, fotos ou mensagens.
+          Benefícios para indicações de criadoras serão liberados gradualmente, com regras comerciais exibidas quando estiverem ativas e auditadas.
         </p>
       </div>
 
@@ -108,7 +108,7 @@ export default function IndicacaoPage() {
         {[
           { label: 'Indicados',     value: status?.total_referred ?? 0,          color: 'text-white' },
           { label: 'Bônus pendentes', value: status?.pending_bonuses ?? 0,       color: 'text-yellow-400' },
-          { label: 'Comissão total', value: `${status?.total_commission_petals ?? 0}🌸`, color: 'text-green-400' },
+          { label: 'Programa', value: 'em preparação', color: 'text-green-400' },
         ].map(s => (
           <div key={s.label} className="bg-[#111] rounded-xl p-3 border border-white/5 text-center">
             <div className={`text-lg font-medium ${s.color}`}>{s.value}</div>
@@ -184,32 +184,9 @@ export default function IndicacaoPage() {
                 ) : (
                   <div className="text-yellow-400/60 text-xs">pendente</div>
                 )}
-                {r.referred_type === 'creator' && r.total_commission_earned > 0 && (
-                  <div className="text-green-400/70 text-[10px]">+{r.total_commission_earned}🌸 comissão</div>
+                {r.referred_type === 'creator' && (
+                  <div className="text-green-400/70 text-[10px]">benefício em preparação</div>
                 )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Comissões recentes de vídeo ── */}
-      {(status?.recent_commissions?.length ?? 0) > 0 && (
-        <div className="mx-4 mt-3 bg-[#111] rounded-xl border border-white/5 overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/5">
-            <span className="text-white text-xs font-medium">Comissões de vídeo recebidas</span>
-          </div>
-          {status?.recent_commissions.slice(0, 5).map((c, i) => (
-            <div key={i} className="flex justify-between items-center px-4 py-2.5 border-b border-white/5 last:border-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">🎬</span>
-                <span className="text-white/50 text-xs">Chamada de vídeo</span>
-              </div>
-              <div className="text-right">
-                <div className="text-green-400 text-xs font-medium">+{c.commission_petals} 🌸</div>
-                <div className="text-white/20 text-[9px]">
-                  {new Date(c.created_at).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-                </div>
               </div>
             </div>
           ))}
@@ -223,9 +200,8 @@ export default function IndicacaoPage() {
           'Cada conta tem um código único e permanente',
           'Uma conta só pode ter um indicador',
           'Bônus de usuário: apenas após verificação + primeira compra',
-          'Comissão de vídeo (criadora): 10% dos ganhos de vídeo/live da indicada',
-          'Comissão não se aplica a presentes, fotos ou mensagens',
-          'Indicadores não recebem comissão sobre comissões de outros',
+          'Benefícios para criadoras serão exibidos quando estiverem ativos e auditados',
+          'O programa não promete comissão, ganho financeiro ou repasse automático',
           'Contas duplicadas ou fraudulentas serão bloqueadas',
         ].map((rule, i) => (
           <div key={i} className="flex gap-2 mb-2 last:mb-0">

@@ -62,21 +62,21 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
       </h1>
       <p className="text-white/35 text-sm mb-10">conteúdo exclusivo de verdade</p>
 
-      {/* Prova social */}
+      {/* Sinais de produto */}
       <div className="flex gap-6 mb-10">
         <div className="text-center">
-          <div className="text-[#ff4d7d] text-xl font-medium">12k+</div>
-          <div className="text-white/35 text-xs mt-1">criadoras</div>
+          <div className="text-[#ff4d7d] text-sm font-medium">Criadoras</div>
+          <div className="text-white/35 text-xs mt-1">verificadas</div>
         </div>
         <div className="w-px bg-white/10 self-stretch" />
         <div className="text-center">
-          <div className="text-[#ff4d7d] text-xl font-medium">247k</div>
-          <div className="text-white/35 text-xs mt-1">online agora</div>
+          <div className="text-[#ff4d7d] text-sm font-medium">Experiência</div>
+          <div className="text-white/35 text-xs mt-1">privada</div>
         </div>
         <div className="w-px bg-white/10 self-stretch" />
         <div className="text-center">
-          <div className="text-[#ff4d7d] text-xl font-medium">4.9★</div>
-          <div className="text-white/35 text-xs mt-1">avaliação</div>
+          <div className="text-[#ff4d7d] text-sm font-medium">Créditos</div>
+          <div className="text-white/35 text-xs mt-1">internos</div>
         </div>
       </div>
 
