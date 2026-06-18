@@ -97,8 +97,8 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
-      console.error('Sessao nao encontrada')
-      setStripeError('Sessao nao encontrada. Entre novamente para comprar.')
+      console.error('Sessão não encontrada')
+      setStripeError('Sessão não encontrada. Entre novamente para comprar.')
       setStripeLoading(false)
       return
     }
@@ -120,11 +120,11 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
       }
 
       console.error(error)
-      setStripeError(error ?? 'Erro ao abrir checkout do cartao.')
+      setStripeError(error ?? 'Erro ao abrir checkout do cartão.')
       setStripeLoading(false)
     } catch (error) {
       console.error('[PixCheckout Stripe]', error)
-      setStripeError('Erro ao abrir checkout do cartao.')
+      setStripeError('Erro ao abrir checkout do cartão.')
       setStripeLoading(false)
     }
   }
@@ -204,6 +204,12 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
         })}
       </div>
 
+      <div className="mb-4 rounded-xl border border-white/8 bg-[#0d0d0d] px-3 py-3">
+        <p className="text-center text-xs leading-relaxed text-white/45">
+          Você está comprando créditos internos Pétala. Alguns recursos comerciais estão em ativação segura e serão liberados gradualmente.
+        </p>
+      </div>
+
       {paymentMethod === 'card' && (
         <>
           <button
@@ -250,7 +256,7 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
 
               {selectedPkg && (
                 <p className="text-white/30 text-xs text-center">
-                  Você receberá {selectedTotal} pétalas após a confirmação do pagamento.
+                  Após a confirmação do pagamento, as pétalas serão adicionadas ao seu saldo interno.
                 </p>
               )}
             </>

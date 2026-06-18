@@ -150,7 +150,10 @@ export default function PerfilPage() {
       <div className="mx-4 mb-4 bg-gradient-to-br from-[#1a0d14] to-[#0d0a14] border border-[#ff4d7d]/20 rounded-2xl p-5 text-center">
         <div className="text-white/40 text-xs mb-1">Seu saldo</div>
         <div className="text-4xl font-medium text-white mb-1">{user?.balance_petals ?? 0}</div>
-        <div className="text-[#ff4d7d] text-sm mb-4">pétalas 🌸</div>
+        <div className="text-[#ff4d7d] text-sm mb-3">pétalas 🌸</div>
+        <p className="mx-auto mb-4 max-w-[280px] text-xs leading-relaxed text-white/45">
+          Pétalas são créditos internos de uso fechado dentro da plataforma. Chat, vídeo, VIP e fotos pagas seguem em ativação segura; a compra não garante acesso imediato a um recurso específico.
+        </p>
         <button
           onClick={() => setShowCheckout(true)}
           className="bg-[#ff4d7d] text-white rounded-xl px-8 py-2.5 text-sm font-medium active:scale-95 transition-transform"
@@ -224,7 +227,7 @@ export default function PerfilPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-white/70 text-xs font-medium">
                     {tx.type === 'purchase' ? `Compra — ${tx.metadata?.package_name ?? ''}` :
-                     tx.type === 'spend'    ? 'Chat de vídeo' :
+                     tx.type === 'spend'    ? 'Uso de pétalas' :
                      tx.type === 'gift_sent'? 'Presente enviado' :
                      tx.type === 'bonus'    ? 'Bônus de boas-vindas' :
                      tx.type}
