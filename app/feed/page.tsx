@@ -33,14 +33,17 @@ function FeedCard({
 }) {
   const presence = useCreatorPresence(creator.id)
   const [liked, setLiked] = useState(false)
+  const profilePhotoSrc = creator.photo_url
+    ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creator.id)}`
+    : null
 
   return (
     <div className="relative w-full h-full flex-shrink-0 snap-start overflow-hidden bg-[#0a0a0a]">
 
       <div className="absolute inset-0">
-        {creator.photo_url ? (
+        {profilePhotoSrc ? (
           <img
-            src={creator.photo_url}
+            src={profilePhotoSrc}
             alt={creator.name}
             className="w-full h-full object-cover"
             loading={isActive ? 'eager' : 'lazy'}
@@ -70,8 +73,8 @@ function FeedCard({
       <div className="absolute right-3 bottom-36 flex flex-col items-center gap-4 z-10">
         <Link href={`/criadora/${creator.id}`}>
           <div className="w-12 h-12 rounded-full border-2 border-[#ff4d7d] overflow-hidden bg-[#2a1220]">
-            {creator.photo_url
-              ? <img src={creator.photo_url} alt="" className="w-full h-full object-cover" />
+            {profilePhotoSrc
+              ? <img src={profilePhotoSrc} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center text-xl">🌸</div>
             }
           </div>
