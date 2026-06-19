@@ -1,6 +1,7 @@
 // app/ranking/page.tsx
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { CreatorAvatarImage } from '@/components/ui/CreatorAvatarImage'
 
 export const revalidate = 300  // revalida a cada 5 minutos (ISR)
 
@@ -58,9 +59,13 @@ export default async function RankingPage() {
               <div className="flex flex-col items-center flex-1">
                 <Link href={`/criadora/${top3[1].creator_id}`}>
                   <div className="w-14 h-14 rounded-full bg-[#1e1e1e] border-2 border-gray-400 flex items-center justify-center text-2xl mb-1">
-                    {top3[1].photo_url
-                      ? <img src={top3[1].photo_url} className="w-full h-full object-cover rounded-full" alt="" />
-                      : '🌸'}
+                    <CreatorAvatarImage
+                      creatorId={top3[1].creator_id}
+                      photoUrl={top3[1].photo_url}
+                      name={top3[1].name}
+                      className="w-full h-full object-cover rounded-full"
+                      fallbackClassName="w-full h-full rounded-full flex items-center justify-center bg-[#1e1e1e] text-2xl text-white/70"
+                    />
                   </div>
                 </Link>
                 <div className="text-white text-xs font-medium text-center">{top3[1].name}</div>
@@ -77,9 +82,13 @@ export default async function RankingPage() {
                 <div className="text-lg mb-1">👑</div>
                 <Link href={`/criadora/${top3[0].creator_id}`}>
                   <div className="w-18 h-18 rounded-full bg-[#1e1e1e] border-2 border-yellow-400 flex items-center justify-center text-3xl mb-1" style={{width:72,height:72}}>
-                    {top3[0].photo_url
-                      ? <img src={top3[0].photo_url} className="w-full h-full object-cover rounded-full" alt="" />
-                      : '🌸'}
+                    <CreatorAvatarImage
+                      creatorId={top3[0].creator_id}
+                      photoUrl={top3[0].photo_url}
+                      name={top3[0].name}
+                      className="w-full h-full object-cover rounded-full"
+                      fallbackClassName="w-full h-full rounded-full flex items-center justify-center bg-[#1e1e1e] text-3xl text-white/70"
+                    />
                   </div>
                 </Link>
                 <div className="text-white text-xs font-medium text-center">{top3[0].name}</div>
@@ -95,9 +104,13 @@ export default async function RankingPage() {
               <div className="flex flex-col items-center flex-1">
                 <Link href={`/criadora/${top3[2].creator_id}`}>
                   <div className="w-12 h-12 rounded-full bg-[#1e1e1e] border-2 border-amber-600 flex items-center justify-center text-xl mb-1">
-                    {top3[2].photo_url
-                      ? <img src={top3[2].photo_url} className="w-full h-full object-cover rounded-full" alt="" />
-                      : '🌸'}
+                    <CreatorAvatarImage
+                      creatorId={top3[2].creator_id}
+                      photoUrl={top3[2].photo_url}
+                      name={top3[2].name}
+                      className="w-full h-full object-cover rounded-full"
+                      fallbackClassName="w-full h-full rounded-full flex items-center justify-center bg-[#1e1e1e] text-xl text-white/70"
+                    />
                   </div>
                 </Link>
                 <div className="text-white text-xs font-medium text-center">{top3[2].name}</div>
@@ -125,9 +138,13 @@ export default async function RankingPage() {
           >
             <span className="text-white/30 text-xs w-5 text-center font-medium">{i + 4}</span>
             <div className="w-9 h-9 rounded-full bg-[#1e1e1e] flex items-center justify-center text-base flex-shrink-0 overflow-hidden">
-              {c.photo_url
-                ? <img src={c.photo_url} className="w-full h-full object-cover" alt="" />
-                : '🌸'}
+              <CreatorAvatarImage
+                creatorId={c.creator_id}
+                photoUrl={c.photo_url}
+                name={c.name}
+                className="w-full h-full object-cover"
+                fallbackClassName="w-full h-full flex items-center justify-center bg-[#1e1e1e] text-base text-white/70"
+              />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-white text-xs font-medium truncate">{c.name}</div>

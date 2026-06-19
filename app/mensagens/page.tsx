@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { CreatorAvatarImage } from '@/components/ui/CreatorAvatarImage'
 
 interface Session {
   id: string
@@ -96,9 +97,13 @@ export default function MensagensPage() {
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div className="w-12 h-12 rounded-full bg-[#1e1e1e] border border-white/8 overflow-hidden flex items-center justify-center text-2xl">
-                  {s.creators.photo_url
-                    ? <img src={s.creators.photo_url} className="w-full h-full object-cover" alt="" />
-                    : '🌸'}
+                  <CreatorAvatarImage
+                    creatorId={s.creator_id}
+                    photoUrl={s.creators.photo_url}
+                    name={s.creators.name}
+                    className="w-full h-full object-cover"
+                    fallbackClassName="w-full h-full flex items-center justify-center bg-[#1e1e1e] text-2xl text-white/70"
+                  />
                 </div>
                 {!s.ended_at && (
                   <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-[#0a0a0a]" />

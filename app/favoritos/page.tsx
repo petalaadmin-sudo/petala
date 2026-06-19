@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { CreatorAvatarImage } from '@/components/ui/CreatorAvatarImage'
 
 export default function FavoritosPage() {
   const supabase = createClient()
@@ -62,10 +63,13 @@ export default function FavoritosPage() {
               <div key={f.creator_id} className="bg-[#111] rounded-2xl p-4 border border-white/5 flex items-center gap-4">
                 <Link href={`/criadora/${creator.id}`}>
                   <div className="w-14 h-14 rounded-full overflow-hidden bg-[#2a1220] flex-shrink-0">
-                    {creator.photo_url
-                      ? <img src={creator.photo_url} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-2xl">🌸</div>
-                    }
+                    <CreatorAvatarImage
+                      creatorId={creator.id}
+                      photoUrl={creator.photo_url}
+                      name={creator.name}
+                      className="w-full h-full object-cover"
+                      fallbackClassName="w-full h-full flex items-center justify-center bg-[#2a1220] text-2xl text-white/70"
+                    />
                   </div>
                 </Link>
                 <div className="flex-1 min-w-0">
