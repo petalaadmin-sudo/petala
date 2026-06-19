@@ -11,6 +11,10 @@ interface Props {
 
 export function BottomNav({ role, unreadMessages = 0 }: Props) {
   const pathname = usePathname()
+  const activePathname =
+    pathname === '/favoritos' || pathname === '/mensagens'
+      ? '/perfil'
+      : pathname
 
   const tabs = [
     { href: '/feed',       icon: '🔥', label: 'Feed'    },
@@ -26,7 +30,7 @@ export function BottomNav({ role, unreadMessages = 0 }: Props) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#0d0d0d] border-t border-white/5 flex z-40">
       {tabs.map(tab => {
-        const isActive = pathname.startsWith(tab.href)
+        const isActive = activePathname.startsWith(tab.href)
         return (
           <Link
             key={tab.href}

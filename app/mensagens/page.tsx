@@ -71,7 +71,7 @@ export default function MensagensPage() {
 
       <div className="px-5 pt-6 pb-4 flex items-center justify-between border-b border-white/5">
         <h1 className="text-white text-lg font-medium">Mensagens</h1>
-        <span className="text-white/25 text-xs">{sessions.length} conversas</span>
+        <span className="text-white/25 text-xs">{sessions.length} registros</span>
       </div>
 
       {sessions.length === 0 ? (
@@ -79,7 +79,7 @@ export default function MensagensPage() {
           <div className="text-4xl mb-4">💬</div>
           <h2 className="text-white text-base font-medium mb-2">Nenhuma conversa ainda</h2>
           <p className="text-white/30 text-sm leading-relaxed mb-6">
-            Inicie um chat com uma criadora no feed para ver suas conversas aqui.
+            Quando as conversas estiverem disponíveis, elas aparecerão aqui.
           </p>
           <Link href="/feed"
             className="bg-[#ff4d7d] text-white rounded-xl px-6 py-3 text-sm font-medium">

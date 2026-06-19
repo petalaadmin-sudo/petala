@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PixCheckout } from '@/components/ui/PixCheckout'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface UserData {
   email: string
@@ -162,6 +163,27 @@ export default function PerfilPage() {
         >
           Comprar pétalas
         </button>
+      </div>
+
+      <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
+        <Link
+          href="/favoritos"
+          className="rounded-2xl border border-white/8 bg-[#111] p-4 active:scale-[0.98] transition-transform"
+        >
+          <div className="text-white text-sm font-medium">Meus favoritos</div>
+          <p className="mt-1 text-xs leading-relaxed text-white/35">
+            Criadoras salvas para acessar depois.
+          </p>
+        </Link>
+        <Link
+          href="/mensagens"
+          className="rounded-2xl border border-white/8 bg-[#111] p-4 active:scale-[0.98] transition-transform"
+        >
+          <div className="text-white text-sm font-medium">Mensagens</div>
+          <p className="mt-1 text-xs leading-relaxed text-white/35">
+            Área de mensagens em preparação segura.
+          </p>
+        </Link>
       </div>
 
       {/* Tabs */}

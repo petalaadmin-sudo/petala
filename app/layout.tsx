@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import OneSignalInit from '@/components/OneSignalInit'
+import { UserBottomNavGate } from '@/components/layout/UserBottomNavGate'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} bg-black text-white antialiased`}>
         <OneSignalInit />
         {children}
+        <UserBottomNavGate />
       </body>
     </html>
   )
