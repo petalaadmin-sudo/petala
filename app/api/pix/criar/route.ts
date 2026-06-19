@@ -108,9 +108,9 @@ export async function POST(request: Request) {
         envVar: err.envVar,
       })
       return NextResponse.json({
-        error: 'Gateway Pix nao configurado',
-        code: err.code,
-      }, { status: 500 })
+        error: 'Pix em preparação. Use cartão ou tente novamente mais tarde.',
+        code: 'PIX_UNAVAILABLE',
+      }, { status: 503 })
     }
 
     if (err instanceof PaggueNetworkError) {

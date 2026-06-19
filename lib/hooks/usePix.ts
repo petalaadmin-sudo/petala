@@ -5,6 +5,15 @@ import { useEffect, useRef, useState } from 'react'
 
 type PixStatus = 'idle' | 'creating' | 'waiting' | 'paid' | 'expired' | 'error'
 
+const PIX_UNAVAILABLE_MESSAGE = 'Pix em preparação. Use cartão ou tente novamente mais tarde.'
+
+const PIX_UNAVAILABLE_CODES = new Set([
+  'PIX_UNAVAILABLE',
+  'PAGGUE_API_URL_NOT_CONFIGURED',
+  'PAGGUE_API_KEY_NOT_CONFIGURED',
+  'PAGGUE_WEBHOOK_SECRET_NOT_CONFIGURED',
+])
+
 interface PixCharge {
   charge_id: string
   pix_qr_code: string
@@ -25,6 +34,24 @@ interface UsePixReturn {
   reset: () => void
   copyQrCode: () => void
   copied: boolean
+}
+
+function getSafePixErrorMessage(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return 'Erro ao criar cobrança'
+
+  const errorPayload = payload as { code?: unknown; error?: unknown }
+  const code = typeof errorPayload.code === 'string' ? errorPayload.code : ''
+  const message = typeof errorPayload.error === 'string' ? errorPayload.error : ''
+
+  if (
+    PIX_UNAVAILABLE_CODES.has(code) ||
+    message.toLowerCase().includes('gateway pix nao configurado') ||
+    message.toLowerCase().includes('paggue')
+  ) {
+    return PIX_UNAVAILABLE_MESSAGE
+  }
+
+  return message || 'Erro ao criar cobrança'
 }
 
 export function usePix(): UsePixReturn {
@@ -103,7 +130,7 @@ export function usePix(): UsePixReturn {
 
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.error ?? 'Erro ao criar cobrança')
+        throw new Error(getSafePixErrorMessage(err))
       }
 
       const data: PixCharge = await res.json()
