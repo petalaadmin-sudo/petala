@@ -1,7 +1,7 @@
 // app/criadora/[id]/CreatorProfileClient.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, type SyntheticEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlbumPhoto } from '@/components/album/AlbumPhoto'
 import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
@@ -22,6 +22,7 @@ interface Creator {
   name: string
   bio: string | null
   photo_url: string | null
+  profile_photo_signed_url: string | null
   rating: number
   rating_count: number
   total_gifts: number
@@ -49,6 +50,29 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
   const [balance, setBalance]       = useState(userBalance)
   const [photoList, setPhotoList]   = useState<Photo[]>(photos)
   const [showBuyModal, setShowBuyModal] = useState(false)
+  const [photoSourceMode, setPhotoSourceMode] = useState<'original' | 'signed' | 'fallback'>('original')
+  const originalPhotoSrc = creator.photo_url || null
+  const signedPhotoSrc = creator.profile_photo_signed_url || null
+  const currentPhotoSrc =
+    photoSourceMode === 'original'
+      ? originalPhotoSrc
+      : photoSourceMode === 'signed'
+        ? signedPhotoSrc
+        : null
+
+  const handleProfilePhotoError = (event: SyntheticEvent<HTMLImageElement>) => {
+    const failedSrc = event.currentTarget.getAttribute('src')
+
+    setPhotoSourceMode(mode => {
+      if (mode === 'original' && failedSrc === originalPhotoSrc && signedPhotoSrc) return 'signed'
+      if (mode === 'signed' && failedSrc === signedPhotoSrc) return 'fallback'
+      return mode
+    })
+  }
+
+  useEffect(() => {
+    setPhotoSourceMode('original')
+  }, [creator.id, originalPhotoSrc, signedPhotoSrc])
 
   const handleUnlock = async (photoId: string) => {
     const res = await fetch('/api/fotos/desbloquear', {
@@ -73,9 +97,9 @@ export function CreatorProfileClient({ creator, photos, userBalance, isVip, user
 
       {/* Hero */}
       <div className="relative h-64 bg-[#1a0812]">
-        {creator.photo_url
-          ? <img src={creator.photo_url} alt={creator.name} className="w-full h-full object-cover" />
-          : <div className="w-full h-full flex items-center justify-center text-8xl opacity-40">🌸</div>
+        {currentPhotoSrc
+          ? <img src={currentPhotoSrc} alt={creator.name} className="w-full h-full object-cover" onError={handleProfilePhotoError} />
+          : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#2a0a1a] to-[#0a0a0a] text-8xl opacity-60">🌸</div>
         }
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-[#0a0a0a]" />
 

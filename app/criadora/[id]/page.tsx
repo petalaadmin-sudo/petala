@@ -15,6 +15,15 @@ type AnonymousAlbumPhoto = {
   unlock_count: number | null
 }
 
+function withProfilePhotoSources<T extends { id: string; photo_url: string | null }>(creator: T) {
+  return {
+    ...creator,
+    profile_photo_signed_url: creator.photo_url
+      ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creator.id)}`
+      : null,
+  }
+}
+
 // Server Component - busca dados da criadora
 export default async function CreatorProfilePage({ params }: Props) {
   const supabase = createClient()
@@ -43,12 +52,7 @@ export default async function CreatorProfilePage({ params }: Props) {
 
     if (!creatorRes.data) notFound()
 
-    const creator = {
-      ...creatorRes.data,
-      photo_url: creatorRes.data.photo_url
-        ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creatorRes.data.id)}`
-        : null,
-    }
+    const creator = withProfilePhotoSources(creatorRes.data)
 
     const publicPhotos = ((photosRes.data ?? []) as AnonymousAlbumPhoto[]).map(photo => ({
       id:           photo.id,
@@ -99,12 +103,7 @@ export default async function CreatorProfilePage({ params }: Props) {
 
   if (!creatorRes.data) notFound()
 
-  const creator = {
-    ...creatorRes.data,
-    photo_url: creatorRes.data.photo_url
-      ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creatorRes.data.id)}`
-      : null,
-  }
+  const creator = withProfilePhotoSources(creatorRes.data)
 
   return (
     <CreatorProfileClient
