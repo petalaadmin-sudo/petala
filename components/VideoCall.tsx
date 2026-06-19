@@ -23,6 +23,9 @@ type AgoraTokenResponse = {
   code?: string
 }
 
+const VIDEO_PREPARATION_MESSAGE = 'Vídeo em preparação. Estamos ativando chamadas com segurança. Tente novamente mais tarde.'
+const GENERIC_VIDEO_ERROR_MESSAGE = 'Não foi possível concluir agora. Tente novamente em instantes.'
+
 export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps) {
   const clientRef = useRef<IAgoraRTCClient | null>(null)
   const tracksRef = useRef<[IMicrophoneAudioTrack, ICameraVideoTrack] | null>(null)
@@ -36,7 +39,7 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
 
   useEffect(() => {
     if (!sessionId) {
-      const message = 'Sessao de video ausente'
+      const message = VIDEO_PREPARATION_MESSAGE
       setError(message)
       onError?.(message, 'SESSION_ID_REQUIRED')
       return
@@ -74,7 +77,7 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
           const accessToken = session?.access_token
 
           if (!accessToken) {
-            throw new Error('Nao autenticado')
+            throw new Error(GENERIC_VIDEO_ERROR_MESSAGE)
           }
 
           const res = await fetch('/api/agora-token', {
@@ -90,8 +93,8 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
 
           if (!res.ok || !tokenData.token || !tokenData.appId || !tokenData.channelName || !tokenData.uid) {
             const message = tokenData.code === 'VIDEO_NOT_READY'
-              ? 'Vídeo em preparação. Aguarde a ativação segura do fluxo.'
-              : tokenData.error ?? 'Token de video negado'
+              ? VIDEO_PREPARATION_MESSAGE
+              : GENERIC_VIDEO_ERROR_MESSAGE
             const tokenError = new Error(message) as Error & { code?: string }
             tokenError.code = tokenData.code
             throw tokenError
@@ -119,7 +122,9 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
           setJoined(true)
         } catch (err) {
           console.error('[VideoCall]', err)
-          const message = err instanceof Error ? err.message : 'Erro ao entrar no video'
+          const message = err instanceof Error && err.message === VIDEO_PREPARATION_MESSAGE
+            ? VIDEO_PREPARATION_MESSAGE
+            : GENERIC_VIDEO_ERROR_MESSAGE
           const code = typeof (err as { code?: unknown })?.code === 'string'
             ? (err as { code: string }).code
             : undefined
@@ -133,7 +138,7 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
 
     void setup().catch((err) => {
       console.error('[VideoCall setup]', err)
-      const message = err instanceof Error ? err.message : 'Erro ao preparar video'
+      const message = GENERIC_VIDEO_ERROR_MESSAGE
       setError(message)
       onError?.(message)
     })
@@ -180,12 +185,12 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         {!joined && !error && (
           <p className="rounded-full bg-black/60 px-4 py-2 text-xs text-white/80">
-            Conectando video seguro...
+            Vídeo em preparação...
           </p>
         )}
         {joined && !remoteJoined && (
           <p className="absolute left-3 top-3 rounded-full bg-black/50 px-3 py-1 text-[11px] text-white/70">
-            Aguardando participante remoto
+            Aguardando a outra pessoa
           </p>
         )}
       </div>
@@ -195,7 +200,7 @@ export default function VideoCall({ sessionId, onEnd, onError }: VideoCallProps)
           onClick={handleEnd}
           className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-full text-sm font-semibold"
         >
-          Encerrar video
+          Encerrar vídeo
         </button>
       </div>
       {error && (

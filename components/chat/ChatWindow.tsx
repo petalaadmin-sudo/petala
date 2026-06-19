@@ -144,8 +144,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
     const runtime = videoRuntimeRef.current
 
     setVideoCallError({
-      message: 'Não foi possível iniciar o vídeo. A sessão foi encerrada para evitar novas cobranças.',
-      detail: message,
+      message: 'Vídeo em preparação. Estamos ativando chamadas com segurança. Tente novamente mais tarde.',
     })
 
     if (!runtime.isVideo || runtime.status !== 'active' || !runtime.sessionId) return
@@ -268,7 +267,7 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
 
           {isVideo && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 mb-4 text-xs text-yellow-100">
-              Vídeo em teste interno. A chamada Agora só abre depois da cobrança inicial confirmada e token seguro por sessão.
+              Vídeo em preparação. Estamos ativando chamadas com segurança. Tente novamente mais tarde.
             </div>
           )}
 
@@ -372,20 +371,15 @@ export function ChatWindow({ creator, chatType = 'text', initialBalance, onBalan
             ) : (
               <div className="bg-white/6 border border-white/10 rounded-2xl p-5 text-center max-w-xs mx-auto">
                 <div className="text-3xl mb-3">🎥</div>
-                <div className="text-white text-sm font-medium mb-1">Preparando vídeo seguro</div>
+                <div className="text-white text-sm font-medium mb-1">Vídeo em preparação</div>
                 <div className="text-white/45 text-xs leading-relaxed">
-                  A chamada abre somente depois da sessão paga e validada pelo servidor.
+                  As chamadas serão liberadas gradualmente após validação.
                 </div>
               </div>
             )}
             {videoCallError && (
               <div className="rounded-xl border border-red-500/25 bg-red-950/35 p-3 text-xs text-red-100">
                 <div>{videoCallError.message}</div>
-                {videoCallError.detail && (
-                  <div className="mt-1 text-[11px] text-red-100/65">
-                    Detalhe: {videoCallError.detail}
-                  </div>
-                )}
               </div>
             )}
             <div className="max-h-44 overflow-y-auto rounded-2xl border border-white/8 bg-black/45 p-3">

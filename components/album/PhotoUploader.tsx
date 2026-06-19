@@ -119,7 +119,7 @@ export function PhotoUploader({ onUploaded }: Props) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-white text-xs font-medium">Foto gratuita</div>
-            <div className="text-white/30 text-[10px]">publicação paga temporariamente bloqueada</div>
+            <div className="text-white/30 text-[10px]">recursos pagos em preparação</div>
           </div>
           <button
             disabled
@@ -130,7 +130,7 @@ export function PhotoUploader({ onUploaded }: Props) {
         </div>
 
         <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-3 py-2 text-yellow-100 text-[10px] leading-relaxed">
-          Fotos pagas serão reativadas após a validação do fluxo financeiro.
+          Fotos gratuitas continuam disponíveis. Recursos pagos serão liberados gradualmente.
         </div>
       </div>
 

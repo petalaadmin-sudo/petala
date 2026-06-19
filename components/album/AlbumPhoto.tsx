@@ -28,7 +28,7 @@ interface Props {
 }
 
 const PAID_UNLOCK_DISABLED_MESSAGE =
-  'Desbloqueio pago em manutenção financeira. Fotos gratuitas continuam disponíveis.'
+  'Recurso em preparação. Fotos gratuitas continuam disponíveis. Recursos pagos serão liberados gradualmente.'
 
 // ── Renderiza blur hash em canvas e converte para data URL ──
 function blurHashToDataUrl(hash: string, width = 32, height = 32): string {
@@ -135,7 +135,7 @@ export function AlbumPhoto({
             )}
 
             <h3 className="text-white text-sm font-medium text-center mb-1">
-              Foto paga indisponível
+              Recurso em preparação
             </h3>
             <p className="text-white/35 text-xs text-center mb-5">
               {PAID_UNLOCK_DISABLED_MESSAGE}
@@ -151,8 +151,8 @@ export function AlbumPhoto({
                 <div className="flex items-center gap-3">
                   <span className="text-base">🌸</span>
                   <div className="text-left">
-                    <div className="text-white text-xs font-medium">Em manutenção financeira</div>
-                    <div className="text-white/30 text-[10px]">sem débito, sem saldo simulado</div>
+                    <div className="text-white text-xs font-medium">Recursos pagos em preparação</div>
+                    <div className="text-white/30 text-[10px]">fotos gratuitas continuam disponíveis</div>
                   </div>
                 </div>
                 <div className="text-yellow-400 text-xs font-medium">Bloqueado</div>
@@ -163,8 +163,8 @@ export function AlbumPhoto({
                 <div className="flex items-center gap-3">
                   <span className="text-base">👑</span>
                   <div className="text-left">
-                    <div className="text-yellow-400 text-xs font-medium">VIP em revisão</div>
-                    <div className="text-white/30 text-[10px]">sem nova cobrança por aqui</div>
+                    <div className="text-yellow-400 text-xs font-medium">VIP em preparação</div>
+                    <div className="text-white/30 text-[10px]">benefícios serão liberados gradualmente</div>
                   </div>
                 </div>
                 <div className="text-yellow-400 text-xs font-medium">Em breve</div>
