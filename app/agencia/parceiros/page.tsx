@@ -176,7 +176,7 @@ export default function AgencyPartnersPage() {
       const data = await response.json()
 
       if (!response.ok || !data?.success) {
-        setError(data?.error ?? 'Nao foi possivel enviar sua candidatura.')
+        setError(data?.error ?? 'Não foi possível enviar sua candidatura.')
         setLoading(false)
         return
       }
@@ -184,7 +184,7 @@ export default function AgencyPartnersPage() {
       setSuccess(true)
       setForm(initialForm)
     } catch {
-      setError('Nao foi possivel enviar sua candidatura.')
+      setError('Não foi possível enviar sua candidatura.')
     } finally {
       setLoading(false)
     }

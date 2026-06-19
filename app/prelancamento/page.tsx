@@ -25,11 +25,11 @@ export default function PrelaunchPage() {
 
       if (!response.ok || !data?.ok) {
         if (response.status === 401) {
-          setError('Codigo nao reconhecido. Confira o acesso recebido e tente novamente.')
+          setError('Código não reconhecido. Confira o acesso recebido e tente novamente.')
         } else if (response.status === 503) {
-          setError('Acesso temporariamente indisponivel. A equipe precisa concluir a configuracao do ambiente.')
+          setError('Acesso temporariamente indisponível. A equipe precisa concluir a configuração do ambiente.')
         } else {
-          setError('Nao foi possivel validar o acesso agora. Tente novamente em instantes.')
+          setError('Não foi possível validar o acesso agora. Tente novamente em instantes.')
         }
         setLoading(false)
         return
@@ -37,7 +37,7 @@ export default function PrelaunchPage() {
 
       window.location.assign('/')
     } catch {
-      setError('Nao foi possivel validar o acesso agora. Tente novamente em instantes.')
+      setError('Não foi possível validar o acesso agora. Tente novamente em instantes.')
       setLoading(false)
     }
   }
