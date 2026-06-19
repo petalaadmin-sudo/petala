@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type SyntheticEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCreatorPresence } from '@/lib/hooks/useCreatorPresence'
 import { DailyBonusModal } from '@/components/ui/DailyBonusModal'
@@ -33,20 +33,39 @@ function FeedCard({
 }) {
   const presence = useCreatorPresence(creator.id)
   const [liked, setLiked] = useState(false)
-  const profilePhotoSrc = creator.photo_url
+  const [photoSourceMode, setPhotoSourceMode] = useState<'original' | 'signed' | 'fallback'>('original')
+  const originalPhotoSrc = creator.photo_url || null
+  const signedPhotoSrc = creator.photo_url
     ? `/api/fotos/perfil-url?creator_id=${encodeURIComponent(creator.id)}`
     : null
+  const currentPhotoSrc =
+    photoSourceMode === 'original'
+      ? originalPhotoSrc
+      : photoSourceMode === 'signed'
+        ? signedPhotoSrc
+        : null
+
+  const handlePhotoError = (event: SyntheticEvent<HTMLImageElement>) => {
+    const failedSrc = event.currentTarget.getAttribute('src')
+
+    setPhotoSourceMode(mode => {
+      if (mode === 'original' && failedSrc === originalPhotoSrc && signedPhotoSrc) return 'signed'
+      if (mode === 'signed' && failedSrc === signedPhotoSrc) return 'fallback'
+      return mode
+    })
+  }
 
   return (
     <div className="relative w-full h-full flex-shrink-0 snap-start overflow-hidden bg-[#0a0a0a]">
 
       <div className="absolute inset-0">
-        {profilePhotoSrc ? (
+        {currentPhotoSrc ? (
           <img
-            src={profilePhotoSrc}
+            src={currentPhotoSrc}
             alt={creator.name}
             className="w-full h-full object-cover"
             loading={isActive ? 'eager' : 'lazy'}
+            onError={handlePhotoError}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#2a0a1a] to-[#0a0a0a] flex items-center justify-center text-8xl opacity-50">
@@ -73,8 +92,8 @@ function FeedCard({
       <div className="absolute right-3 bottom-36 flex flex-col items-center gap-4 z-10">
         <Link href={`/criadora/${creator.id}`}>
           <div className="w-12 h-12 rounded-full border-2 border-[#ff4d7d] overflow-hidden bg-[#2a1220]">
-            {profilePhotoSrc
-              ? <img src={profilePhotoSrc} alt="" className="w-full h-full object-cover" />
+            {currentPhotoSrc
+              ? <img src={currentPhotoSrc} alt="" className="w-full h-full object-cover" onError={handlePhotoError} />
               : <div className="w-full h-full flex items-center justify-center text-xl">🌸</div>
             }
           </div>
