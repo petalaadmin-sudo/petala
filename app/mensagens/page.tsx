@@ -70,12 +70,35 @@ export default function MensagensPage() {
     <div className="min-h-screen bg-[#0a0a0a] pb-24">
 
       <div className="px-5 pt-6 pb-4 flex items-center justify-between border-b border-white/5">
-        <h1 className="text-white text-lg font-medium">Mensagens</h1>
+        <div>
+          <h1 className="text-white text-lg font-medium">Mensagens</h1>
+          <p className="mt-1 max-w-[260px] text-xs leading-relaxed text-white/35">
+            Suas conversas e criadoras salvas aparecerão aqui conforme os recursos forem liberados.
+          </p>
+        </div>
         <span className="text-white/25 text-xs">{sessions.length} registros</span>
       </div>
 
+      <div className="px-5 py-4">
+        <Link
+          href="/favoritos"
+          className="group flex items-center gap-4 rounded-2xl border border-white/8 bg-[#111]/95 p-4 active:scale-[0.98] transition-transform"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#ff4d7d]/20 bg-[#ff4d7d]/10 text-[11px] font-semibold tracking-[0.18em] text-[#ff8aaa]">
+            FV
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-white text-sm font-medium">Favoritos</div>
+            <p className="mt-1 text-xs leading-relaxed text-white/40">
+              Criadoras salvas para acessar depois.
+            </p>
+          </div>
+          <span className="text-white/20 text-lg transition-colors group-active:text-white/40">›</span>
+        </Link>
+      </div>
+
       {sessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+        <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
           <div className="text-4xl mb-4">💬</div>
           <h2 className="text-white text-base font-medium mb-2">Nenhuma conversa ainda</h2>
           <p className="text-white/30 text-sm leading-relaxed mb-6">

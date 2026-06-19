@@ -165,24 +165,21 @@ export default function PerfilPage() {
         </button>
       </div>
 
-      <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
+      <div className="mx-4 mb-4">
         <Link
-          href="/favoritos"
-          className="rounded-2xl border border-white/8 bg-[#111] p-4 active:scale-[0.98] transition-transform"
+          href="/indicacao"
+          className="group flex items-center gap-4 rounded-2xl border border-white/8 bg-[#111]/95 p-4 active:scale-[0.98] transition-transform"
         >
-          <div className="text-white text-sm font-medium">Meus favoritos</div>
-          <p className="mt-1 text-xs leading-relaxed text-white/35">
-            Criadoras salvas para acessar depois.
-          </p>
-        </Link>
-        <Link
-          href="/mensagens"
-          className="rounded-2xl border border-white/8 bg-[#111] p-4 active:scale-[0.98] transition-transform"
-        >
-          <div className="text-white text-sm font-medium">Mensagens</div>
-          <p className="mt-1 text-xs leading-relaxed text-white/35">
-            Área de mensagens em preparação segura.
-          </p>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#ff4d7d]/20 bg-[#ff4d7d]/10 text-[11px] font-semibold tracking-[0.18em] text-[#ff8aaa]">
+            CV
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-white text-sm font-medium">Convites</div>
+            <p className="mt-1 text-xs leading-relaxed text-white/40">
+              Acompanhe convites e benefícios elegíveis quando disponíveis.
+            </p>
+          </div>
+          <span className="text-white/20 text-lg transition-colors group-active:text-white/40">›</span>
         </Link>
       </div>
 
