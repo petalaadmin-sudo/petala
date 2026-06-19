@@ -151,9 +151,11 @@ export default function PerfilPage() {
         <div className="text-white/40 text-xs mb-1">Seu saldo</div>
         <div className="text-4xl font-medium text-white mb-1">{user?.balance_petals ?? 0}</div>
         <div className="text-[#ff4d7d] text-sm mb-3">pétalas 🌸</div>
-        <p className="mx-auto mb-4 max-w-[280px] text-xs leading-relaxed text-white/45">
-          Pétalas são créditos internos de uso fechado dentro da plataforma. Chat, vídeo, VIP e fotos pagas seguem em ativação segura; a compra não garante acesso imediato a um recurso específico.
-        </p>
+        <div className="mx-auto mb-4 max-w-[300px] rounded-xl border border-white/8 bg-black/20 px-3 py-2.5">
+          <p className="text-xs leading-relaxed text-white/55">
+            Pétalas são créditos internos de uso fechado dentro da plataforma. Chat, vídeo, VIP e fotos pagas seguem em ativação segura; a compra não garante acesso imediato a um recurso específico.
+          </p>
+        </div>
         <button
           onClick={() => setShowCheckout(true)}
           className="bg-[#ff4d7d] text-white rounded-xl px-8 py-2.5 text-sm font-medium active:scale-95 transition-transform"

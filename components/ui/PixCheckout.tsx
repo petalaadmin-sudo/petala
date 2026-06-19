@@ -21,6 +21,8 @@ interface Props {
 
 type PaymentMethod = 'card' | 'pix'
 
+const PIX_PREPARATION_MESSAGE = 'Pix em preparação. Use cartão ou tente novamente mais tarde.'
+
 export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
   const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
@@ -41,6 +43,7 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
 
   const pixBusy = pixStatus === 'creating' || pixStatus === 'waiting'
   const isBusy = stripeLoading || pixBusy || pixStatus === 'paid'
+  const isPixPreparationState = pixError === PIX_PREPARATION_MESSAGE
 
   useEffect(() => {
     if (pixStatus !== 'paid' || newBalance === null) return
@@ -204,10 +207,18 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
         })}
       </div>
 
-      <div className="mb-4 rounded-xl border border-white/8 bg-[#0d0d0d] px-3 py-3">
-        <p className="text-center text-xs leading-relaxed text-white/45">
-          Você está comprando créditos internos Pétala. Alguns recursos comerciais estão em ativação segura e serão liberados gradualmente.
-        </p>
+      <div className="mb-4 rounded-2xl border border-[#ff4d7d]/15 bg-[#ff4d7d]/[0.06] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#ff4d7d]/20 bg-black/20 text-[11px] font-medium text-[#ff8cad]">
+            i
+          </div>
+          <div className="min-w-0 text-left">
+            <p className="text-xs font-medium text-white/80">Créditos internos Pétala</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/50">
+              Alguns recursos comerciais estão em ativação segura e serão liberados gradualmente.
+            </p>
+          </div>
+        </div>
       </div>
 
       {paymentMethod === 'card' && (
@@ -333,12 +344,27 @@ export function PixCheckout({ packages, currentBalance, onSuccess }: Props) {
           )}
 
           {pixError && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center text-red-100 text-xs">
-              {pixError}
+            <div
+              className={`rounded-xl border p-3 text-center text-xs leading-relaxed ${
+                isPixPreparationState
+                  ? 'border-yellow-400/20 bg-yellow-400/10 text-yellow-50'
+                  : 'border-red-500/20 bg-red-500/10 text-red-100'
+              }`}
+            >
+              {isPixPreparationState ? (
+                <>
+                  <div className="font-medium">Pix em preparação</div>
+                  <div className="mt-1 text-yellow-50/70">Use cartão ou tente novamente mais tarde.</div>
+                </>
+              ) : (
+                pixError
+              )}
             </div>
           )}
 
-          <p className="text-white/20 text-xs text-center">Pagamento seguro via Pix</p>
+          <p className="text-white/20 text-xs text-center">
+            {isPixPreparationState ? 'Pix será liberado assim que estiver disponível.' : 'Pagamento seguro via Pix'}
+          </p>
         </div>
       )}
     </div>
