@@ -92,9 +92,9 @@ function AccessDenied() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
       <div className="w-full max-w-md bg-[#111] border border-white/5 rounded-xl p-6 text-center">
-        <h1 className="text-white text-lg font-medium">Acesso nao autorizado</h1>
+        <h1 className="text-white text-lg font-medium">Acesso não autorizado</h1>
         <p className="text-white/35 text-sm mt-2">
-          Seu usuario nao possui vinculo ativo com uma agencia.
+          Seu usuário não possui vínculo ativo com uma agência.
         </p>
       </div>
     </main>
@@ -194,16 +194,16 @@ export default function AgenciaPage() {
   }
 
   const cards = [
-    { label: 'Score', value: int(dashboard?.agency_score ?? ranking?.agency_score), desc: 'Pontuacao semanal' },
-    { label: 'Nivel', value: performanceLevel ?? '-', desc: performanceDescription ?? 'Performance da agencia' },
-    { label: 'Comissao gerada', value: usd(dashboard?.agency_commission_usd), desc: 'USD' },
-    { label: 'Criadoras vinculadas', value: int(dashboard?.linked_creators_count), desc: 'Total na agencia' },
+    { label: 'Score', value: int(dashboard?.agency_score ?? ranking?.agency_score), desc: 'Pontuação semanal' },
+    { label: 'Nível', value: performanceLevel ?? '-', desc: performanceDescription ?? 'Performance da agência' },
+    { label: 'Atividade em validação', value: usd(dashboard?.agency_commission_usd), desc: 'Em revisão' },
+    { label: 'Criadoras vinculadas', value: int(dashboard?.linked_creators_count), desc: 'Total na agência' },
     { label: 'Com atividade', value: int(dashboard?.creators_with_activity_count), desc: 'Na semana' },
     { label: 'Plenamente ativas', value: int(dashboard?.fully_active_creators_count), desc: 'Meta completa' },
-    { label: 'Minutos pagos', value: int(dashboard?.total_paid_minutes), desc: 'Chat/video' },
-    { label: 'Minutos online', value: int(dashboard?.total_online_minutes), desc: 'Presenca real' },
+    { label: 'Uso elegível em análise', value: int(dashboard?.total_paid_minutes), desc: 'Recursos em ativação' },
+    { label: 'Minutos online', value: int(dashboard?.total_online_minutes), desc: 'Presença real' },
     { label: 'Presentes', value: int(dashboard?.total_gifts_count), desc: 'Quantidade' },
-    { label: 'Ranking', value: ranking?.score_rank ? `#${ranking.score_rank}` : '-', desc: 'Posicao semanal' },
+    { label: 'Ranking', value: ranking?.score_rank ? `#${ranking.score_rank}` : '-', desc: 'Posição semanal' },
   ]
 
   return (
@@ -212,34 +212,34 @@ export default function AgenciaPage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[#ff4d7d] text-xs font-medium uppercase tracking-wide">Bloom</p>
-            <h1 className="text-white text-2xl font-medium mt-1">Painel da Agencia</h1>
+            <h1 className="text-white text-2xl font-medium mt-1">Painel da Agência</h1>
             <p className="text-white/35 text-sm mt-2">
-              {dashboard?.agency_name ?? ranking?.agency_name ?? 'Agencia'} - {weekLabel(currentWeek, dashboard?.week_start, dashboard?.week_end)}
+              {dashboard?.agency_name ?? ranking?.agency_name ?? 'Agência'} - {weekLabel(currentWeek, dashboard?.week_start, dashboard?.week_end)}
             </p>
           </div>
 
           <div className="rounded-xl border border-white/5 bg-[#111] px-4 py-3">
-            <div className="text-white/30 text-[11px] uppercase tracking-wide">Vinculo</div>
-            <div className="text-white/70 text-sm mt-1">{agencyUserRole ?? 'agency'}</div>
+            <div className="text-white/30 text-[11px] uppercase tracking-wide">Vínculo</div>
+            <div className="text-white/70 text-sm mt-1">{agencyUserRole ?? 'agência'}</div>
           </div>
         </header>
 
         <section className="bg-[#111] rounded-xl border border-white/5 p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="text-white/30 text-[11px] uppercase tracking-wide">Link de convite para creators</div>
+              <div className="text-white/30 text-[11px] uppercase tracking-wide">Link de convite para criadoras</div>
               <div className="mt-3 grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)]">
                 <div className="rounded-lg bg-[#0d0d0d] border border-white/5 px-3 py-2">
-                  <div className="text-white/25 text-[10px] uppercase tracking-wide">Codigo</div>
+                  <div className="text-white/25 text-[10px] uppercase tracking-wide">Código</div>
                   <div className="text-white text-sm font-medium font-mono tracking-wide mt-1">{inviteCode ?? '-'}</div>
                 </div>
                 <div className="min-w-0 rounded-lg bg-[#0d0d0d] border border-white/5 px-3 py-2">
-                  <div className="text-white/25 text-[10px] uppercase tracking-wide">Link copiavel</div>
-                  <div className="text-white/65 text-xs truncate mt-1">{inviteLink ?? 'Link indisponivel'}</div>
+                  <div className="text-white/25 text-[10px] uppercase tracking-wide">Link copiável</div>
+                  <div className="text-white/65 text-xs truncate mt-1">{inviteLink ?? 'Link indisponível'}</div>
                 </div>
               </div>
               <p className="text-white/35 text-xs mt-3 leading-relaxed">
-                Creators convidadas ainda precisam concluir onboarding e passar pela verificação antes de serem vinculadas à agência.
+                Criadoras convidadas ainda precisam concluir onboarding e passar pela verificação antes de serem vinculadas à agência.
               </p>
             </div>
 
@@ -265,7 +265,7 @@ export default function AgenciaPage() {
 
         {performanceDescription && (
           <section className="bg-[#111] rounded-xl border border-white/5 p-4">
-            <div className="text-white/30 text-[11px] uppercase tracking-wide">Descricao da performance</div>
+            <div className="text-white/30 text-[11px] uppercase tracking-wide">Descrição da performance</div>
             <p className="text-white/60 text-sm mt-2 leading-relaxed">{performanceDescription}</p>
           </section>
         )}
@@ -273,8 +273,8 @@ export default function AgenciaPage() {
         <section>
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
-              <h2 className="text-white text-sm font-medium">Criadoras da agencia</h2>
-              <p className="text-white/30 text-xs mt-0.5">Desempenho filtrado pela semana atual da agencia.</p>
+              <h2 className="text-white text-sm font-medium">Criadoras da agência</h2>
+              <p className="text-white/30 text-xs mt-0.5">Desempenho filtrado pela semana atual da agência.</p>
             </div>
             <span className="text-white/30 text-xs">{int(creators.length)} criadoras</span>
           </div>
@@ -286,13 +286,13 @@ export default function AgenciaPage() {
                   <tr className="border-b border-white/5">
                     {[
                       'Criadora',
-                      'Min. pagos',
+                      'Uso em análise',
                       'Min. online',
                       'Presentes',
-                      'Ganho',
-                      'Comissao',
+                      'Valores em revisão',
+                      'Modelo comercial',
                       'Status',
-                      'Min. faltantes meta paga',
+                      'Uso faltante em análise',
                       'Min. faltantes meta online',
                     ].map(header => (
                       <th key={header} className="text-left text-white/30 text-xs px-4 py-3">{header}</th>
@@ -321,7 +321,7 @@ export default function AgenciaPage() {
                   {creators.length === 0 && (
                     <tr>
                       <td colSpan={9} className="px-4 py-8 text-center text-white/30 text-xs">
-                        Nenhuma criadora encontrada para esta agencia na semana selecionada.
+                        Nenhuma criadora encontrada para esta agência na semana selecionada.
                       </td>
                     </tr>
                   )}

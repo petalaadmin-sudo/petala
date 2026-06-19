@@ -389,7 +389,7 @@ export default function CreatorOnboardingPage() {
 
     if (digits.length > CPF_DIGIT_LIMIT) {
       setPixCpf(digits.slice(0, CPF_DIGIT_LIMIT))
-      setPixCpfError('Use um CPF com 11 numeros. CNPJ nao e aceito nesta fase.')
+      setPixCpfError('Use um CPF com 11 dígitos. CNPJ não é aceito nesta fase.')
       return
     }
 
@@ -699,7 +699,7 @@ export default function CreatorOnboardingPage() {
       }
 
       if (!pixCpfIsValid) {
-        throw new Error('Informe um CPF Pix com 11 numeros. E-mail, telefone, chave aleatoria e CNPJ nao sao aceitos.')
+        throw new Error('Informe um CPF com 11 dígitos para validação operacional. E-mail, telefone, chave aleatória e CNPJ não são aceitos.')
       }
 
       const {
@@ -1054,14 +1054,14 @@ export default function CreatorOnboardingPage() {
         {step === 'precos' && (
           <div className="flex flex-col gap-5">
             <div>
-              <h2 className="text-white text-xl font-medium mb-1">Referências comerciais da plataforma</h2>
-              <p className="text-white/35 text-sm">Esses valores entram em vigor quando o fluxo seguro de conversas estiver ativo.</p>
+              <h2 className="text-white text-xl font-medium mb-1">Recursos comerciais em validação</h2>
+              <p className="text-white/35 text-sm">As regras comerciais serão exibidas quando estiverem ativas, auditadas e disponíveis para contas aprovadas.</p>
             </div>
 
             {/* Precos fixos */}
             {[
-              { label: 'Chat de texto', sub: 'modelo previsto para ativação segura', value: `${FIXED_TEXT_PRICE_PETALS} pétalas/min`, detail: `${FIXED_TEXT_FIRST_MINUTE_PETALS} pétalas no 1º minuto. Depois, ${FIXED_TEXT_PRICE_PETALS} pétalas por minuto quando o recurso estiver ativo.` },
-              { label: 'Vídeo privado', sub: 'modelo previsto para ativação segura', value: `${FIXED_VIDEO_PRICE_PETALS} pétalas/min`, detail: `${FIXED_VIDEO_PRICE_PETALS} pétalas por minuto quando o recurso estiver ativo.` },
+              { label: 'Interações por mensagem', sub: 'recurso em ativação segura', value: 'Em validação', detail: 'Valores, elegibilidade e disponibilidade serão apresentados antes da ativação do fluxo seguro.' },
+              { label: 'Interações ao vivo', sub: 'recurso em ativação segura', value: 'Em validação', detail: 'O modelo operacional será comunicado quando estiver ativo, auditado e disponível para contas aprovadas.' },
             ].map(item => (
               <div key={item.label} className="bg-[#111] rounded-xl p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-3">
@@ -1079,12 +1079,12 @@ export default function CreatorOnboardingPage() {
 
             {/* Modelo de ganhos */}
             <div className="bg-[#0e1e14] border border-green-500/20 rounded-xl p-4">
-              <div className="text-green-400 text-xs font-medium mb-3">Modelo de ganhos</div>
+              <div className="text-green-400 text-xs font-medium mb-3">Modelo de remuneração em validação</div>
               {[
-                'Ganhos calculados sobre pétalas elegíveis.',
-                'Referência: US$1 a cada 850 pétalas elegíveis.',
-                'Bônus, promoções e créditos gratuitos não entram no cálculo.',
-                'Agências recebem 30% sobre ganhos elegíveis da criadora vinculada.',
+                'As regras comerciais serão exibidas quando estiverem ativas, auditadas e disponíveis para contas aprovadas.',
+                'Valores, elegibilidade e repasses dependem de validação, contrato e regras operacionais da plataforma.',
+                'Bônus, promoções e créditos gratuitos podem ter regras próprias de elegibilidade.',
+                'O modelo comercial para agências será apresentado quando estiver ativo e disponível para agências aprovadas.',
               ].map(item => (
                 <div key={item} className="flex gap-2 mb-2 last:mb-0">
                   <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-400 flex-shrink-0" />
@@ -1095,7 +1095,7 @@ export default function CreatorOnboardingPage() {
 
             {/* Pix para saque */}
             <div>
-              <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">CPF para recebimento via Pix</label>
+              <label className="text-white/40 text-xs uppercase tracking-wider block mb-2">Dados para validação financeira futura</label>
               <input
                 value={formatCpf(pixCpf)}
                 onChange={handlePixCpfChange}
@@ -1107,11 +1107,11 @@ export default function CreatorOnboardingPage() {
                 className="w-full bg-[#161616] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#ff4d7d]/40"
               />
               <p className="text-white/30 text-xs mt-2 leading-relaxed">
-                Por segurança, o CPF do Pix deverá ser o mesmo CPF usado na verificação/KYC.
+                Informe o CPF que será usado para validações operacionais futuras. Isso não representa liberação comercial ou financeira.
               </p>
               {pixCpfTouched && (pixCpfError || pixCpf.length !== CPF_DIGIT_LIMIT) && (
                 <div className="mt-2 rounded-xl border border-red-500/25 bg-red-900/20 px-3 py-2 text-red-300 text-xs leading-relaxed">
-                  {pixCpfError ?? 'Informe um CPF com 11 numeros. E-mail, telefone, chave aleatoria e CNPJ nao sao aceitos.'}
+                  {pixCpfError ?? 'Informe um CPF com 11 dígitos para validação operacional. E-mail, telefone, chave aleatória e CNPJ não são aceitos.'}
                 </div>
               )}
             </div>
@@ -1136,12 +1136,12 @@ export default function CreatorOnboardingPage() {
                 <div className="text-white/40 text-sm mb-3">{bio || '—'}</div>
                 <div className="flex gap-3">
                   <div className="flex-1 bg-[#0d0d0d] rounded-lg p-2 text-center">
-                    <div className="text-yellow-400 text-sm font-medium">{FIXED_TEXT_PRICE_PETALS} pétalas</div>
-                    <div className="text-white/25 text-[10px]">texto/min após 1º min</div>
+                    <div className="text-yellow-400 text-sm font-medium">Em validação</div>
+                    <div className="text-white/25 text-[10px]">mensagens</div>
                   </div>
                   <div className="flex-1 bg-[#0d0d0d] rounded-lg p-2 text-center">
-                    <div className="text-yellow-400 text-sm font-medium">{FIXED_VIDEO_PRICE_PETALS} pétalas</div>
-                    <div className="text-white/25 text-[10px]">vídeo/min</div>
+                    <div className="text-yellow-400 text-sm font-medium">Em validação</div>
+                    <div className="text-white/25 text-[10px]">interações ao vivo</div>
                   </div>
                 </div>
               </div>
