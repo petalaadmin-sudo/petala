@@ -106,7 +106,7 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
                 Entrar no pré-lançamento
               </Link>
               <Link
-                href="/feed"
+                href="/auth/cadastro"
                 className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-4 text-center text-sm font-semibold text-white/82 transition hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.98]"
               >
                 Explorar criadoras
