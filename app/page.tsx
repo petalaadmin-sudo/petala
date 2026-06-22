@@ -10,11 +10,11 @@ type SplashPageProps = {
 const productHighlights = [
   {
     title: 'Criadoras verificadas',
-    description: 'Descubra perfis selecionados em uma vitrine discreta, visual e premium.',
+    description: 'Descubra perfis selecionados em uma vitrine discreta, visual e exclusiva.',
   },
   {
     title: 'Acesso com pétalas',
-    description: 'Use créditos internos para desbloquear conversas, chamadas e conteúdos premium.',
+    description: 'Use créditos internos para desbloquear conversas, chamadas e conteúdos exclusivos.',
   },
   {
     title: 'Experiências privadas',
@@ -87,15 +87,15 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
         <section className="grid gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
             <div className="mb-5 inline-flex rounded-full border border-[#ff4d7d]/25 bg-[#ff4d7d]/10 px-3 py-1 text-xs font-medium text-[#ffc1d0]">
-              criadoras verificadas • acesso privado • experiências premium
+              criadoras verificadas • chamadas exclusivas • experiências privadas
             </div>
 
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Desbloqueie acesso privado às criadoras que você quer conhecer.
+              Um universo privado com criadoras verificadas, chamadas exclusivas e experiências privadas.
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/62">
-              Use pétalas para acessar conversas, chamadas privadas, conteúdos premium e experiências exclusivas com criadoras verificadas.
+              Use pétalas para acessar conversas, chamadas privadas, conteúdos exclusivos e experiências com criadoras verificadas.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -114,7 +114,7 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
             </div>
 
             <p className="mt-4 text-xs leading-5 text-white/38">
-              Pétalas são créditos internos da plataforma. Recursos premium são liberados conforme disponibilidade e regras da conta.
+              Pétalas são créditos internos da plataforma. Recursos exclusivos são liberados conforme disponibilidade e regras da conta.
             </p>
           </div>
 
