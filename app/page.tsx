@@ -10,19 +10,19 @@ type SplashPageProps = {
 const productHighlights = [
   {
     title: 'Criadoras verificadas',
-    description: 'Perfis selecionados para uma experiência privada, segura e premium.',
+    description: 'Descubra perfis selecionados em uma vitrine discreta, visual e premium.',
   },
   {
-    title: 'Pétalas e benefícios',
-    description: 'Créditos internos para presentes, acesso premium e recursos exclusivos.',
+    title: 'Acesso com pétalas',
+    description: 'Use créditos internos para desbloquear conversas, chamadas e conteúdos premium.',
   },
   {
-    title: 'Ranking e favoritos',
-    description: 'Acompanhe suas criadoras favoritas e descubra quem está em destaque.',
+    title: 'Experiências privadas',
+    description: 'Acesse interações exclusivas com suas favoritas dentro da plataforma.',
   },
 ]
 
-const valueSignals = ['Feed visual', 'Presentes', 'Status', 'Favoritos']
+const valueSignals = ['Chamadas', 'Conversas', 'Conteúdos', 'Favoritas']
 
 function getSearchParam(searchParams: SplashPageProps['searchParams'], key: string) {
   const value = searchParams?.[key]
@@ -87,15 +87,15 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
         <section className="grid gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
             <div className="mb-5 inline-flex rounded-full border border-[#ff4d7d]/25 bg-[#ff4d7d]/10 px-3 py-1 text-xs font-medium text-[#ffc1d0]">
-              plataforma premium para experiências privadas
+              criadoras verificadas • acesso privado • experiências premium
             </div>
 
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Entre no universo privado das criadoras verificadas.
+              Desbloqueie acesso privado às criadoras que você quer conhecer.
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/62">
-              Descubra criadoras, envie presentes e desbloqueie experiências com pétalas em um ambiente discreto, visual e feito para quem busca exclusividade.
+              Use pétalas para acessar conversas, chamadas privadas, conteúdos premium e experiências exclusivas com criadoras verificadas.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -114,7 +114,7 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
             </div>
 
             <p className="mt-4 text-xs leading-5 text-white/38">
-              Pétalas são créditos internos de uso fechado dentro da plataforma. Recursos premium são liberados conforme disponibilidade e regras da conta.
+              Pétalas são créditos internos da plataforma. Recursos premium são liberados conforme disponibilidade e regras da conta.
             </p>
           </div>
 
@@ -123,7 +123,7 @@ export default function SplashPage({ searchParams }: SplashPageProps) {
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-white">Bloom privado</p>
-                  <p className="text-xs text-white/42">feed, ranking e benefícios</p>
+                  <p className="text-xs text-white/42">chamadas, conteúdos e experiências</p>
                 </div>
                 <div className="rounded-full border border-[#ff4d7d]/30 bg-[#ff4d7d]/12 px-3 py-1 text-xs font-medium text-[#ff9bb5]">
                   verificado
