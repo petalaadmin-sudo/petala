@@ -28,14 +28,22 @@ export default function IndicacaoPage() {
     <div className="min-h-screen bg-[#0a0a0a] pb-24">
 
       {/* Header */}
-      <div className="px-5 pt-6 pb-2">
-        <h1 className="text-white text-xl font-medium">Indicações</h1>
-        <p className="text-white/35 text-sm mt-1">Convide amigos e ganhe pétalas</p>
+      <div className="px-5 pt-7 pb-2">
+        <div className="text-[#ff8aaa] text-[10px] font-semibold uppercase tracking-[0.22em] mb-2">
+          Convites Bloom
+        </div>
+        <h1 className="text-white text-2xl font-semibold leading-tight">Convide amigos e desbloqueie pétalas.</h1>
+        <p className="text-white/45 text-sm leading-relaxed mt-2">
+          Cada convite válido pode liberar pétalas para conversas, chamadas privadas, conteúdos exclusivos e experiências com criadoras verificadas.
+        </p>
       </div>
 
       {/* ── Seu link único ── */}
       <div className="mx-4 mt-4 bg-gradient-to-br from-[#1a0d14] to-[#0d0a14] border border-[#ff4d7d]/25 rounded-2xl p-5">
-        <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Seu código único</div>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="text-white/40 text-xs uppercase tracking-wider">Seu código de convite</div>
+          <div className="text-[#ff9bb5] text-[10px] font-medium">50 pétalas por convite válido</div>
+        </div>
         <div className="text-white text-3xl font-medium tracking-[0.15em] mb-1">
           {status?.referral_code ?? '—'}
         </div>
@@ -49,6 +57,7 @@ export default function IndicacaoPage() {
           </button>
           <button
             onClick={shareLink}
+            aria-label="Compartilhar convite"
             className="w-12 bg-white/10 text-white rounded-xl flex items-center justify-center text-lg border border-white/10"
           >
             📤
@@ -65,18 +74,18 @@ export default function IndicacaoPage() {
           {[
             {
               icon: '🔗',
-              title: 'Compartilhe seu link',
-              sub: 'Envie para amigos ou cole em redes sociais',
+              title: 'Compartilhe seu código',
+              sub: 'Envie seu convite para amigos que querem acessar a Bloom',
             },
             {
               icon: '📱',
-              title: 'Amigo cria a conta',
-              sub: 'Ele usa seu código ou link no cadastro',
+              title: 'Convite confirmado',
+              sub: 'Seu amigo entra pelo link e conclui os critérios do convite',
             },
             {
               icon: '✅',
-              title: 'Ambos ganham 50 pétalas',
-              sub: 'Após verificação e primeira compra do indicado',
+              title: 'Vocês desbloqueiam 50 pétalas',
+              sub: 'A recompensa é liberada quando o convite se torna válido',
             },
           ].map(item => (
             <div key={item.title} className="flex items-center gap-3 px-4 py-3">
@@ -90,16 +99,19 @@ export default function IndicacaoPage() {
             </div>
           ))}
         </div>
+        <p className="px-4 py-3 text-white/25 text-[10px] leading-relaxed border-t border-white/5">
+          Convites precisam de conta verificada e primeira compra do indicado para liberar as pétalas.
+        </p>
       </div>
 
       {/* Programa para criadoras */}
       <div className="mx-4 mt-3 bg-[#1a1000] border border-yellow-400/20 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-lg">•</span>
-          <span className="text-yellow-400 text-xs font-medium">Programa de indicação em preparação</span>
+          <span className="text-yellow-400 text-xs font-medium">Amplie sua rede Bloom</span>
         </div>
         <p className="text-white/45 text-xs leading-relaxed">
-          Benefícios para indicações de criadoras serão liberados gradualmente, com regras comerciais exibidas quando estiverem ativas e auditadas.
+          Convites para criadoras também ficam registrados no seu histórico. Recompensas específicas serão apresentadas quando disponíveis.
         </p>
       </div>
 
@@ -107,8 +119,8 @@ export default function IndicacaoPage() {
       <div className="grid grid-cols-3 gap-3 mx-4 mt-4">
         {[
           { label: 'Indicados',     value: status?.total_referred ?? 0,          color: 'text-white' },
-          { label: 'Bônus pendentes', value: status?.pending_bonuses ?? 0,       color: 'text-yellow-400' },
-          { label: 'Programa', value: 'em preparação', color: 'text-green-400' },
+          { label: 'A liberar', value: status?.pending_bonuses ?? 0,       color: 'text-yellow-400' },
+          { label: 'Convites', value: 'ativo', color: 'text-green-400' },
         ].map(s => (
           <div key={s.label} className="bg-[#111] rounded-xl p-3 border border-white/5 text-center">
             <div className={`text-lg font-medium ${s.color}`}>{s.value}</div>
@@ -120,7 +132,8 @@ export default function IndicacaoPage() {
       {/* ── Aplicar código (se ainda não tem indicador) ── */}
       {!status?.has_referrer && (
         <div className="mx-4 mt-4 bg-[#111] rounded-xl border border-white/5 p-4">
-          <div className="text-white text-xs font-medium mb-3">Você foi indicado por alguém?</div>
+          <div className="text-white text-xs font-medium mb-1">Recebeu um convite?</div>
+          <p className="text-white/35 text-[10px] mb-3">Insira o código para vincular sua entrada e acompanhar a recompensa.</p>
           <div className="flex gap-2">
             <input
               value={codeInput}
@@ -134,12 +147,12 @@ export default function IndicacaoPage() {
               disabled={codeInput.length < 4 || applying}
               className="bg-[#ff4d7d] text-white rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-40"
             >
-              {applying ? '…' : 'Aplicar'}
+              {applying ? '…' : 'Validar'}
             </button>
           </div>
           {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
           <p className="text-white/20 text-[10px] mt-2 leading-relaxed">
-            Bônus liberado após verificação de conta + primeira compra mínima.
+            Códigos válidos liberam a recompensa após verificação da conta e primeira compra.
           </p>
         </div>
       )}
@@ -148,12 +161,12 @@ export default function IndicacaoPage() {
         <div className="mx-4 mt-4 bg-[#0e1e14] border border-green-500/20 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-base">⏳</span>
-            <span className="text-green-400 text-xs font-medium">Bônus pendente — 50 🌸 te esperam</span>
+            <span className="text-green-400 text-xs font-medium">50 pétalas estão quase liberadas</span>
           </div>
           <p className="text-white/40 text-xs leading-relaxed">
             {!status.first_purchase_done
-              ? 'Faça sua primeira compra de pétalas para liberar as 50 pétalas de boas-vindas.'
-              : 'Verifique seu e-mail ou telefone para liberar as 50 pétalas de boas-vindas.'}
+              ? 'Conclua sua primeira compra para validar o convite e liberar sua recompensa.'
+              : 'Conclua a verificação da sua conta para liberar sua recompensa.'}
           </p>
         </div>
       )}
@@ -162,7 +175,7 @@ export default function IndicacaoPage() {
       {(status?.referrals?.length ?? 0) > 0 && (
         <div className="mx-4 mt-4 bg-[#111] rounded-xl border border-white/5 overflow-hidden">
           <div className="px-4 py-3 border-b border-white/5 flex justify-between items-center">
-            <span className="text-white text-xs font-medium">Seus indicados</span>
+            <span className="text-white text-xs font-medium">Seus convites</span>
             <span className="text-white/30 text-[10px]">{status?.total_referred} total</span>
           </div>
           {status?.referrals.slice(0, 5).map((r, i) => (
@@ -185,7 +198,7 @@ export default function IndicacaoPage() {
                   <div className="text-yellow-400/60 text-xs">pendente</div>
                 )}
                 {r.referred_type === 'creator' && (
-                  <div className="text-green-400/70 text-[10px]">benefício em preparação</div>
+                  <div className="text-green-400/70 text-[10px]">entrada registrada</div>
                 )}
               </div>
             </div>
@@ -195,14 +208,13 @@ export default function IndicacaoPage() {
 
       {/* ── Regras ── */}
       <div className="mx-4 mt-4 bg-[#111] rounded-xl border border-white/5 p-4">
-        <div className="text-white/30 text-[10px] uppercase tracking-wider mb-3">Regras do programa</div>
+        <div className="text-white/30 text-[10px] uppercase tracking-wider mb-3">Para liberar suas pétalas</div>
         {[
-          'Cada conta tem um código único e permanente',
-          'Uma conta só pode ter um indicador',
-          'Bônus de usuário: apenas após verificação + primeira compra',
-          'Benefícios para criadoras serão exibidos quando estiverem ativos e auditados',
-          'O programa não promete comissão, ganho financeiro ou repasse automático',
-          'Contas duplicadas ou fraudulentas serão bloqueadas',
+          'Seu código é único e permanente',
+          'Cada conta pode usar um único convite',
+          'As 50 pétalas são liberadas após verificação e primeira compra do convidado',
+          'Convites duplicados ou fraudulentos não geram recompensa',
+          'Convites para criadoras seguem regras próprias quando disponíveis',
         ].map((rule, i) => (
           <div key={i} className="flex gap-2 mb-2 last:mb-0">
             <span className="text-white/20 text-xs flex-shrink-0">{i + 1}.</span>
